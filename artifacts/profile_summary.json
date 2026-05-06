@@ -1,0 +1,416 @@
+{
+  "sklearn_hgb": {
+    "cprofile_top": [
+      {
+        "function": "~:0:<built-in method builtins.exec>",
+        "primitive_calls": 1,
+        "total_calls": 1703,
+        "total_time_s": 0.030881771000000002,
+        "cumulative_time_s": 3.450935282
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:1:<module>",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 4.5416e-05,
+        "cumulative_time_s": 3.450847495
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:342:main",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 5.703e-06,
+        "cumulative_time_s": 1.9773278900000002
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:308:_emit_single",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.0007010380000000001,
+        "cumulative_time_s": 1.975050658
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:128:_single_run",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.00027984200000000004,
+        "cumulative_time_s": 1.9742464240000002
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1115:join",
+        "primitive_calls": 4,
+        "total_calls": 4,
+        "total_time_s": 4.3071e-05,
+        "cumulative_time_s": 1.9609354570000002
+      },
+      {
+        "function": "~:0:<method 'acquire' of '_thread.lock' objects>",
+        "primitive_calls": 282,
+        "total_calls": 302,
+        "total_time_s": 0.00024236600000000002,
+        "cumulative_time_s": 1.960833553
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1153:_wait_for_tstate_lock",
+        "primitive_calls": 13,
+        "total_calls": 13,
+        "total_time_s": 2.7376e-05,
+        "cumulative_time_s": 1.9607947760000002
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1016:_bootstrap",
+        "primitive_calls": 1,
+        "total_calls": 8,
+        "total_time_s": 7.3627e-05,
+        "cumulative_time_s": 1.7786980190000001
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1056:_bootstrap_inner",
+        "primitive_calls": 1,
+        "total_calls": 8,
+        "total_time_s": 7.424000000000001e-05,
+        "cumulative_time_s": 1.778650869
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:999:run",
+        "primitive_calls": 1,
+        "total_calls": 8,
+        "total_time_s": 9.4905e-05,
+        "cumulative_time_s": 1.7786344390000002
+      },
+      {
+        "function": "/root/.local/lib/python3.12/site-packages/sklearn/base.py:1319:wrapper",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.000432669,
+        "cumulative_time_s": 1.715988132
+      }
+    ],
+    "speedscope_top_leaf": [
+      {
+        "leaf_frame": "0x7f259161e02a",
+        "sample_weight": 0.7100000000000004
+      },
+      {
+        "leaf_frame": "0x7f25b11b6d71",
+        "sample_weight": 0.38000000000000017
+      },
+      {
+        "leaf_frame": "histogram__build_histogram_no_hessian.isra.0",
+        "sample_weight": 0.18000000000000002
+      },
+      {
+        "leaf_frame": "histogram__build_histogram_root_no_hessian.isra.0",
+        "sample_weight": 0.16
+      },
+      {
+        "leaf_frame": "clock_nanosleep",
+        "sample_weight": 0.15
+      },
+      {
+        "leaf_frame": "_compile_bytecode",
+        "sample_weight": 0.11999999999999998
+      },
+      {
+        "leaf_frame": "_aligned_strided_to_contig_size8",
+        "sample_weight": 0.10999999999999999
+      },
+      {
+        "leaf_frame": "dedent",
+        "sample_weight": 0.09999999999999999
+      },
+      {
+        "leaf_frame": "_binning__map_col_to_bins._omp_fn.0",
+        "sample_weight": 0.09999999999999999
+      },
+      {
+        "leaf_frame": "0x7f259161e036",
+        "sample_weight": 0.09999999999999999
+      },
+      {
+        "leaf_frame": "0x7f25b11481ca",
+        "sample_weight": 0.09999999999999999
+      },
+      {
+        "leaf_frame": "0x7f25b11ca51a",
+        "sample_weight": 0.08
+      }
+    ]
+  },
+  "lightgbm_hist": {
+    "cprofile_top": [
+      {
+        "function": "~:0:<built-in method builtins.exec>",
+        "primitive_calls": 1,
+        "total_calls": 1701,
+        "total_time_s": 0.030323321,
+        "cumulative_time_s": 7.1718558550000004
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:1:<module>",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 4.2792e-05,
+        "cumulative_time_s": 7.171819308000001
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:342:main",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 6.493e-06,
+        "cumulative_time_s": 5.704790444
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:308:_emit_single",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.000545054,
+        "cumulative_time_s": 5.702460853000001
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:128:_single_run",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.000284861,
+        "cumulative_time_s": 5.701753906
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1115:join",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 1.1309000000000001e-05,
+        "cumulative_time_s": 5.506989862
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1153:_wait_for_tstate_lock",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 2.4046e-05,
+        "cumulative_time_s": 5.506909247
+      },
+      {
+        "function": "~:0:<method 'acquire' of '_thread.lock' objects>",
+        "primitive_calls": 6,
+        "total_calls": 8,
+        "total_time_s": 0.00018933300000000003,
+        "cumulative_time_s": 5.506872374
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1016:_bootstrap",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 4.3018e-05,
+        "cumulative_time_s": 5.506679254000001
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1056:_bootstrap_inner",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 1.1956e-05,
+        "cumulative_time_s": 5.506636236
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:999:run",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 4.5116e-05,
+        "cumulative_time_s": 5.506617960000001
+      },
+      {
+        "function": "/root/.local/lib/python3.12/site-packages/lightgbm/sklearn.py:1381:fit",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 1.3733e-05,
+        "cumulative_time_s": 5.270726634000001
+      }
+    ],
+    "speedscope_top_leaf": [
+      {
+        "leaf_frame": "LightGBM::DenseBin<unsigned char, false>::ConstructHistogram",
+        "sample_weight": 2.9399999999999813
+      },
+      {
+        "leaf_frame": "clock_nanosleep",
+        "sample_weight": 0.8700000000000006
+      },
+      {
+        "leaf_frame": "std::_Function_handler<void (double, double, int, LightGBM::FeatureConstraint const*, double, LightGBM::SplitInfo*), LightGBM::FeatureHistogram::FuncForNumricalL3<false, false, false, false, false>()::{lambda(double, double, int, LightGBM::FeatureConstraint const*, double, LightGBM::SplitInfo*)#7}>::_M_invoke",
+        "sample_weight": 0.8500000000000005
+      },
+      {
+        "leaf_frame": "LGBM_DatasetCreateFromMats._omp_fn.0",
+        "sample_weight": 0.49000000000000027
+      },
+      {
+        "leaf_frame": "std::__merge_sort_loop<double*, double*, long, __gnu_cxx::__ops::_Iter_less_iter>",
+        "sample_weight": 0.4100000000000002
+      },
+      {
+        "leaf_frame": "LightGBM::DenseBin<unsigned char, false>::Split",
+        "sample_weight": 0.4000000000000002
+      },
+      {
+        "leaf_frame": "LightGBM::GBDT::PredictRaw",
+        "sample_weight": 0.3000000000000001
+      },
+      {
+        "leaf_frame": "LightGBM::Dataset::FixHistogram",
+        "sample_weight": 0.2900000000000001
+      },
+      {
+        "leaf_frame": "0x7f0238cef1ca",
+        "sample_weight": 0.17
+      },
+      {
+        "leaf_frame": "LightGBM::Dataset::ConstructHistogramsInner<true, false, false, 0>",
+        "sample_weight": 0.16
+      },
+      {
+        "leaf_frame": "_compile_bytecode",
+        "sample_weight": 0.10999999999999999
+      },
+      {
+        "leaf_frame": "dedent",
+        "sample_weight": 0.09
+      }
+    ]
+  },
+  "xgboost_hist": {
+    "cprofile_top": [
+      {
+        "function": "~:0:<built-in method builtins.exec>",
+        "primitive_calls": 1,
+        "total_calls": 1701,
+        "total_time_s": 0.030112409000000003,
+        "cumulative_time_s": 9.188167636000001
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:1:<module>",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 4.0829000000000005e-05,
+        "cumulative_time_s": 9.188125835000001
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:342:main",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 6.718000000000001e-06,
+        "cumulative_time_s": 7.713691750000001
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:308:_emit_single",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.0013906650000000001,
+        "cumulative_time_s": 7.71135673
+      },
+      {
+        "function": "benchmark_gbdt_regressors.py:128:_single_run",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.000287642,
+        "cumulative_time_s": 7.709793439
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1115:join",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 7.887000000000001e-06,
+        "cumulative_time_s": 7.506976951
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1153:_wait_for_tstate_lock",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 1.3944e-05,
+        "cumulative_time_s": 7.5069064580000004
+      },
+      {
+        "function": "~:0:<method 'acquire' of '_thread.lock' objects>",
+        "primitive_calls": 6,
+        "total_calls": 8,
+        "total_time_s": 0.000153883,
+        "cumulative_time_s": 7.506878491
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1016:_bootstrap",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 4.9108000000000005e-05,
+        "cumulative_time_s": 7.506719876000001
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:1056:_bootstrap_inner",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 9.331000000000001e-06,
+        "cumulative_time_s": 7.506670768
+      },
+      {
+        "function": "/usr/lib/python3.12/threading.py:999:run",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 2.2040000000000002e-05,
+        "cumulative_time_s": 7.50665571
+      },
+      {
+        "function": "/root/.local/lib/python3.12/site-packages/xgboost/core.py:732:inner_f",
+        "primitive_calls": 3,
+        "total_calls": 15,
+        "total_time_s": 0.00019258300000000002,
+        "cumulative_time_s": 7.4503897310000005
+      }
+    ],
+    "speedscope_top_leaf": [
+      {
+        "leaf_frame": "xgboost::tree::TreeEvaluator::SplitEvaluator<xgboost::tree::TrainParam>::CalcSplitGain<xgboost::tree::GradStats>",
+        "sample_weight": 2.289999999999995
+      },
+      {
+        "leaf_frame": "xgboost::common::GHistBuildingManager<false, true, false, unsigned char>::DispatchAndExecute<xgboost::common::BuildHist<false>(xgboost::common::Span<xgboost::detail::GradientPairInternal<float> const, (unsigned long)18446744073709551615>, xgboost::common::Span<unsigned long const, (unsigned long)18446744073709551615>, xgboost::GHistIndexMatrix const&, xgboost::common::Span<xgboost::detail::GradientPairInternal<double>, (unsigned long)18446744073709551615>, bool)::{lambda(auto:1)#1}>",
+        "sample_weight": 1.8900000000000015
+      },
+      {
+        "leaf_frame": "xgboost::common::RowsWiseBuildHistKernel<false, xgboost::common::GHistBuildingManager<false, true, false, unsigned char> >",
+        "sample_weight": 1.6900000000000013
+      },
+      {
+        "leaf_frame": "xgboost::tree::HistEvaluator::EnumerateSplit<1>",
+        "sample_weight": 1.290000000000001
+      },
+      {
+        "leaf_frame": "clock_nanosleep",
+        "sample_weight": 1.1100000000000008
+      },
+      {
+        "leaf_frame": "xgboost::common::PartitionBuilder<(unsigned long)2048>::Partition<unsigned char, false, false, xgboost::tree::CPUExpandEntry, xgboost::tree::ScalarTreeView>",
+        "sample_weight": 0.4400000000000002
+      },
+      {
+        "leaf_frame": "xgboost::common::HistogramCuts::SearchBin",
+        "sample_weight": 0.34000000000000014
+      },
+      {
+        "leaf_frame": "std::__introsort_loop<__gnu_cxx::__normal_iterator<xgboost::common::WQSummary<float, float>::Queue::QEntry*, std::vector<xgboost::common::WQSummary<float, float>::Queue::QEntry, std::allocator<xgboost::common::WQSummary<float, float>::Queue::QEntry> > >, long, __gnu_cxx::__ops::_Iter_less_iter>",
+        "sample_weight": 0.3200000000000001
+      },
+      {
+        "leaf_frame": "xgboost::common::SubtractionHist",
+        "sample_weight": 0.26000000000000006
+      },
+      {
+        "leaf_frame": "0x7fa0149e31ca",
+        "sample_weight": 0.19000000000000003
+      },
+      {
+        "leaf_frame": "xgboost::data::cpu_impl::GetDataShape(xgboost::Context const*, xgboost::data::DMatrixProxy*, xgboost::data::DataIterProxy<void (void*), int (void*)>*, float, xgboost::data::ExternalDataInfo*)::{lambda()#1}::operator()() const::{lambda(auto:1 const&)#1}::operator()<xgboost::data::ArrayAdapterBatch>(xgboost::data::ArrayAdapterBatch const&) const::{lambda(auto:1)#1}::operator()<unsigned long> const",
+        "sample_weight": 0.15
+      },
+      {
+        "leaf_frame": "xgboost::tree::cpu_impl::UniformSample",
+        "sample_weight": 0.12999999999999998
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "sklearn_hgb": {
+    "cprofile": "artifacts/profiles/sklearn_medium_t1.pstats",
+    "speedscope": "artifacts/profiles/sklearn_medium_t1.speedscope.json"
+  },
+  "lightgbm_hist": {
+    "cprofile": "artifacts/profiles/lightgbm_medium_t1.pstats",
+    "speedscope": "artifacts/profiles/lightgbm_medium_t1.speedscope.json"
+  },
+  "xgboost_hist": {
+    "cprofile": "artifacts/profiles/xgboost_medium_t1.pstats",
+    "speedscope": "artifacts/profiles/xgboost_medium_t1.speedscope.json"
+  }
+}

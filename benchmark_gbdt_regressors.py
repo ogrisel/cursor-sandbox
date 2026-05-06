@@ -238,12 +238,13 @@ def _benchmark(args: argparse.Namespace) -> None:
     all_runs: list[dict[str, Any]] = []
 
     for dataset in dataset_grid:
-        for threads in thread_grid:
-            current_n_samples = dataset["start_n_samples"]
-            reduction_round = 0
-            while True:
-                timeout_happened = False
-                scenario_runs: list[dict[str, Any]] = []
+        current_n_samples = dataset["start_n_samples"]
+        reduction_round = 0
+        while True:
+            timeout_happened = False
+            dataset_runs: list[dict[str, Any]] = []
+            for threads in thread_grid:
+                per_thread_runs: list[dict[str, Any]] = []
                 for model in MODEL_NAMES:
                     run = _run_in_subprocess(
                         model=model,
@@ -260,26 +261,29 @@ def _benchmark(args: argparse.Namespace) -> None:
                     run["timeout_s"] = args.timeout_s
                     run["reduced_from_n_samples"] = dataset["start_n_samples"]
                     run["reduction_round"] = reduction_round
-                    scenario_runs.append(run)
+                    per_thread_runs.append(run)
                 if timeout_happened:
-                    reduced = int(current_n_samples * args.reduction_factor)
-                    if reduced < args.min_n_samples:
-                        raise RuntimeError(
-                            f"Could not keep runtimes <= {args.timeout_s}s for dataset={dataset['name']} "
-                            f"threads={threads} even after reducing to n_samples={current_n_samples}."
-                        )
-                    current_n_samples = reduced
-                    reduction_round += 1
-                    continue
+                    break
 
-                r2_values = [r["r2"] for r in scenario_runs]
+                r2_values = [r["r2"] for r in per_thread_runs]
                 r2_spread = max(r2_values) - min(r2_values)
-                for r in scenario_runs:
+                for r in per_thread_runs:
                     r["r2_spread_for_scenario"] = r2_spread
                     r["r2_spread_tolerance"] = args.max_r2_spread
                     r["r2_spread_within_tolerance"] = r2_spread <= args.max_r2_spread
-                all_runs.extend(scenario_runs)
-                break
+                dataset_runs.extend(per_thread_runs)
+            if timeout_happened:
+                reduced = int(current_n_samples * args.reduction_factor)
+                if reduced < args.min_n_samples:
+                    raise RuntimeError(
+                        f"Could not keep runtimes <= {args.timeout_s}s for dataset={dataset['name']} "
+                        f"for all thread settings even after reducing to n_samples={current_n_samples}."
+                    )
+                current_n_samples = reduced
+                reduction_round += 1
+                continue
+            all_runs.extend(dataset_runs)
+            break
 
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(
