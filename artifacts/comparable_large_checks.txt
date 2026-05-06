@@ -2,7 +2,10 @@ constraints_min_n_estimators 10
 constraints_min_num_leaves 31
 all_candidates_estimators_ok True
 all_candidates_leaves_ok True
-max_calibration_total_seconds 7.5658
-all_calibration_under_10s True
-final_t1_r2_spread 0.000215
-final_t1_models ['lightgbm_hist', 'sklearn_hgb', 'xgboost_hist']
+sklearn_param_names_valid True
+xgboost_param_names_valid True
+lightgbm_param_names_valid True
+sklearn_default_floor_r2 0.639393
+aligned_min_r2_t1 0.650715
+all_models_meet_floor_t1 True
+aligned_r2_spread_t1 0.001756
