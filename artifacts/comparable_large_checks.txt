@@ -1,0 +1,8 @@
+constraints_min_n_estimators 10
+constraints_min_num_leaves 31
+all_candidates_estimators_ok True
+all_candidates_leaves_ok True
+max_calibration_total_seconds 7.5658
+all_calibration_under_10s True
+final_t1_r2_spread 0.000215
+final_t1_models ['lightgbm_hist', 'sklearn_hgb', 'xgboost_hist']

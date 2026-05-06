@@ -1,4 +1,0 @@
-max_total_seconds 8.8512
-max_fit_seconds 8.8173
-all_under_10s True
-n_runs 27
