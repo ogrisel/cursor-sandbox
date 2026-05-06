@@ -18,6 +18,7 @@ from sklearn.datasets import make_regression
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+from threadpoolctl import threadpool_limits
 from xgboost import XGBRegressor
 
 
@@ -42,8 +43,8 @@ class RunMetrics:
     hyperparameters: dict[str, Any]
 
 
-def _common_hyperparameters() -> dict[str, Any]:
-    return {
+def _common_hyperparameters(overrides: dict[str, Any] | None = None) -> dict[str, Any]:
+    params = {
         "loss": "squared_error",
         "n_estimators": 220,
         "learning_rate": 0.05,
@@ -53,12 +54,16 @@ def _common_hyperparameters() -> dict[str, Any]:
         "subsample": 0.8,
         "l2_regularization": 1.0,
         "min_samples_leaf": 20,
+        "min_child_weight": 20.0,
+        "min_split_gain": 0.0,
         "random_state": 42,
     }
+    if overrides:
+        params.update(overrides)
+    return params
 
 
-def _build_model(model_name: str, threads: int):
-    common = _common_hyperparameters()
+def _build_model(model_name: str, threads: int, common: dict[str, Any]):
     if model_name == "sklearn_hgb":
         return HistGradientBoostingRegressor(
             loss=common["loss"],
@@ -78,12 +83,15 @@ def _build_model(model_name: str, threads: int):
             n_estimators=common["n_estimators"],
             learning_rate=common["learning_rate"],
             max_depth=common["max_depth"],
+            max_leaves=common["num_leaves"],
             max_bin=common["max_bin"],
             subsample=common["subsample"],
             colsample_bytree=1.0,
             reg_lambda=common["l2_regularization"],
+            min_child_weight=common["min_child_weight"],
+            gamma=common["min_split_gain"],
             tree_method="hist",
-            grow_policy="depthwise",
+            grow_policy="lossguide",
             random_state=common["random_state"],
             n_jobs=threads,
             verbosity=0,
@@ -100,6 +108,8 @@ def _build_model(model_name: str, threads: int):
             subsample_freq=1,
             reg_lambda=common["l2_regularization"],
             min_child_samples=common["min_samples_leaf"],
+            min_split_gain=common["min_split_gain"],
+            min_child_weight=common["min_child_weight"],
             random_state=common["random_state"],
             n_jobs=threads,
             verbose=-1,
@@ -125,8 +135,16 @@ def _monitor_peak_rss(stop_event: threading.Event, interval_s: float = 0.01) -> 
     return peak_rss / (1024 ** 2)
 
 
-def _single_run(model_name: str, n_samples: int, n_features: int, threads: int, seed: int) -> dict[str, Any]:
+def _single_run(
+    model_name: str,
+    n_samples: int,
+    n_features: int,
+    threads: int,
+    seed: int,
+    common_overrides: dict[str, Any] | None,
+) -> dict[str, Any]:
     _set_thread_env(threads)
+    common = _common_hyperparameters(overrides=common_overrides)
     X, y = make_regression(
         n_samples=n_samples,
         n_features=n_features,
@@ -138,7 +156,7 @@ def _single_run(model_name: str, n_samples: int, n_features: int, threads: int, 
     y = y.astype(np.float32)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=seed)
 
-    model = _build_model(model_name=model_name, threads=threads)
+    model = _build_model(model_name=model_name, threads=threads, common=common)
     stop_event = threading.Event()
     peak_holder = {"peak_mb": 0.0}
 
@@ -149,10 +167,11 @@ def _single_run(model_name: str, n_samples: int, n_features: int, threads: int, 
     monitor_thread.start()
     start = time.perf_counter()
     fit_start = time.perf_counter()
-    model.fit(X_train, y_train)
-    fit_end = time.perf_counter()
-    y_pred = model.predict(X_test)
-    pred_end = time.perf_counter()
+    with threadpool_limits(limits=threads):
+        model.fit(X_train, y_train)
+        fit_end = time.perf_counter()
+        y_pred = model.predict(X_test)
+        pred_end = time.perf_counter()
     stop_event.set()
     monitor_thread.join(timeout=1.0)
     total_end = time.perf_counter()
@@ -170,7 +189,7 @@ def _single_run(model_name: str, n_samples: int, n_features: int, threads: int, 
         "peak_rss_mb": peak_holder["peak_mb"],
         "rmse": rmse,
         "r2": r2,
-        "hyperparameters": _common_hyperparameters(),
+        "hyperparameters": common,
     }
 
 
@@ -181,6 +200,7 @@ def _run_in_subprocess(
     threads: int,
     seed: int,
     timeout_s: float,
+    common_params_json: str | None,
 ) -> dict[str, Any]:
     cmd = [
         sys.executable,
@@ -197,6 +217,8 @@ def _run_in_subprocess(
         "--seed",
         str(seed),
     ]
+    if common_params_json is not None:
+        cmd.extend(["--common-params-json", common_params_json])
     try:
         completed = subprocess.run(
             cmd,
@@ -253,6 +275,7 @@ def _benchmark(args: argparse.Namespace) -> None:
                         threads=threads,
                         seed=args.seed,
                         timeout_s=args.timeout_s,
+                        common_params_json=args.common_params_json,
                     )
                     if run.get("timeout", False):
                         timeout_happened = True
@@ -306,12 +329,14 @@ def _benchmark(args: argparse.Namespace) -> None:
 
 
 def _emit_single(args: argparse.Namespace) -> None:
+    common_overrides = None if args.common_params_json is None else json.loads(args.common_params_json)
     result = _single_run(
         model_name=args.model,
         n_samples=args.n_samples,
         n_features=args.n_features,
         threads=args.threads,
         seed=args.seed,
+        common_overrides=common_overrides,
     )
     print(json.dumps(result))
 
@@ -326,6 +351,7 @@ def _parse_args() -> argparse.Namespace:
     single.add_argument("--n-features", type=int, required=True)
     single.add_argument("--threads", type=int, required=True)
     single.add_argument("--seed", type=int, default=42)
+    single.add_argument("--common-params-json", type=str, default=None)
 
     bench = subparsers.add_parser("benchmark", help="Run all benchmarks with adaptive sizing.")
     bench.add_argument("--output-json", type=str, default="artifacts/benchmark_results.json")
@@ -335,6 +361,7 @@ def _parse_args() -> argparse.Namespace:
     bench.add_argument("--seed", type=int, default=42)
     bench.add_argument("--max-r2-spread", type=float, default=0.03)
     bench.add_argument("--thread-grid", type=int, nargs="*", default=None)
+    bench.add_argument("--common-params-json", type=str, default=None)
 
     return parser.parse_args()
 
