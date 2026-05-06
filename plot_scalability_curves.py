@@ -35,6 +35,7 @@ def _collect_rows(
             pred_values = []
             total_values = []
             r2_values = []
+            effective_values = []
             for rep in range(repeats):
                 cmd = [
                     sys.executable,
@@ -65,33 +66,12 @@ def _collect_rows(
                 pred_values.append(run["predict_seconds"])
                 total_values.append(run["total_seconds"])
                 r2_values.append(run["r2"])
+                effective_values.append(run.get("effective_threads", thread_count))
             rows.append(
                 {
                     "model": model,
                     "threads": thread_count,
-                    "effective_threads_mean": statistics.mean(
-                        [json.loads(subprocess.check_output(
-                            [
-                                sys.executable,
-                                benchmark_script,
-                                "single-run",
-                                "--model",
-                                model,
-                                "--n-samples",
-                                str(n_samples),
-                                "--n-features",
-                                str(n_features),
-                                "--threads",
-                                str(thread_count),
-                                "--seed",
-                                str(seed + r),
-                                "--common-params-json",
-                                params_json,
-                            ],
-                            text=True,
-                            timeout=timeout_s,
-                        ))["effective_threads"] for r in range(0)]
-                    ) if False else run.get("effective_threads", thread_count),
+                    "effective_threads_mean": statistics.mean(effective_values),
                     "fit_mean": statistics.mean(fit_values),
                     "predict_mean": statistics.mean(pred_values),
                     "total_mean": statistics.mean(total_values),
