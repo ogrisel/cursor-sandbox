@@ -1,0 +1,18 @@
+{
+  "sklearn_hgb_aligned_t1": {
+    "cprofile": "artifacts/profiles/sklearn_aligned_medium_t1.pstats",
+    "speedscope": "artifacts/profiles/sklearn_aligned_medium_t1.speedscope.json"
+  },
+  "sklearn_hgb_aligned_t4": {
+    "cprofile": "artifacts/profiles/sklearn_aligned_medium_t4.pstats",
+    "speedscope": "artifacts/profiles/sklearn_aligned_medium_t4.speedscope.json"
+  },
+  "lightgbm_hist_aligned_t1": {
+    "cprofile": "artifacts/profiles/lightgbm_aligned_medium_t1.pstats",
+    "speedscope": "artifacts/profiles/lightgbm_aligned_medium_t1.speedscope.json"
+  },
+  "lightgbm_hist_aligned_t4": {
+    "cprofile": "artifacts/profiles/lightgbm_aligned_medium_t4.pstats",
+    "speedscope": "artifacts/profiles/lightgbm_aligned_medium_t4.speedscope.json"
+  }
+}
