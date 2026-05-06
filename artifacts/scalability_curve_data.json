@@ -3,109 +3,151 @@
     {
       "model": "sklearn_hgb",
       "threads": 1,
-      "fit_mean": 5.931518376502936,
-      "predict_mean": 0.23106873749929946,
-      "total_mean": 6.1676570434974565,
+      "fit_mean": 5.877053243995761,
+      "predict_mean": 0.2334129454975482,
+      "total_mean": 6.117193574500561,
       "r2_mean": 0.6558460876731018,
+      "fit_std": 0.02292110699636396,
       "repeats": 2
     },
     {
       "model": "sklearn_hgb",
       "threads": 2,
-      "fit_mean": 3.433559356002661,
-      "predict_mean": 0.13336980499661877,
-      "total_mean": 3.5704118049980025,
+      "fit_mean": 3.210700931507745,
+      "predict_mean": 0.12575118899258086,
+      "total_mean": 3.3427516849915264,
       "r2_mean": 0.6558460876731018,
-      "repeats": 2
-    },
-    {
-      "model": "sklearn_hgb",
-      "threads": 3,
-      "fit_mean": 2.3483827324998856,
-      "predict_mean": 0.09674126800018712,
-      "total_mean": 2.448061654002231,
-      "r2_mean": 0.6558460876731018,
+      "fit_std": 0.0921586295007728,
       "repeats": 2
     },
     {
       "model": "sklearn_hgb",
       "threads": 4,
-      "fit_mean": 2.1062104369993904,
-      "predict_mean": 0.07641371550198528,
-      "total_mean": 2.1899325934973604,
+      "fit_mean": 2.011628580003162,
+      "predict_mean": 0.07457029249781044,
+      "total_mean": 2.091435790003743,
       "r2_mean": 0.6558460876731018,
+      "fit_std": 0.013932896996266209,
+      "repeats": 2
+    },
+    {
+      "model": "sklearn_hgb",
+      "threads": 8,
+      "fit_mean": 5.354787248004868,
+      "predict_mean": 0.14672858999256277,
+      "total_mean": 5.503699795001012,
+      "r2_mean": 0.6558460876731018,
+      "fit_std": 0.07028388500475558,
+      "repeats": 2
+    },
+    {
+      "model": "sklearn_hgb",
+      "threads": 16,
+      "fit_mean": 6.217676005500834,
+      "predict_mean": 0.1336557754984824,
+      "total_mean": 6.3536753685039,
+      "r2_mean": 0.6558460876731018,
+      "fit_std": 0.03957666549831629,
       "repeats": 2
     },
     {
       "model": "xgboost_hist",
       "threads": 1,
-      "fit_mean": 8.184619755498716,
-      "predict_mean": 0.04227809649819392,
-      "total_mean": 8.232536591003736,
+      "fit_mean": 8.126214718002302,
+      "predict_mean": 0.041110236998065375,
+      "total_mean": 8.174644270999124,
       "r2_mean": 0.6576734185218811,
+      "fit_std": 0.06001260999619262,
       "repeats": 2
     },
     {
       "model": "xgboost_hist",
       "threads": 2,
-      "fit_mean": 4.410890121500415,
-      "predict_mean": 0.021993371501594083,
-      "total_mean": 4.43653458100016,
+      "fit_mean": 4.8053445699988515,
+      "predict_mean": 0.030241268999816384,
+      "total_mean": 4.83957936349907,
       "r2_mean": 0.6576734185218811,
-      "repeats": 2
-    },
-    {
-      "model": "xgboost_hist",
-      "threads": 3,
-      "fit_mean": 3.0894755465014896,
-      "predict_mean": 0.015166793000389589,
-      "total_mean": 3.1094938600035675,
-      "r2_mean": 0.6576734185218811,
+      "fit_std": 0.058378302994242404,
       "repeats": 2
     },
     {
       "model": "xgboost_hist",
       "threads": 4,
-      "fit_mean": 2.6677279954965343,
-      "predict_mean": 0.01346723149981699,
-      "total_mean": 2.690543169501325,
+      "fit_mean": 2.6133242119976785,
+      "predict_mean": 0.013539363004383631,
+      "total_mean": 2.6339614019962028,
       "r2_mean": 0.6576734185218811,
+      "fit_std": 0.07488126799580641,
+      "repeats": 2
+    },
+    {
+      "model": "xgboost_hist",
+      "threads": 8,
+      "fit_mean": 2.8580703494953923,
+      "predict_mean": 0.016305620003549848,
+      "total_mean": 2.880795761506306,
+      "r2_mean": 0.6576734185218811,
+      "fit_std": 0.0200951044971589,
+      "repeats": 2
+    },
+    {
+      "model": "xgboost_hist",
+      "threads": 16,
+      "fit_mean": 2.901017528005468,
+      "predict_mean": 0.01694190249691019,
+      "total_mean": 2.9217486225024913,
+      "r2_mean": 0.6576734185218811,
+      "fit_std": 0.04315619399858406,
       "repeats": 2
     },
     {
       "model": "lightgbm_hist",
       "threads": 1,
-      "fit_mean": 7.42137524050122,
-      "predict_mean": 0.18839721500262385,
-      "total_mean": 7.614153567999892,
+      "fit_mean": 7.7072438830000465,
+      "predict_mean": 0.1995677090017125,
+      "total_mean": 7.9102568045054795,
       "r2_mean": 0.6570760275697571,
+      "fit_std": 0.03493328400509199,
       "repeats": 2
     },
     {
       "model": "lightgbm_hist",
       "threads": 2,
-      "fit_mean": 4.149001445504837,
-      "predict_mean": 0.09566310949594481,
-      "total_mean": 4.254135274000873,
+      "fit_mean": 4.169779894000385,
+      "predict_mean": 0.09908339899993734,
+      "total_mean": 4.277032070000132,
       "r2_mean": 0.6570760275697571,
-      "repeats": 2
-    },
-    {
-      "model": "lightgbm_hist",
-      "threads": 3,
-      "fit_mean": 2.9667259120033123,
-      "predict_mean": 0.06899830049587763,
-      "total_mean": 3.044515815003251,
-      "r2_mean": 0.6570760275697571,
+      "fit_std": 0.1307198239956051,
       "repeats": 2
     },
     {
       "model": "lightgbm_hist",
       "threads": 4,
-      "fit_mean": 2.4444812279944017,
-      "predict_mean": 0.055901891504618106,
-      "total_mean": 2.502833783499227,
+      "fit_mean": 2.493570640508551,
+      "predict_mean": 0.05298764599865535,
+      "total_mean": 2.5553390519999084,
       "r2_mean": 0.6570760275697571,
+      "fit_std": 0.016462200495880097,
+      "repeats": 2
+    },
+    {
+      "model": "lightgbm_hist",
+      "threads": 8,
+      "fit_mean": 4.008785938000074,
+      "predict_mean": 0.05502268650161568,
+      "total_mean": 4.069921431495459,
+      "r2_mean": 0.6570760275697571,
+      "fit_std": 0.11524133700004313,
+      "repeats": 2
+    },
+    {
+      "model": "lightgbm_hist",
+      "threads": 16,
+      "fit_mean": 4.396683477505576,
+      "predict_mean": 0.05421692099480424,
+      "total_mean": 4.4586542424949585,
+      "r2_mean": 0.6570760275697571,
+      "fit_std": 0.0672842634958215,
       "repeats": 2
     }
   ],
@@ -127,5 +169,12 @@
     "n_samples": 176000,
     "n_features": 120
   },
-  "repeats": 2
+  "repeats": 2,
+  "threads": [
+    1,
+    2,
+    4,
+    8,
+    16
+  ]
 }

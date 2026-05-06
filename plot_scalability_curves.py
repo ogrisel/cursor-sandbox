@@ -1,34 +1,104 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import os
+import statistics
+import subprocess
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 
 
-def _load_rows(path: str) -> list[dict]:
-    payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    return payload["final_rows"]
+MODELS = ("sklearn_hgb", "xgboost_hist", "lightgbm_hist")
 
 
-def _collect_by_model(rows: list[dict], max_threads: int) -> dict[str, dict[int, dict]]:
+def _load_payload(path: str) -> dict:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def _collect_rows(
+    benchmark_script: str,
+    common_params_json_path: str,
+    n_samples: int,
+    n_features: int,
+    threads: list[int],
+    repeats: int,
+    timeout_s: float,
+    seed: int,
+) -> dict:
+    params_json = Path(common_params_json_path).read_text(encoding="utf-8")
+    rows = []
+    for model in MODELS:
+        for thread_count in threads:
+            fit_values = []
+            pred_values = []
+            total_values = []
+            r2_values = []
+            for rep in range(repeats):
+                cmd = [
+                    sys.executable,
+                    benchmark_script,
+                    "single-run",
+                    "--model",
+                    model,
+                    "--n-samples",
+                    str(n_samples),
+                    "--n-features",
+                    str(n_features),
+                    "--threads",
+                    str(thread_count),
+                    "--seed",
+                    str(seed + rep),
+                    "--common-params-json",
+                    params_json,
+                ]
+                completed = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s, check=False)
+                if completed.returncode != 0:
+                    raise RuntimeError(
+                        f"single-run failed for model={model}, threads={thread_count}\n"
+                        f"stdout:\n{completed.stdout}\n"
+                        f"stderr:\n{completed.stderr}"
+                    )
+                run = json.loads(completed.stdout)
+                fit_values.append(run["fit_seconds"])
+                pred_values.append(run["predict_seconds"])
+                total_values.append(run["total_seconds"])
+                r2_values.append(run["r2"])
+            rows.append(
+                {
+                    "model": model,
+                    "threads": thread_count,
+                    "fit_mean": statistics.mean(fit_values),
+                    "predict_mean": statistics.mean(pred_values),
+                    "total_mean": statistics.mean(total_values),
+                    "r2_mean": statistics.mean(r2_values),
+                    "fit_std": statistics.pstdev(fit_values),
+                    "repeats": repeats,
+                }
+            )
+    return {
+        "final_rows": rows,
+        "params": json.loads(params_json),
+        "dataset": {"n_samples": n_samples, "n_features": n_features},
+        "repeats": repeats,
+        "threads": threads,
+    }
+
+
+def _collect_by_model(rows: list[dict]) -> dict[str, dict[int, dict]]:
     by_model: dict[str, dict[int, dict]] = {}
     for row in rows:
-        t = int(row["threads"])
-        if t > max_threads:
-            continue
-        by_model.setdefault(row["model"], {})[t] = row
+        by_model.setdefault(row["model"], {})[int(row["threads"])] = row
     return by_model
 
 
-def _plot(by_model: dict[str, dict[int, dict]], max_threads: int, out_png: str) -> None:
+def _plot(by_model: dict[str, dict[int, dict]], thread_grid: list[int], out_png: str) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
     ax_time, ax_speedup = axes
 
     for model, rows in sorted(by_model.items()):
-        threads = sorted(rows)
-        if 1 not in rows:
+        threads = [t for t in thread_grid if t in rows]
+        if 1 not in rows or not threads:
             continue
         fit_times = [rows[t]["fit_mean"] for t in threads]
         baseline = rows[1]["fit_mean"]
@@ -42,13 +112,13 @@ def _plot(by_model: dict[str, dict[int, dict]], max_threads: int, out_png: str) 
     ax_time.set_title("Fit time vs threads")
     ax_time.set_xlabel("Threads")
     ax_time.set_ylabel("Mean fit time (s)")
-    ax_time.set_xticks(range(1, max_threads + 1))
+    ax_time.set_xticks(thread_grid)
     ax_time.grid(alpha=0.3)
 
     ax_speedup.set_title("Speedup vs threads")
     ax_speedup.set_xlabel("Threads")
     ax_speedup.set_ylabel("Speedup (1-thread baseline)")
-    ax_speedup.set_xticks(range(1, max_threads + 1))
+    ax_speedup.set_xticks(thread_grid)
     ax_speedup.grid(alpha=0.3)
 
     handles, labels = ax_time.get_legend_handles_labels()
@@ -62,13 +132,38 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-json", default="artifacts/comparable_large_results.json")
     parser.add_argument("--output-png", default="artifacts/scalability_curves.png")
+    parser.add_argument("--collect", action="store_true")
+    parser.add_argument("--output-data-json", default="artifacts/scalability_curve_data.json")
+    parser.add_argument("--benchmark-script", default="benchmark_gbdt_regressors.py")
+    parser.add_argument("--common-params-json", default="artifacts/comparable_large_params.json")
+    parser.add_argument("--n-samples", type=int, default=176_000)
+    parser.add_argument("--n-features", type=int, default=120)
+    parser.add_argument("--threads", type=int, nargs="+", default=[1, 2, 4, 8, 16])
+    parser.add_argument("--repeats", type=int, default=2)
+    parser.add_argument("--timeout-s", type=float, default=15.0)
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    cpu_count = os.cpu_count() or 1
-    rows = _load_rows(args.input_json)
-    by_model = _collect_by_model(rows, max_threads=cpu_count)
-    _plot(by_model, max_threads=cpu_count, out_png=args.output_png)
-    print(json.dumps({"output_png": args.output_png, "max_threads": cpu_count}))
+    if args.collect:
+        payload = _collect_rows(
+            benchmark_script=args.benchmark_script,
+            common_params_json_path=args.common_params_json,
+            n_samples=args.n_samples,
+            n_features=args.n_features,
+            threads=sorted(set(args.threads)),
+            repeats=args.repeats,
+            timeout_s=args.timeout_s,
+            seed=args.seed,
+        )
+        Path(args.output_data_json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    else:
+        payload = _load_payload(args.input_json)
+
+    rows = payload["final_rows"]
+    thread_grid = sorted({int(r["threads"]) for r in rows})
+    by_model = _collect_by_model(rows)
+    _plot(by_model, thread_grid=thread_grid, out_png=args.output_png)
+    print(json.dumps({"output_png": args.output_png, "thread_grid": thread_grid}))
 
 
 if __name__ == "__main__":

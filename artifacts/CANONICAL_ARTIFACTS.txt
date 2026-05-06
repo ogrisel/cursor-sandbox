@@ -3,4 +3,6 @@ artifacts/comparable_large_results.json
 artifacts/comparable_large_report.md
 artifacts/comparable_large_checks.txt
 artifacts/scalability_curve_data.json
-artifacts/scalability_curves_1_to_4_threads.png
+artifacts/scalability_curves_1_to_16_threads.png
+artifacts/oversubscription_profile_summary.md
+artifacts/oversubscription_overhead_report.md
