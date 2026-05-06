@@ -1,0 +1,10 @@
+large 1 0.031585
+large 2 0.031585
+large 4 0.031585
+medium 1 0.024256
+medium 2 0.024256
+medium 4 0.024256
+small 1 0.006749
+small 2 0.006749
+small 4 0.006749
+max_spread 0.031585
