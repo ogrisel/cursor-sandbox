@@ -1,0 +1,52 @@
+[
+  {
+    "model": "sklearn_hgb",
+    "threads_requested": 4,
+    "fit_mean": 1.965775752333381,
+    "total_mean": 2.0512572976682955,
+    "r2_mean": 0.6664392481473984,
+    "voluntary_ctx_mean": 54.666666666666664,
+    "involuntary_ctx_mean": 290,
+    "cpu_time_over_wall_mean": 3.342876410255747
+  },
+  {
+    "model": "sklearn_hgb",
+    "threads_requested": 16,
+    "fit_mean": 6.550043284005369,
+    "total_mean": 6.702806806672015,
+    "r2_mean": 0.6664392481473984,
+    "voluntary_ctx_mean": 50412,
+    "involuntary_ctx_mean": 332,
+    "cpu_time_over_wall_mean": 2.0950041207102315
+  },
+  {
+    "model": "sklearn_hgb_fixed",
+    "threads_requested": 16,
+    "fit_mean": 2.0381095276631336,
+    "total_mean": 2.120929956329443,
+    "r2_mean": 0.6664392481473984,
+    "voluntary_ctx_mean": 55,
+    "involuntary_ctx_mean": 313.3333333333333,
+    "cpu_time_over_wall_mean": 3.365842191538685
+  },
+  {
+    "model": "xgboost_hist",
+    "threads_requested": 16,
+    "fit_mean": 2.6467743683363856,
+    "total_mean": 2.667156744331199,
+    "r2_mean": 0.6675373713175455,
+    "voluntary_ctx_mean": 204.33333333333334,
+    "involuntary_ctx_mean": 180,
+    "cpu_time_over_wall_mean": 3.547840762713615
+  },
+  {
+    "model": "lightgbm_hist",
+    "threads_requested": 16,
+    "fit_mean": 4.699714369334591,
+    "total_mean": 4.759796431671323,
+    "r2_mean": 0.6673874589500841,
+    "voluntary_ctx_mean": 19797.666666666668,
+    "involuntary_ctx_mean": 291.6666666666667,
+    "cpu_time_over_wall_mean": 2.321411947636989
+  }
+]

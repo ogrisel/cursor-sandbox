@@ -22,7 +22,7 @@ from threadpoolctl import threadpool_limits
 from xgboost import XGBRegressor
 
 
-MODEL_NAMES = ("sklearn_hgb", "xgboost_hist", "lightgbm_hist")
+MODEL_NAMES = ("sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist")
 
 
 @dataclass
@@ -64,7 +64,7 @@ def _common_hyperparameters(overrides: dict[str, Any] | None = None) -> dict[str
 
 
 def _build_model(model_name: str, threads: int, common: dict[str, Any]):
-    if model_name == "sklearn_hgb":
+    if model_name in {"sklearn_hgb", "sklearn_hgb_fixed"}:
         return HistGradientBoostingRegressor(
             loss=common["loss"],
             max_iter=common["n_estimators"],
@@ -112,7 +112,7 @@ def _build_model(model_name: str, threads: int, common: dict[str, Any]):
             min_child_weight=common["min_child_weight"],
             random_state=common["random_state"],
             n_jobs=threads,
-            verbose=-1,
+            verbosity=-1,
         )
     raise ValueError(f"Unknown model: {model_name}")
 
@@ -122,6 +122,18 @@ def _set_thread_env(threads: int) -> None:
     os.environ["OPENBLAS_NUM_THREADS"] = str(threads)
     os.environ["MKL_NUM_THREADS"] = str(threads)
     os.environ["NUMEXPR_NUM_THREADS"] = str(threads)
+
+
+def _effective_thread_count(model_name: str, requested_threads: int) -> int:
+    """Thread count used by the model internals.
+
+    `sklearn_hgb_fixed` emulates a simple scikit-learn-side mitigation for
+    oversubscription by capping OpenMP workers to host CPU count.
+    """
+    if model_name != "sklearn_hgb_fixed":
+        return requested_threads
+    cpu_count = os.cpu_count() or requested_threads
+    return max(1, min(requested_threads, cpu_count))
 
 
 def _monitor_peak_rss(stop_event: threading.Event, interval_s: float = 0.01) -> float:
@@ -143,7 +155,8 @@ def _single_run(
     seed: int,
     common_overrides: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    _set_thread_env(threads)
+    effective_threads = _effective_thread_count(model_name=model_name, requested_threads=threads)
+    _set_thread_env(effective_threads)
     common = _common_hyperparameters(overrides=common_overrides)
     X, y = make_regression(
         n_samples=n_samples,
@@ -156,7 +169,7 @@ def _single_run(
     y = y.astype(np.float32)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=seed)
 
-    model = _build_model(model_name=model_name, threads=threads, common=common)
+    model = _build_model(model_name=model_name, threads=effective_threads, common=common)
     stop_event = threading.Event()
     peak_holder = {"peak_mb": 0.0}
 
@@ -167,7 +180,7 @@ def _single_run(
     monitor_thread.start()
     start = time.perf_counter()
     fit_start = time.perf_counter()
-    with threadpool_limits(limits=threads):
+    with threadpool_limits(limits=effective_threads):
         model.fit(X_train, y_train)
         fit_end = time.perf_counter()
         y_pred = model.predict(X_test)
@@ -181,6 +194,7 @@ def _single_run(
     return {
         "model": model_name,
         "threads": threads,
+        "effective_threads": effective_threads,
         "n_samples": n_samples,
         "n_features": n_features,
         "fit_seconds": fit_end - fit_start,

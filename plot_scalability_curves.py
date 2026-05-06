@@ -9,7 +9,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 
-MODELS = ("sklearn_hgb", "xgboost_hist", "lightgbm_hist")
+MODEL_CHOICES = ("sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist")
 
 
 def _load_payload(path: str) -> dict:
@@ -21,6 +21,7 @@ def _collect_rows(
     common_params_json_path: str,
     n_samples: int,
     n_features: int,
+    models: list[str],
     threads: list[int],
     repeats: int,
     timeout_s: float,
@@ -28,7 +29,7 @@ def _collect_rows(
 ) -> dict:
     params_json = Path(common_params_json_path).read_text(encoding="utf-8")
     rows = []
-    for model in MODELS:
+    for model in models:
         for thread_count in threads:
             fit_values = []
             pred_values = []
@@ -68,6 +69,29 @@ def _collect_rows(
                 {
                     "model": model,
                     "threads": thread_count,
+                    "effective_threads_mean": statistics.mean(
+                        [json.loads(subprocess.check_output(
+                            [
+                                sys.executable,
+                                benchmark_script,
+                                "single-run",
+                                "--model",
+                                model,
+                                "--n-samples",
+                                str(n_samples),
+                                "--n-features",
+                                str(n_features),
+                                "--threads",
+                                str(thread_count),
+                                "--seed",
+                                str(seed + r),
+                                "--common-params-json",
+                                params_json,
+                            ],
+                            text=True,
+                            timeout=timeout_s,
+                        ))["effective_threads"] for r in range(0)]
+                    ) if False else run.get("effective_threads", thread_count),
                     "fit_mean": statistics.mean(fit_values),
                     "predict_mean": statistics.mean(pred_values),
                     "total_mean": statistics.mean(total_values),
@@ -78,6 +102,7 @@ def _collect_rows(
             )
     return {
         "final_rows": rows,
+        "models": models,
         "params": json.loads(params_json),
         "dataset": {"n_samples": n_samples, "n_features": n_features},
         "repeats": repeats,
@@ -138,6 +163,7 @@ def main() -> None:
     parser.add_argument("--common-params-json", default="artifacts/comparable_large_params.json")
     parser.add_argument("--n-samples", type=int, default=176_000)
     parser.add_argument("--n-features", type=int, default=120)
+    parser.add_argument("--models", type=str, nargs="+", default=["sklearn_hgb", "xgboost_hist", "lightgbm_hist"])
     parser.add_argument("--threads", type=int, nargs="+", default=[1, 2, 4, 8, 16])
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--timeout-s", type=float, default=15.0)
@@ -145,11 +171,17 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.collect:
+        models = []
+        for model_name in args.models:
+            if model_name not in MODEL_CHOICES:
+                raise ValueError(f"Unknown model '{model_name}'. Valid options: {MODEL_CHOICES}")
+            models.append(model_name)
         payload = _collect_rows(
             benchmark_script=args.benchmark_script,
             common_params_json_path=args.common_params_json,
             n_samples=args.n_samples,
             n_features=args.n_features,
+            models=models,
             threads=sorted(set(args.threads)),
             repeats=args.repeats,
             timeout_s=args.timeout_s,
