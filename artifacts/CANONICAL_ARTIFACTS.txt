@@ -2,3 +2,5 @@ artifacts/comparable_large_params.json
 artifacts/comparable_large_results.json
 artifacts/comparable_large_report.md
 artifacts/comparable_large_checks.txt
+artifacts/scalability_curve_data.json
+artifacts/scalability_curves_1_to_4_threads.png
