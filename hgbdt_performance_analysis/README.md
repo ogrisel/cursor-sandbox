@@ -37,11 +37,21 @@ Core scripts:
      - [`artifacts/oversubscription_overhead_report.md`](artifacts/oversubscription_overhead_report.md)
      - [`artifacts/oversubscription_context_switches.json`](artifacts/oversubscription_context_switches.json)
      - [`artifacts/oversubscription_wait_policy_results.json`](artifacts/oversubscription_wait_policy_results.json)
+   - Main scalability view (1..16 threads):
+
+     ![Scalability curves 1 to 16 threads](artifacts/scalability_curves_1_to_16_threads.png)
 
 2. **A simple thread-capping mitigation for sklearn avoids catastrophic oversubscription behavior.**
    - Patch and summary:
      - [`artifacts/sklearn_histgb_thread_cap.patch`](artifacts/sklearn_histgb_thread_cap.patch)
      - [`artifacts/oversubscription_fix_report.md`](artifacts/oversubscription_fix_report.md)
+   - Large-dataset comparison with and without sklearn fix:
+
+     ![Large dataset scalability with sklearn fixed variant](artifacts/scalability_large_with_fix.png)
+
+   - Small-dataset comparison with and without sklearn fix:
+
+     ![Small dataset scalability with sklearn fixed variant](artifacts/scalability_small_with_fix.png)
 
 3. **A parity-compliant setting exists where sklearn is significantly slower than LightGBM at 4 threads.**
    - Confirmed setting and multi-seed evidence:
@@ -85,3 +95,5 @@ Rationale and evidence links:
   - [`artifacts/deep_few_trees_results.json`](artifacts/deep_few_trees_results.json)
   - [`artifacts/deep_few_trees_scalability_data.json`](artifacts/deep_few_trees_scalability_data.json)
   - [`artifacts/deep_few_trees_scalability.png`](artifacts/deep_few_trees_scalability.png)
+
+  ![Deep few trees scalability plot](artifacts/deep_few_trees_scalability.png)
