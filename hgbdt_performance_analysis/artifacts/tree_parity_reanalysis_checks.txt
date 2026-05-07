@@ -1,0 +1,11 @@
+large_all_rows_tree_match True
+small_all_rows_tree_match True
+large_t1_tree_spread_ref 0
+small_t1_tree_spread_ref 0
+large_sklearn16_slower_than_xgb16 True
+large_fix_improves_vs_sklearn16 True
+small_sklearn16_below_one True
+small_fix_recovers_parallel True
+small_xgb16_above_two True
+aligned_final_t1_fitted_tree_spread 0
+aligned_final_t1_r2_spread 0.0002149346666797669
