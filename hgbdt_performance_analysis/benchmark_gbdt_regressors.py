@@ -21,11 +21,10 @@ from sklearn.model_selection import train_test_split
 from threadpoolctl import threadpool_limits
 from xgboost import XGBRegressor
 
-from artifact_layout import machine_artifacts_dir
-
 
 MODEL_NAMES = ("sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist")
 BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 @dataclass
@@ -165,6 +164,38 @@ def _fitted_tree_count(model_name: str, model: Any) -> int:
     raise ValueError(f"Unknown model for tree counting: {model_name}")
 
 
+def _count_tree_nodes(model_name: str, model: Any) -> int:
+    if model_name in {"sklearn_hgb", "sklearn_hgb_fixed"}:
+        total_nodes = 0
+        for stage in getattr(model, "_predictors", []):
+            for predictor in stage:
+                nodes = getattr(predictor, "nodes", None)
+                if nodes is None:
+                    continue
+                total_nodes += int(getattr(nodes, "shape", [0])[0])
+        return total_nodes
+    if model_name == "xgboost_hist":
+        booster = model.get_booster()
+        frame = booster.trees_to_dataframe()
+        return int(frame.shape[0])
+    if model_name == "lightgbm_hist":
+        booster = getattr(model, "booster_", None)
+        if booster is None:
+            return 0
+        payload = booster.dump_model()
+        tree_info = payload.get("tree_info", [])
+
+        def _walk(tree_node: dict[str, Any]) -> int:
+            left = tree_node.get("left_child")
+            right = tree_node.get("right_child")
+            if left is None and right is None:
+                return 1
+            return 1 + (_walk(left) if left is not None else 0) + (_walk(right) if right is not None else 0)
+
+        return int(sum(_walk(tree["tree_structure"]) for tree in tree_info))
+    raise ValueError(f"Unknown model for node counting: {model_name}")
+
+
 def _single_run(
     model_name: str,
     n_samples: int,
@@ -211,6 +242,8 @@ def _single_run(
     r2 = r2_score(y_test, y_pred)
     expected_trees = int(common["n_estimators"])
     fitted_trees = _fitted_tree_count(model_name=model_name, model=model)
+    total_nodes = _count_tree_nodes(model_name=model_name, model=model)
+    avg_nodes_per_tree = 0.0 if fitted_trees == 0 else total_nodes / fitted_trees
     fitted_trees_match_expected = fitted_trees == expected_trees
     if not fitted_trees_match_expected:
         raise RuntimeError(
@@ -232,6 +265,8 @@ def _single_run(
         "fitted_trees": fitted_trees,
         "expected_trees": expected_trees,
         "fitted_trees_match_expected": fitted_trees_match_expected,
+        "total_nodes": total_nodes,
+        "avg_nodes_per_tree": avg_nodes_per_tree,
         "hyperparameters": common,
     }
 
@@ -400,10 +435,8 @@ def _parse_args() -> argparse.Namespace:
     bench.add_argument(
         "--output-json",
         type=str,
-        default=None,
+        default=str(DEFAULT_ARTIFACTS_DIR / "benchmark_results.json"),
     )
-    bench.add_argument("--artifacts-root", type=str, default=str(BASE_DIR / "artifacts"))
-    bench.add_argument("--machine-tag", type=str, default=None)
     bench.add_argument("--timeout-s", type=float, default=10.0)
     bench.add_argument("--reduction-factor", type=float, default=0.72)
     bench.add_argument("--min-n-samples", type=int, default=10_000)
@@ -421,14 +454,6 @@ def main() -> None:
         _emit_single(args)
         return
     if args.mode == "benchmark":
-        artifacts_dir = machine_artifacts_dir(
-            base_dir=BASE_DIR,
-            artifacts_root=args.artifacts_root,
-            machine_tag=args.machine_tag,
-        )
-        artifacts_dir.mkdir(parents=True, exist_ok=True)
-        if args.output_json is None:
-            args.output_json = str(artifacts_dir / "benchmark_results.json")
         _benchmark(args)
         return
     raise ValueError(f"Unexpected mode: {args.mode}")

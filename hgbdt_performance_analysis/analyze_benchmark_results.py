@@ -5,10 +5,9 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import geometric_mean, mean, median
 
-from artifact_layout import machine_artifacts_dir
-
 
 BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 def _load(path: str) -> dict:
@@ -116,10 +115,16 @@ def _table_md(rows: list[dict], columns: list[str]) -> str:
         return "_No data_\n"
     header = "| " + " | ".join(columns) + " |"
     sep = "| " + " | ".join(["---"] * len(columns)) + " |"
-    body = [
-        "| " + " | ".join(f"{row[col]:.6g}" if isinstance(row[col], float) else str(row[col]) for col in columns) + " |"
-        for row in rows
-    ]
+    body = []
+    for row in rows:
+        values = []
+        for col in columns:
+            value = row.get(col, "n/a")
+            if isinstance(value, float):
+                values.append(f"{value:.6g}")
+            else:
+                values.append(str(value))
+        body.append("| " + " | ".join(values) + " |")
     return "\n".join([header, sep, *body]) + "\n"
 
 
@@ -163,6 +168,10 @@ def _write_markdown(out_path: str, payload: dict, ranked: list[dict], single_thr
                 "total_seconds",
                 "peak_rss_mb",
                 "r2",
+                "fitted_trees",
+                "expected_trees",
+                "total_nodes",
+                "avg_nodes_per_tree",
             ],
         ),
         "",
@@ -203,24 +212,10 @@ def _write_markdown(out_path: str, payload: dict, ranked: list[dict], single_thr
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-json", default=None)
-    parser.add_argument("--output-md", default=None)
-    parser.add_argument("--output-json", default=None)
-    parser.add_argument("--artifacts-root", type=str, default=str(BASE_DIR / "artifacts"))
-    parser.add_argument("--machine-tag", type=str, default=None)
+    parser.add_argument("--input-json", default=str(DEFAULT_ARTIFACTS_DIR / "benchmark_results.json"))
+    parser.add_argument("--output-md", default=str(DEFAULT_ARTIFACTS_DIR / "benchmark_report.md"))
+    parser.add_argument("--output-json", default=str(DEFAULT_ARTIFACTS_DIR / "benchmark_summary.json"))
     args = parser.parse_args()
-    artifacts_dir = machine_artifacts_dir(
-        base_dir=BASE_DIR,
-        artifacts_root=args.artifacts_root,
-        machine_tag=args.machine_tag,
-    )
-    artifacts_dir.mkdir(parents=True, exist_ok=True)
-    if args.input_json is None:
-        args.input_json = str(artifacts_dir / "benchmark_results.json")
-    if args.output_md is None:
-        args.output_md = str(artifacts_dir / "benchmark_report.md")
-    if args.output_json is None:
-        args.output_json = str(artifacts_dir / "benchmark_summary.json")
 
     payload = _load(args.input_json)
     runs = payload["runs"]

@@ -107,6 +107,12 @@ jobs:
             --downloaded-artifacts-root downloaded-artifacts \
             --artifacts-root hgbdt_performance_analysis/artifacts
 
+      - name: Generate per-platform detailed analysis reports
+        run: |
+          uv run --python 3.11 --exclude-newer P7D \
+            python hgbdt_performance_analysis/generate_platform_detailed_analysis.py \
+            --artifacts-root hgbdt_performance_analysis/artifacts
+
       - name: Publish consolidated summary in job output
         run: cat hgbdt_performance_analysis/artifacts/platform_specific_conclusions.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -118,5 +124,6 @@ jobs:
             hgbdt_performance_analysis/artifacts/machines
             hgbdt_performance_analysis/artifacts/platform_specific_summary.json
             hgbdt_performance_analysis/artifacts/platform_specific_conclusions.md
+            hgbdt_performance_analysis/artifacts/platform_detailed_analysis_index.md
           if-no-files-found: error
           retention-days: 14
