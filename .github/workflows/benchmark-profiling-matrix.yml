@@ -65,3 +65,44 @@ jobs:
           name: "benchmark-profiles-${{ matrix.machine_tag }}"
           path: "hgbdt_performance_analysis/artifacts/machines/${{ matrix.machine_tag }}"
           if-no-files-found: error
+          retention-days: 14
+
+  consolidate:
+    name: consolidate-platform-results
+    runs-on: ubuntu-24.04
+    needs: benchmark-profile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download machine artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "benchmark-profiles-*"
+          path: downloaded-artifacts
+          merge-multiple: false
+
+      - name: Consolidate into machine subfolders and update platform conclusions
+        run: |
+          python hgbdt_performance_analysis/consolidate_ci_results.py \
+            --downloaded-artifacts-root downloaded-artifacts \
+            --artifacts-root hgbdt_performance_analysis/artifacts
+
+      - name: Publish consolidated summary in job output
+        run: cat hgbdt_performance_analysis/artifacts/platform_specific_conclusions.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload consolidated artifacts bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: "benchmark-profiles-consolidated"
+          path: |
+            hgbdt_performance_analysis/artifacts/machines
+            hgbdt_performance_analysis/artifacts/platform_specific_summary.json
+            hgbdt_performance_analysis/artifacts/platform_specific_conclusions.md
+          if-no-files-found: error
+          retention-days: 14
