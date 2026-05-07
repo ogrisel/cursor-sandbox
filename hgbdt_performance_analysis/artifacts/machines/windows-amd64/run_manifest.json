@@ -1,0 +1,15 @@
+{
+  "machine_tag": "windows-amd64",
+  "system": "Windows",
+  "architecture": "AMD64",
+  "native_profile_enabled": false,
+  "outputs": {
+    "benchmark_json": "artifacts\\machines\\windows-amd64\\benchmark_results.json",
+    "benchmark_summary_json": "artifacts\\machines\\windows-amd64\\benchmark_summary.json",
+    "benchmark_summary_md": "artifacts\\machines\\windows-amd64\\benchmark_report.md",
+    "benchmark_ranked_models_png": "artifacts\\machines\\windows-amd64\\benchmark_ranked_models.png",
+    "profile_spec_json": "artifacts\\machines\\windows-amd64\\profile_spec.json",
+    "profile_summary_json": "artifacts\\machines\\windows-amd64\\profile_summary.json",
+    "profile_summary_md": "artifacts\\machines\\windows-amd64\\profile_summary.md"
+  }
+}

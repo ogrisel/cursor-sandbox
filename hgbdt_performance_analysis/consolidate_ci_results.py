@@ -22,6 +22,8 @@ def _discover_artifact_dirs(downloaded_root: Path, artifact_prefix: str) -> list
             continue
         if entry.name.startswith(artifact_prefix):
             machine_tag = entry.name[len(artifact_prefix) :]
+            if machine_tag == "consolidated":
+                continue
             if machine_tag:
                 found.append((machine_tag, entry))
                 continue
@@ -66,6 +68,7 @@ def _build_platform_summary(machine_dirs: list[Path]) -> dict[str, Any]:
     for machine_dir in machine_dirs:
         manifest_path = machine_dir / "run_manifest.json"
         summary_path = machine_dir / "benchmark_summary.json"
+        rank_plot_path = machine_dir / "benchmark_ranked_models.png"
         if not manifest_path.exists() or not summary_path.exists():
             missing_files.append(str(machine_dir))
             continue
@@ -102,6 +105,7 @@ def _build_platform_summary(machine_dirs: list[Path]) -> dict[str, Any]:
                 "system": str(manifest.get("system", "unknown")),
                 "architecture": str(manifest.get("architecture", "unknown")),
                 "native_profile_enabled": bool(manifest.get("native_profile_enabled", False)),
+                "benchmark_rank_plot": str(rank_plot_path) if rank_plot_path.exists() else None,
                 "top_model": top_model,
                 "bottom_model": bottom_model,
                 "ranked_models": per_model_rows,

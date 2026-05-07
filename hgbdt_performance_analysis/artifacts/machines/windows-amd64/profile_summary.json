@@ -1,0 +1,178 @@
+{
+  "sklearn_hgb": {
+    "cprofile_top": [
+      {
+        "function": "~:0:<built-in method builtins.exec>",
+        "primitive_calls": 1,
+        "total_calls": 1382,
+        "total_time_s": 0.0376943,
+        "cumulative_time_s": 5.920601700000001
+      },
+      {
+        "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:1:<module>",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 8.14e-05,
+        "cumulative_time_s": 5.9205869
+      },
+      {
+        "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:418:main",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 8.6e-06,
+        "cumulative_time_s": 3.6721321000000002
+      },
+      {
+        "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:374:_emit_single",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.0010844000000000001,
+        "cumulative_time_s": 3.6693230000000003
+      },
+      {
+        "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:168:_single_run",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.0008297000000000001,
+        "cumulative_time_s": 3.6681558
+      },
+      {
+        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\d_QDoaatFVx0YDYI\\Lib\\site-packages\\sklearn\\base.py:1319:wrapper",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.0012623,
+        "cumulative_time_s": 3.3706346000000003
+      },
+      {
+        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\d_QDoaatFVx0YDYI\\Lib\\site-packages\\sklearn\\ensemble\\_hist_gradient_boosting\\gradient_boosting.py:512:fit",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.1503643,
+        "cumulative_time_s": 3.3686451
+      },
+      {
+        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\d_QDoaatFVx0YDYI\\Lib\\site-packages\\sklearn\\ensemble\\_hist_gradient_boosting\\grower.py:385:grow",
+        "primitive_calls": 220,
+        "total_calls": 220,
+        "total_time_s": 0.0046459000000000006,
+        "cumulative_time_s": 2.5403496000000003
+      },
+      {
+        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\d_QDoaatFVx0YDYI\\Lib\\site-packages\\sklearn\\ensemble\\_hist_gradient_boosting\\grower.py:488:split_next",
+        "primitive_calls": 6600,
+        "total_calls": 6600,
+        "total_time_s": 1.567676,
+        "cumulative_time_s": 2.5343555
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
+        "primitive_calls": 14,
+        "total_calls": 1341,
+        "total_time_s": 0.010414000000000001,
+        "cumulative_time_s": 2.2492095
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
+        "primitive_calls": 14,
+        "total_calls": 1299,
+        "total_time_s": 0.006671300000000001,
+        "cumulative_time_s": 2.2487929
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
+        "primitive_calls": 14,
+        "total_calls": 1258,
+        "total_time_s": 0.0050499,
+        "cumulative_time_s": 2.2435013
+      }
+    ]
+  },
+  "lightgbm_hist": {
+    "cprofile_top": [
+      {
+        "function": "~:0:<built-in method builtins.exec>",
+        "primitive_calls": 1,
+        "total_calls": 1380,
+        "total_time_s": 0.0369705,
+        "cumulative_time_s": 4.7532031
+      },
+      {
+        "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:1:<module>",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 8.66e-05,
+        "cumulative_time_s": 4.7531701
+      },
+      {
+        "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:418:main",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 8.8e-06,
+        "cumulative_time_s": 2.5106902
+      },
+      {
+        "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:374:_emit_single",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.0008146000000000001,
+        "cumulative_time_s": 2.5080225
+      },
+      {
+        "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:168:_single_run",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.0008283,
+        "cumulative_time_s": 2.506942
+      },
+      {
+        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\d_QDoaatFVx0YDYI\\Lib\\site-packages\\lightgbm\\sklearn.py:1381:fit",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 2e-05,
+        "cumulative_time_s": 2.2800797
+      },
+      {
+        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\d_QDoaatFVx0YDYI\\Lib\\site-packages\\lightgbm\\sklearn.py:907:fit",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 9.06e-05,
+        "cumulative_time_s": 2.2800597000000002
+      },
+      {
+        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\d_QDoaatFVx0YDYI\\Lib\\site-packages\\lightgbm\\engine.py:109:train",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.0026002,
+        "cumulative_time_s": 2.2773289
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
+        "primitive_calls": 13,
+        "total_calls": 1339,
+        "total_time_s": 0.010446,
+        "cumulative_time_s": 2.2420831000000003
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
+        "primitive_calls": 13,
+        "total_calls": 1297,
+        "total_time_s": 0.006572400000000001,
+        "cumulative_time_s": 2.2417154000000004
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
+        "primitive_calls": 13,
+        "total_calls": 1256,
+        "total_time_s": 0.0050742,
+        "cumulative_time_s": 2.2366271
+      },
+      {
+        "function": "<frozen importlib._bootstrap_external>:934:exec_module",
+        "primitive_calls": 12,
+        "total_calls": 1060,
+        "total_time_s": 0.0030702000000000004,
+        "cumulative_time_s": 2.2360037
+      }
+    ]
+  }
+}
