@@ -133,3 +133,13 @@ The observed difference is not only "OpenMP is bad at oversubscription": it is s
 - sklearn pre-fix combines high thread counts with many short node-level parallel phases, so scheduler overhead dominates sooner when oversubscribed.
 
 Long-term, adaptive granularity and batched-node execution are the most promising sklearn-internal fixes beyond hard thread caps.
+
+## Recheck after enforcing equal fitted tree counts
+
+The benchmark harness now explicitly records and validates fitted tree counts for every run (sklearn `n_iter_`, xgboost `num_boosted_rounds()`, lightgbm `current_iteration()`), and enforces equality with requested `n_estimators`.
+
+The oversubscription conclusions above still hold after this check:
+
+- reference-library fitted-tree spread at thread=1 is 0
+- sklearn still shows the strongest oversubscription slowdown without mitigation
+- the scheduler-overhead signature (context switch inflation) remains consistent with prior analysis
