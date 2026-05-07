@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 
 
 MODEL_CHOICES = ("sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist")
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 def _load_payload(path: str) -> dict:
@@ -148,12 +150,12 @@ def _plot(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-json", default="artifacts/comparable_large_results.json")
-    parser.add_argument("--output-png", default="artifacts/scalability_curves.png")
+    parser.add_argument("--input-json", default=str(DEFAULT_ARTIFACTS_DIR / "comparable_large_results.json"))
+    parser.add_argument("--output-png", default=str(DEFAULT_ARTIFACTS_DIR / "scalability_curves.png"))
     parser.add_argument("--collect", action="store_true")
-    parser.add_argument("--output-data-json", default="artifacts/scalability_curve_data.json")
-    parser.add_argument("--benchmark-script", default="benchmark_gbdt_regressors.py")
-    parser.add_argument("--common-params-json", default="artifacts/comparable_large_params.json")
+    parser.add_argument("--output-data-json", default=str(DEFAULT_ARTIFACTS_DIR / "scalability_curve_data.json"))
+    parser.add_argument("--benchmark-script", default=str(BASE_DIR / "benchmark_gbdt_regressors.py"))
+    parser.add_argument("--common-params-json", default=str(DEFAULT_ARTIFACTS_DIR / "comparable_large_params.json"))
     parser.add_argument("--n-samples", type=int, default=176_000)
     parser.add_argument("--n-features", type=int, default=120)
     parser.add_argument(

@@ -8,12 +8,14 @@ from pathlib import Path
 
 
 MODELS = ("sklearn_hgb", "xgboost_hist", "lightgbm_hist")
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 def _run_single(model: str, n_samples: int, n_features: int, timeout_s: float, params_json: str) -> dict:
     cmd = [
         sys.executable,
-        "benchmark_gbdt_regressors.py",
+        str(BASE_DIR / "benchmark_gbdt_regressors.py"),
         "single-run",
         "--model",
         model,
@@ -127,9 +129,18 @@ def _to_md(table_rows: list[dict], best_name: str, out_path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output-best-json", default="artifacts/aligned_common_params.json")
-    parser.add_argument("--output-report-json", default="artifacts/calibration_report.json")
-    parser.add_argument("--output-report-md", default="artifacts/calibration_report.md")
+    parser.add_argument(
+        "--output-best-json",
+        default=str(DEFAULT_ARTIFACTS_DIR / "aligned_common_params.json"),
+    )
+    parser.add_argument(
+        "--output-report-json",
+        default=str(DEFAULT_ARTIFACTS_DIR / "calibration_report.json"),
+    )
+    parser.add_argument(
+        "--output-report-md",
+        default=str(DEFAULT_ARTIFACTS_DIR / "calibration_report.md"),
+    )
     parser.add_argument("--timeout-s", type=float, default=10.0)
     args = parser.parse_args()
 

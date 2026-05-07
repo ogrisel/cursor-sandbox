@@ -6,6 +6,10 @@ from collections import Counter
 from pathlib import Path
 
 
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
+
+
 def _cprofile_top(pstats_path: str, n: int) -> list[dict]:
     stats = pstats.Stats(pstats_path)
     rows = []
@@ -72,8 +76,8 @@ def _write_md(path: str, payload: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--spec-json", required=True, help="JSON mapping model->profile files")
-    parser.add_argument("--output-json", default="artifacts/profile_summary.json")
-    parser.add_argument("--output-md", default="artifacts/profile_summary.md")
+    parser.add_argument("--output-json", default=str(DEFAULT_ARTIFACTS_DIR / "profile_summary.json"))
+    parser.add_argument("--output-md", default=str(DEFAULT_ARTIFACTS_DIR / "profile_summary.md"))
     parser.add_argument("--top-n", type=int, default=12)
     args = parser.parse_args()
 

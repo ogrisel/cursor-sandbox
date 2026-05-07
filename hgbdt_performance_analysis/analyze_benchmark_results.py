@@ -6,6 +6,10 @@ from pathlib import Path
 from statistics import geometric_mean, mean, median
 
 
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
+
+
 def _load(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -198,9 +202,9 @@ def _write_markdown(out_path: str, payload: dict, ranked: list[dict], single_thr
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-json", default="artifacts/benchmark_results.json")
-    parser.add_argument("--output-md", default="artifacts/benchmark_report.md")
-    parser.add_argument("--output-json", default="artifacts/benchmark_summary.json")
+    parser.add_argument("--input-json", default=str(DEFAULT_ARTIFACTS_DIR / "benchmark_results.json"))
+    parser.add_argument("--output-md", default=str(DEFAULT_ARTIFACTS_DIR / "benchmark_report.md"))
+    parser.add_argument("--output-json", default=str(DEFAULT_ARTIFACTS_DIR / "benchmark_summary.json"))
     args = parser.parse_args()
 
     payload = _load(args.input_json)

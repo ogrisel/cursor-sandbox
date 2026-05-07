@@ -8,6 +8,8 @@ from pathlib import Path
 
 
 MODELS = ("sklearn_hgb", "xgboost_hist", "lightgbm_hist")
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 def _run_single(
@@ -21,7 +23,7 @@ def _run_single(
 ) -> dict:
     cmd = [
         sys.executable,
-        "benchmark_gbdt_regressors.py",
+        str(BASE_DIR / "benchmark_gbdt_regressors.py"),
         "single-run",
         "--model",
         model,
@@ -479,9 +481,18 @@ def _write_report_md(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output-params-json", default="artifacts/comparable_large_params.json")
-    parser.add_argument("--output-json", default="artifacts/comparable_large_results.json")
-    parser.add_argument("--output-md", default="artifacts/comparable_large_report.md")
+    parser.add_argument(
+        "--output-params-json",
+        default=str(DEFAULT_ARTIFACTS_DIR / "comparable_large_params.json"),
+    )
+    parser.add_argument(
+        "--output-json",
+        default=str(DEFAULT_ARTIFACTS_DIR / "comparable_large_results.json"),
+    )
+    parser.add_argument(
+        "--output-md",
+        default=str(DEFAULT_ARTIFACTS_DIR / "comparable_large_report.md"),
+    )
     parser.add_argument("--start-n-samples", type=int, default=220_000)
     parser.add_argument("--n-features", type=int, default=120)
     parser.add_argument("--timeout-s", type=float, default=10.0)

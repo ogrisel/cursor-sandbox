@@ -23,6 +23,8 @@ from xgboost import XGBRegressor
 
 
 MODEL_NAMES = ("sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist")
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 @dataclass
@@ -394,7 +396,11 @@ def _parse_args() -> argparse.Namespace:
     single.add_argument("--common-params-json", type=str, default=None)
 
     bench = subparsers.add_parser("benchmark", help="Run all benchmarks with adaptive sizing.")
-    bench.add_argument("--output-json", type=str, default="artifacts/benchmark_results.json")
+    bench.add_argument(
+        "--output-json",
+        type=str,
+        default=str(DEFAULT_ARTIFACTS_DIR / "benchmark_results.json"),
+    )
     bench.add_argument("--timeout-s", type=float, default=10.0)
     bench.add_argument("--reduction-factor", type=float, default=0.72)
     bench.add_argument("--min-n-samples", type=int, default=10_000)

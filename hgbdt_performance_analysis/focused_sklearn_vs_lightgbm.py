@@ -8,6 +8,8 @@ from pathlib import Path
 
 
 MODELS = ("sklearn_hgb", "lightgbm_hist")
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 def _single_run(
@@ -21,7 +23,7 @@ def _single_run(
 ) -> dict:
     cmd = [
         sys.executable,
-        "benchmark_gbdt_regressors.py",
+        str(BASE_DIR / "benchmark_gbdt_regressors.py"),
         "single-run",
         "--model",
         model,
@@ -91,8 +93,14 @@ def _find_shared_n_samples(
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--common-params-path", required=True)
-    parser.add_argument("--output-json", default="artifacts/focused_scaling_aligned.json")
-    parser.add_argument("--output-txt", default="artifacts/focused_scaling_aligned.txt")
+    parser.add_argument(
+        "--output-json",
+        default=str(DEFAULT_ARTIFACTS_DIR / "focused_scaling_aligned.json"),
+    )
+    parser.add_argument(
+        "--output-txt",
+        default=str(DEFAULT_ARTIFACTS_DIR / "focused_scaling_aligned.txt"),
+    )
     parser.add_argument("--timeout-s", type=float, default=10.0)
     parser.add_argument("--reduction-factor", type=float, default=0.8)
     parser.add_argument("--min-n-samples", type=int, default=50_000)
