@@ -39,24 +39,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
 
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install numpy psutil scikit-learn xgboost lightgbm matplotlib threadpoolctl
-
-      - name: Install py-spy on non-Windows workers
+      - name: Run benchmark + profiling pipeline (non-Windows)
         if: runner.os != 'Windows'
-        run: python -m pip install py-spy
-
-      - name: Run benchmark + profiling pipeline
         run: |
-          python run_ci_benchmarks_profiles.py \
+          uv run --python 3.11 --exclude-newer P7D \
+            --with numpy --with psutil --with scikit-learn --with xgboost --with lightgbm \
+            --with matplotlib --with threadpoolctl --with py-spy \
+            python run_ci_benchmarks_profiles.py \
             --machine-tag "${{ matrix.machine_tag }}" \
+            --artifacts-root artifacts
+
+      - name: Run benchmark + profiling pipeline (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          uv run --python 3.11 --exclude-newer P7D `
+            --with numpy --with psutil --with scikit-learn --with xgboost --with lightgbm `
+            --with matplotlib --with threadpoolctl `
+            python run_ci_benchmarks_profiles.py `
+            --machine-tag "${{ matrix.machine_tag }}" `
             --artifacts-root artifacts
 
       - name: Upload machine-scoped artifacts
@@ -75,10 +78,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Download machine artifacts
         uses: actions/download-artifact@v4
@@ -89,7 +90,8 @@ jobs:
 
       - name: Consolidate into machine subfolders and update platform conclusions
         run: |
-          python hgbdt_performance_analysis/consolidate_ci_results.py \
+          uv run --python 3.11 --exclude-newer P7D \
+            python hgbdt_performance_analysis/consolidate_ci_results.py \
             --downloaded-artifacts-root downloaded-artifacts \
             --artifacts-root hgbdt_performance_analysis/artifacts
 

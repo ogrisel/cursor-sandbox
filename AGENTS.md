@@ -8,9 +8,9 @@
 
 ## Environment setup
 
-Use Python 3.11+.
+Use `uv` with Python 3.11+ for local and CI execution.
 
-Install required Python dependencies:
+Runtime dependencies used by benchmark/profiling scripts:
 
 - `numpy`
 - `psutil`
@@ -21,21 +21,22 @@ Install required Python dependencies:
 - `threadpoolctl`
 - `py-spy` (required for native profiling on non-Windows workers)
 
-Recommended bootstrap command:
+Recommended uv execution pattern (no manual venv bootstrap required):
 
-- `python3 -m pip install numpy psutil scikit-learn xgboost lightgbm matplotlib threadpoolctl py-spy`
+- `uv run --python 3.11 --exclude-newer P7D --with numpy --with psutil --with scikit-learn --with xgboost --with lightgbm --with matplotlib --with threadpoolctl --with py-spy python <script>.py`
 
-If `py-spy` is installed to `~/.local/bin`, add it to `PATH`:
+Optional (for repeated local runs): create a persistent uv-managed venv.
 
-- `export PATH="$HOME/.local/bin:$PATH"`
+- `uv venv --python 3.11 --exclude-newer P7D .venv`
+- Activate `.venv` and install dependencies with `uv pip install ...` if you want a stable local environment.
 
 ## Cursor Cloud specific instructions
 
 - Keep CI and local artifact paths machine-scoped; do not collapse outputs into a shared flat folder.
 - For full benchmark + profiling smoke execution:
-  - `python3 hgbdt_performance_analysis/run_ci_benchmarks_profiles.py --machine-tag <tag> --artifacts-root hgbdt_performance_analysis/artifacts`
+  - `uv run --python 3.11 --exclude-newer P7D --with numpy --with psutil --with scikit-learn --with xgboost --with lightgbm --with matplotlib --with threadpoolctl --with py-spy python hgbdt_performance_analysis/run_ci_benchmarks_profiles.py --machine-tag <tag> --artifacts-root hgbdt_performance_analysis/artifacts`
 - To consolidate downloaded CI artifacts into repo subfolders and regenerate platform conclusions:
-  - `python3 hgbdt_performance_analysis/consolidate_ci_results.py --downloaded-artifacts-root <download_dir> --artifacts-root hgbdt_performance_analysis/artifacts`
+  - `uv run --python 3.11 --exclude-newer P7D python hgbdt_performance_analysis/consolidate_ci_results.py --downloaded-artifacts-root <download_dir> --artifacts-root hgbdt_performance_analysis/artifacts`
 
 ## CI artifact download + consolidation
 
@@ -45,7 +46,7 @@ Download artifacts for a run:
 
 Consolidate and regenerate platform-specific reports:
 
-- `python3 hgbdt_performance_analysis/consolidate_ci_results.py --downloaded-artifacts-root /tmp/hgbdt-ci-artifacts --artifacts-root hgbdt_performance_analysis/artifacts`
+- `uv run --python 3.11 --exclude-newer P7D python hgbdt_performance_analysis/consolidate_ci_results.py --downloaded-artifacts-root /tmp/hgbdt-ci-artifacts --artifacts-root hgbdt_performance_analysis/artifacts`
 
 Expected consolidated outputs:
 
