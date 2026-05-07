@@ -175,13 +175,11 @@ def _count_tree_nodes(model_name: str, model: Any) -> int:
                 total_nodes += int(getattr(nodes, "shape", [0])[0])
         return total_nodes
     if model_name == "xgboost_hist":
-        booster = model.get_booster()
-        return int(booster.trees_to_dataframe().shape[0])
+        return int(model.get_booster().trees_to_dataframe().shape[0])
     if model_name == "lightgbm_hist":
         booster = getattr(model, "booster_", None)
         if booster is None:
             return 0
-        tree_info = booster.dump_model().get("tree_info", [])
 
         def _walk(node: dict[str, Any]) -> int:
             left = node.get("left_child")
@@ -190,7 +188,7 @@ def _count_tree_nodes(model_name: str, model: Any) -> int:
                 return 1
             return 1 + (_walk(left) if left is not None else 0) + (_walk(right) if right is not None else 0)
 
-        return int(sum(_walk(tree["tree_structure"]) for tree in tree_info))
+        return int(sum(_walk(tree["tree_structure"]) for tree in booster.dump_model().get("tree_info", [])))
     raise ValueError(f"Unknown model for node counting: {model_name}")
 
 

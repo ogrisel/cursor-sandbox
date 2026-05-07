@@ -75,7 +75,6 @@ def _profile_once(
     ]
     _run([sys.executable, "-m", "cProfile", "-o", str(cprofile_path), *base_cmd])
     payload: dict[str, str] = {"cprofile": str(cprofile_path)}
-
     if native_enabled:
         py_spy = shutil.which("py-spy")
         speedscope_path = profile_dir / f"{model}.speedscope.json"
@@ -108,11 +107,7 @@ def _write_ranked_models_plot(benchmark_summary_json: Path, output_png: Path, ti
     model_labels = [str(row["model"]) for row in ranked]
     median_totals = [float(row["median_total_s"]) for row in ranked]
     fig, ax = plt.subplots(figsize=(8, 4.5))
-    bars = ax.bar(
-        model_labels,
-        median_totals,
-        color=["#4e79a7", "#f28e2b", "#59a14f", "#e15759"][: len(model_labels)],
-    )
+    bars = ax.bar(model_labels, median_totals, color=["#4e79a7", "#f28e2b", "#59a14f", "#e15759"][: len(model_labels)])
     ax.set_ylabel("Median total time (s)")
     ax.set_title(title)
     ax.grid(axis="y", alpha=0.25)
@@ -167,7 +162,6 @@ def _run_benchmark_setting(
     setting_name: str,
     out_dir: Path,
     args: argparse.Namespace,
-    machine_tag: str,
     common_params: dict[str, Any] | None,
 ) -> dict[str, str]:
     suffix = "" if setting_name == "baseline_default" else f"_{setting_name}"
@@ -181,10 +175,6 @@ def _run_benchmark_setting(
         sys.executable,
         str(BENCHMARK_SCRIPT),
         "benchmark",
-        "--artifacts-root",
-        args.artifacts_root,
-        "--machine-tag",
-        machine_tag,
         "--output-json",
         str(benchmark_json),
         "--timeout-s",
@@ -211,16 +201,8 @@ def _run_benchmark_setting(
             str(benchmark_summary_md),
         ]
     )
-    _write_ranked_models_plot(
-        benchmark_summary_json=benchmark_summary_json,
-        output_png=benchmark_rank_png,
-        title=f"Per-machine model ranking ({setting_name})",
-    )
-    _write_scalability_plot(
-        benchmark_results_json=benchmark_json,
-        output_png=scalability_png,
-        title=f"Scalability by dataset ({setting_name})",
-    )
+    _write_ranked_models_plot(benchmark_summary_json=benchmark_summary_json, output_png=benchmark_rank_png, title=f"Per-machine model ranking ({setting_name})")
+    _write_scalability_plot(benchmark_results_json=benchmark_json, output_png=scalability_png, title=f"Scalability by dataset ({setting_name})")
     return {
         "benchmark_json": str(benchmark_json),
         "benchmark_summary_json": str(benchmark_summary_json),
@@ -245,14 +227,8 @@ def main() -> None:
     parser.add_argument("--skip-alt-hparams", action="store_true")
     args = parser.parse_args()
 
-    out_dir = machine_artifacts_dir(
-        base_dir=BASE_DIR,
-        artifacts_root=args.artifacts_root,
-        machine_tag=args.machine_tag,
-    )
+    out_dir = machine_artifacts_dir(base_dir=BASE_DIR, artifacts_root=args.artifacts_root, machine_tag=args.machine_tag)
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    machine_tag = resolve_machine_tag(args.machine_tag)
 
     settings: list[tuple[str, dict[str, Any] | None]] = [("baseline_default", None)]
     if not args.skip_alt_hparams:
@@ -264,7 +240,6 @@ def main() -> None:
             setting_name=setting_name,
             out_dir=out_dir,
             args=args,
-            machine_tag=machine_tag,
             common_params=common_params,
         )
 
@@ -299,7 +274,7 @@ def main() -> None:
     )
 
     manifest = {
-        "machine_tag": machine_tag,
+        "machine_tag": resolve_machine_tag(args.machine_tag),
         "system": platform.system(),
         "architecture": platform.machine(),
         "native_profile_enabled": native_enabled,
