@@ -28,6 +28,37 @@ Core scripts:
 - [`focused_sklearn_vs_lightgbm.py`](focused_sklearn_vs_lightgbm.py)
 - [`analyze_benchmark_results.py`](analyze_benchmark_results.py)
 - [`extract_profile_insights.py`](extract_profile_insights.py)
+- [`run_ci_benchmarks_profiles.py`](run_ci_benchmarks_profiles.py)
+
+## Machine-scoped artifact layout
+
+Benchmark and profiling outputs are now written to machine-specific folders by default:
+
+- `artifacts/machines/linux-amd64/`
+- `artifacts/machines/linux-arm64/`
+- `artifacts/machines/macos-arm64/`
+- `artifacts/machines/windows-amd64/`
+
+Each script accepts:
+
+- `--artifacts-root` (base output directory, defaults to `artifacts/`)
+- `--machine-tag` (override machine subfolder; otherwise auto-detected from OS + arch)
+
+This lets reruns from heterogeneous workers coexist without clobbering each other.
+
+## CI matrix reruns (macOS/Linux/Windows)
+
+Workflow: [`.github/workflows/benchmark-profiling-matrix.yml`](../.github/workflows/benchmark-profiling-matrix.yml)
+
+It runs benchmark + profiling collection on:
+
+- Linux amd64 (`ubuntu-24.04`)
+- Linux arm64 (`ubuntu-24.04-arm`)
+- macOS arm64 (`macos-14`)
+- Windows amd64 (`windows-2022`)
+
+The workflow executes `run_ci_benchmarks_profiles.py` and uploads machine-scoped artifacts per runner.
+Native py-spy collection is enabled on non-Windows runners; Windows keeps cProfile-based summaries.
 
 ## Main conclusions
 

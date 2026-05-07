@@ -6,10 +6,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from artifact_layout import machine_artifacts_dir
+
 
 MODELS = ("sklearn_hgb", "lightgbm_hist")
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 def _single_run(
@@ -95,17 +96,29 @@ def main() -> None:
     parser.add_argument("--common-params-path", required=True)
     parser.add_argument(
         "--output-json",
-        default=str(DEFAULT_ARTIFACTS_DIR / "focused_scaling_aligned.json"),
+        default=None,
     )
     parser.add_argument(
         "--output-txt",
-        default=str(DEFAULT_ARTIFACTS_DIR / "focused_scaling_aligned.txt"),
+        default=None,
     )
+    parser.add_argument("--artifacts-root", type=str, default=str(BASE_DIR / "artifacts"))
+    parser.add_argument("--machine-tag", type=str, default=None)
     parser.add_argument("--timeout-s", type=float, default=10.0)
     parser.add_argument("--reduction-factor", type=float, default=0.8)
     parser.add_argument("--min-n-samples", type=int, default=50_000)
     parser.add_argument("--repeats", type=int, default=3)
     args = parser.parse_args()
+    artifacts_dir = machine_artifacts_dir(
+        base_dir=BASE_DIR,
+        artifacts_root=args.artifacts_root,
+        machine_tag=args.machine_tag,
+    )
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    if args.output_json is None:
+        args.output_json = str(artifacts_dir / "focused_scaling_aligned.json")
+    if args.output_txt is None:
+        args.output_txt = str(artifacts_dir / "focused_scaling_aligned.txt")
 
     common_params = json.loads(Path(args.common_params_path).read_text(encoding="utf-8"))
     common_json = json.dumps(common_params)

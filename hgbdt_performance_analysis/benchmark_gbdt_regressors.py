@@ -21,10 +21,11 @@ from sklearn.model_selection import train_test_split
 from threadpoolctl import threadpool_limits
 from xgboost import XGBRegressor
 
+from artifact_layout import machine_artifacts_dir
+
 
 MODEL_NAMES = ("sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist")
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 @dataclass
@@ -399,8 +400,10 @@ def _parse_args() -> argparse.Namespace:
     bench.add_argument(
         "--output-json",
         type=str,
-        default=str(DEFAULT_ARTIFACTS_DIR / "benchmark_results.json"),
+        default=None,
     )
+    bench.add_argument("--artifacts-root", type=str, default=str(BASE_DIR / "artifacts"))
+    bench.add_argument("--machine-tag", type=str, default=None)
     bench.add_argument("--timeout-s", type=float, default=10.0)
     bench.add_argument("--reduction-factor", type=float, default=0.72)
     bench.add_argument("--min-n-samples", type=int, default=10_000)
@@ -418,6 +421,14 @@ def main() -> None:
         _emit_single(args)
         return
     if args.mode == "benchmark":
+        artifacts_dir = machine_artifacts_dir(
+            base_dir=BASE_DIR,
+            artifacts_root=args.artifacts_root,
+            machine_tag=args.machine_tag,
+        )
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        if args.output_json is None:
+            args.output_json = str(artifacts_dir / "benchmark_results.json")
         _benchmark(args)
         return
     raise ValueError(f"Unexpected mode: {args.mode}")

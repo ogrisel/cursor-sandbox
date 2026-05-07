@@ -8,10 +8,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+from artifact_layout import machine_artifacts_dir
+
 
 MODEL_CHOICES = ("sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist")
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 def _load_payload(path: str) -> dict:
@@ -150,12 +151,14 @@ def _plot(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-json", default=str(DEFAULT_ARTIFACTS_DIR / "comparable_large_results.json"))
-    parser.add_argument("--output-png", default=str(DEFAULT_ARTIFACTS_DIR / "scalability_curves.png"))
+    parser.add_argument("--input-json", default=None)
+    parser.add_argument("--output-png", default=None)
     parser.add_argument("--collect", action="store_true")
-    parser.add_argument("--output-data-json", default=str(DEFAULT_ARTIFACTS_DIR / "scalability_curve_data.json"))
+    parser.add_argument("--output-data-json", default=None)
     parser.add_argument("--benchmark-script", default=str(BASE_DIR / "benchmark_gbdt_regressors.py"))
-    parser.add_argument("--common-params-json", default=str(DEFAULT_ARTIFACTS_DIR / "comparable_large_params.json"))
+    parser.add_argument("--common-params-json", default=None)
+    parser.add_argument("--artifacts-root", type=str, default=str(BASE_DIR / "artifacts"))
+    parser.add_argument("--machine-tag", type=str, default=None)
     parser.add_argument("--n-samples", type=int, default=176_000)
     parser.add_argument("--n-features", type=int, default=120)
     parser.add_argument(
@@ -170,6 +173,20 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--speedup-ymax", type=float, default=4.0)
     args = parser.parse_args()
+    artifacts_dir = machine_artifacts_dir(
+        base_dir=BASE_DIR,
+        artifacts_root=args.artifacts_root,
+        machine_tag=args.machine_tag,
+    )
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    if args.input_json is None:
+        args.input_json = str(artifacts_dir / "comparable_large_results.json")
+    if args.output_png is None:
+        args.output_png = str(artifacts_dir / "scalability_curves.png")
+    if args.output_data_json is None:
+        args.output_data_json = str(artifacts_dir / "scalability_curve_data.json")
+    if args.common_params_json is None:
+        args.common_params_json = str(artifacts_dir / "comparable_large_params.json")
 
     if args.collect:
         models = []

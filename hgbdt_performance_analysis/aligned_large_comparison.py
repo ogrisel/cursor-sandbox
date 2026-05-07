@@ -6,10 +6,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from artifact_layout import machine_artifacts_dir
+
 
 MODELS = ("sklearn_hgb", "xgboost_hist", "lightgbm_hist")
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 def _run_single(
@@ -483,16 +484,18 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--output-params-json",
-        default=str(DEFAULT_ARTIFACTS_DIR / "comparable_large_params.json"),
+        default=None,
     )
     parser.add_argument(
         "--output-json",
-        default=str(DEFAULT_ARTIFACTS_DIR / "comparable_large_results.json"),
+        default=None,
     )
     parser.add_argument(
         "--output-md",
-        default=str(DEFAULT_ARTIFACTS_DIR / "comparable_large_report.md"),
+        default=None,
     )
+    parser.add_argument("--artifacts-root", type=str, default=str(BASE_DIR / "artifacts"))
+    parser.add_argument("--machine-tag", type=str, default=None)
     parser.add_argument("--start-n-samples", type=int, default=220_000)
     parser.add_argument("--n-features", type=int, default=120)
     parser.add_argument("--timeout-s", type=float, default=10.0)
@@ -501,6 +504,18 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--candidate-preset", choices=("balanced", "deep_few_trees"), default="balanced")
     args = parser.parse_args()
+    artifacts_dir = machine_artifacts_dir(
+        base_dir=BASE_DIR,
+        artifacts_root=args.artifacts_root,
+        machine_tag=args.machine_tag,
+    )
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    if args.output_params_json is None:
+        args.output_params_json = str(artifacts_dir / "comparable_large_params.json")
+    if args.output_json is None:
+        args.output_json = str(artifacts_dir / "comparable_large_results.json")
+    if args.output_md is None:
+        args.output_md = str(artifacts_dir / "comparable_large_report.md")
 
     candidates = _candidate_grid(preset=args.candidate_preset)
     best, calibration_rows = _calibrate(

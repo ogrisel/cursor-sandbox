@@ -6,10 +6,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from artifact_layout import machine_artifacts_dir
+
 
 MODELS = ("sklearn_hgb", "xgboost_hist", "lightgbm_hist")
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 def _run_single(model: str, n_samples: int, n_features: int, timeout_s: float, params_json: str) -> dict:
@@ -131,18 +132,32 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--output-best-json",
-        default=str(DEFAULT_ARTIFACTS_DIR / "aligned_common_params.json"),
+        default=None,
     )
     parser.add_argument(
         "--output-report-json",
-        default=str(DEFAULT_ARTIFACTS_DIR / "calibration_report.json"),
+        default=None,
     )
     parser.add_argument(
         "--output-report-md",
-        default=str(DEFAULT_ARTIFACTS_DIR / "calibration_report.md"),
+        default=None,
     )
+    parser.add_argument("--artifacts-root", type=str, default=str(BASE_DIR / "artifacts"))
+    parser.add_argument("--machine-tag", type=str, default=None)
     parser.add_argument("--timeout-s", type=float, default=10.0)
     args = parser.parse_args()
+    artifacts_dir = machine_artifacts_dir(
+        base_dir=BASE_DIR,
+        artifacts_root=args.artifacts_root,
+        machine_tag=args.machine_tag,
+    )
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    if args.output_best_json is None:
+        args.output_best_json = str(artifacts_dir / "aligned_common_params.json")
+    if args.output_report_json is None:
+        args.output_report_json = str(artifacts_dir / "calibration_report.json")
+    if args.output_report_md is None:
+        args.output_report_md = str(artifacts_dir / "calibration_report.md")
 
     datasets = [
         {"name": "medium", "n_samples": 90_000, "n_features": 80},
