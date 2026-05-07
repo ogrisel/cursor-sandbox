@@ -5,85 +5,85 @@
         "function": "~:0:<built-in method builtins.exec>",
         "primitive_calls": 1,
         "total_calls": 1386,
-        "total_time_s": 0.019522994000000002,
-        "cumulative_time_s": 3.651386542
+        "total_time_s": 0.01961541,
+        "cumulative_time_s": 3.3636278330000002
       },
       {
         "function": "/Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 6.1207e-05,
-        "cumulative_time_s": 3.6513147910000003
+        "total_time_s": 5.7792000000000005e-05,
+        "cumulative_time_s": 3.363593625
       },
       {
         "function": "/Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:418:main",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 1.0958e-05,
-        "cumulative_time_s": 2.284511166
+        "total_time_s": 9.541e-06,
+        "cumulative_time_s": 1.914109958
       },
       {
         "function": "/Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:374:_emit_single",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.0012986240000000002,
-        "cumulative_time_s": 2.2824134160000003
+        "total_time_s": 0.000645334,
+        "cumulative_time_s": 1.912171209
       },
       {
         "function": "/Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:168:_single_run",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.0006288320000000001,
-        "cumulative_time_s": 2.2810155
+        "total_time_s": 0.0005452930000000001,
+        "cumulative_time_s": 1.9114795000000002
       },
       {
-        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/bTWVFWCyB77-l4Gz/lib/python3.11/site-packages/sklearn/base.py:1319:wrapper",
+        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/sklearn/base.py:1319:wrapper",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.0007405830000000001,
-        "cumulative_time_s": 2.09399575
+        "total_time_s": 0.0006727920000000001,
+        "cumulative_time_s": 1.691426
       },
       {
-        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/bTWVFWCyB77-l4Gz/lib/python3.11/site-packages/sklearn/ensemble/_hist_gradient_boosting/gradient_boosting.py:512:fit",
+        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/sklearn/ensemble/_hist_gradient_boosting/gradient_boosting.py:512:fit",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.055779680000000005,
-        "cumulative_time_s": 2.092755334
-      },
-      {
-        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/bTWVFWCyB77-l4Gz/lib/python3.11/site-packages/sklearn/ensemble/_hist_gradient_boosting/grower.py:385:grow",
-        "primitive_calls": 220,
-        "total_calls": 220,
-        "total_time_s": 0.002636812,
-        "cumulative_time_s": 1.4824433830000001
-      },
-      {
-        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/bTWVFWCyB77-l4Gz/lib/python3.11/site-packages/sklearn/ensemble/_hist_gradient_boosting/grower.py:488:split_next",
-        "primitive_calls": 6600,
-        "total_calls": 6600,
-        "total_time_s": 0.799098963,
-        "cumulative_time_s": 1.4784907280000001
+        "total_time_s": 0.039400569,
+        "cumulative_time_s": 1.690346166
       },
       {
         "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
         "primitive_calls": 13,
         "total_calls": 1352,
-        "total_time_s": 0.0040979580000000005,
-        "cumulative_time_s": 1.367521291
+        "total_time_s": 0.004098269,
+        "cumulative_time_s": 1.449625541
       },
       {
         "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
         "primitive_calls": 13,
         "total_calls": 1310,
-        "total_time_s": 0.003394686,
-        "cumulative_time_s": 1.3672827090000002
+        "total_time_s": 0.0034386660000000004,
+        "cumulative_time_s": 1.449424623
       },
       {
         "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
         "primitive_calls": 13,
         "total_calls": 1266,
-        "total_time_s": 0.002736236,
-        "cumulative_time_s": 1.365948251
+        "total_time_s": 0.002803804,
+        "cumulative_time_s": 1.448112794
+      },
+      {
+        "function": "<frozen importlib._bootstrap_external>:934:exec_module",
+        "primitive_calls": 12,
+        "total_calls": 1066,
+        "total_time_s": 0.001539152,
+        "cumulative_time_s": 1.447549081
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:233:_call_with_frames_removed",
+        "primitive_calls": 27,
+        "total_calls": 3105,
+        "total_time_s": 0.000989379,
+        "cumulative_time_s": 1.4459991280000002
       }
     ]
   },
@@ -93,85 +93,85 @@
         "function": "~:0:<built-in method builtins.exec>",
         "primitive_calls": 1,
         "total_calls": 1384,
-        "total_time_s": 0.021262085,
-        "cumulative_time_s": 3.6035237920000003
+        "total_time_s": 0.019972475,
+        "cumulative_time_s": 3.404671791
       },
       {
         "function": "/Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 5.0666000000000006e-05,
-        "cumulative_time_s": 3.603491083
+        "total_time_s": 4.1708e-05,
+        "cumulative_time_s": 3.404624166
       },
       {
         "function": "/Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:418:main",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 6.749e-06,
-        "cumulative_time_s": 2.227250708
+        "total_time_s": 5.8750000000000005e-06,
+        "cumulative_time_s": 2.077911417
       },
       {
         "function": "/Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:374:_emit_single",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.0008057100000000001,
-        "cumulative_time_s": 2.2253080840000004
+        "total_time_s": 0.001264916,
+        "cumulative_time_s": 2.0761631250000003
       },
       {
         "function": "/Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:168:_single_run",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.000570913,
-        "cumulative_time_s": 2.224348709
+        "total_time_s": 0.0006011640000000001,
+        "cumulative_time_s": 2.0747676250000002
       },
       {
-        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/bTWVFWCyB77-l4Gz/lib/python3.11/site-packages/lightgbm/sklearn.py:1381:fit",
+        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/lightgbm/sklearn.py:1381:fit",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 1.3543e-05,
-        "cumulative_time_s": 2.028314709
+        "total_time_s": 1.2750000000000002e-05,
+        "cumulative_time_s": 1.906731042
       },
       {
-        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/bTWVFWCyB77-l4Gz/lib/python3.11/site-packages/lightgbm/sklearn.py:907:fit",
+        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/lightgbm/sklearn.py:907:fit",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.000186252,
-        "cumulative_time_s": 2.0283011660000003
+        "total_time_s": 6.825e-05,
+        "cumulative_time_s": 1.906718292
       },
       {
-        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/bTWVFWCyB77-l4Gz/lib/python3.11/site-packages/lightgbm/engine.py:109:train",
+        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/lightgbm/engine.py:109:train",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.0023608960000000003,
-        "cumulative_time_s": 2.0269392500000003
+        "total_time_s": 0.002312417,
+        "cumulative_time_s": 1.9053672090000002
       },
       {
-        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/bTWVFWCyB77-l4Gz/lib/python3.11/site-packages/lightgbm/basic.py:4092:update",
+        "function": "/Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/lightgbm/basic.py:4092:update",
         "primitive_calls": 220,
         "total_calls": 220,
-        "total_time_s": 1.839667817,
-        "cumulative_time_s": 1.8402132080000002
+        "total_time_s": 1.724361325,
+        "cumulative_time_s": 1.7248916230000002
       },
       {
         "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
         "primitive_calls": 12,
         "total_calls": 1350,
-        "total_time_s": 0.0042814160000000006,
-        "cumulative_time_s": 1.3753185
+        "total_time_s": 0.004602169000000001,
+        "cumulative_time_s": 1.32598375
       },
       {
         "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
         "primitive_calls": 12,
         "total_calls": 1308,
-        "total_time_s": 0.003558087,
-        "cumulative_time_s": 1.3751660030000001
+        "total_time_s": 0.0034010890000000004,
+        "cumulative_time_s": 1.32583767
       },
       {
         "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
         "primitive_calls": 12,
         "total_calls": 1264,
-        "total_time_s": 0.002852425,
-        "cumulative_time_s": 1.374059165
+        "total_time_s": 0.002761083,
+        "cumulative_time_s": 1.3247456670000002
       }
     ]
   }
