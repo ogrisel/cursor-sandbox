@@ -11,19 +11,24 @@
 - fitted-tree spread at thread=1 (reference libs): 0.0
 - all calibration candidates have zero fitted-tree spread: True
 
-## Efficiency ranking by thread (total_mean_s)
+## Efficiency ranking by thread (reference libs, total_mean_s)
 | threads | fastest | second | third |
 | --- | --- | --- | --- |
 | 1 | sklearn_hgb (2.8525s) | xgboost_hist (2.8538s) | lightgbm_hist (2.9054s) |
 | 2 | sklearn_hgb (1.5637s) | lightgbm_hist (1.5694s) | xgboost_hist (1.6412s) |
 | 4 | lightgbm_hist (0.8822s) | sklearn_hgb (0.9098s) | xgboost_hist (0.9758s) |
 
-## Scalability snapshot (fit speedup vs 1-thread)
+## Scalability snapshot (fit speedup vs 1-thread, includes fixed sklearn variant)
 | model | speedup@4 | speedup@16 |
 | --- | ---: | ---: |
-| sklearn_hgb | 3.116 | 0.906 |
-| xgboost_hist | 2.981 | 2.560 |
-| lightgbm_hist | 3.284 | 1.636 |
+| sklearn_hgb | 2.857 | 0.842 |
+| sklearn_hgb_fixed | 2.832 | 2.914 |
+| xgboost_hist | 2.903 | 2.556 |
+| lightgbm_hist | 3.252 | 1.552 |
+
+## Fixed-variant effect
+- At 16 requested threads: sklearn_hgb speedup=0.842 vs sklearn_hgb_fixed speedup=2.914.
+- The fixed variant remains near 4-thread efficiency because effective threads are capped to available cores.
 
 ## Answer
 - No. In this regime, sklearn is marginally fastest at 1 and 2 threads, but LightGBM is fastest at 4 threads (best on-core wall-clock time).
