@@ -103,7 +103,12 @@ def _collect_by_model(rows: list[dict]) -> dict[str, dict[int, dict]]:
     return by_model
 
 
-def _plot(by_model: dict[str, dict[int, dict]], thread_grid: list[int], out_png: str) -> None:
+def _plot(
+    by_model: dict[str, dict[int, dict]],
+    thread_grid: list[int],
+    out_png: str,
+    speedup_ymax: float | None,
+) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
     ax_time, ax_speedup = axes
 
@@ -130,10 +135,12 @@ def _plot(by_model: dict[str, dict[int, dict]], thread_grid: list[int], out_png:
     ax_speedup.set_xlabel("Threads")
     ax_speedup.set_ylabel("Speedup (1-thread baseline)")
     ax_speedup.set_xticks(thread_grid)
+    if speedup_ymax is not None:
+        ax_speedup.set_ylim(0.0, speedup_ymax)
     ax_speedup.grid(alpha=0.3)
 
     handles, labels = ax_time.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False)
+    fig.legend(handles, labels, loc="lower center", ncol=min(4, max(1, len(labels))), frameon=False)
     fig.suptitle("Scalability curves on constrained comparable benchmark")
     fig.tight_layout(rect=(0, 0.08, 1, 0.95))
     fig.savefig(out_png, dpi=180)
@@ -149,11 +156,17 @@ def main() -> None:
     parser.add_argument("--common-params-json", default="artifacts/comparable_large_params.json")
     parser.add_argument("--n-samples", type=int, default=176_000)
     parser.add_argument("--n-features", type=int, default=120)
-    parser.add_argument("--models", type=str, nargs="+", default=["sklearn_hgb", "xgboost_hist", "lightgbm_hist"])
+    parser.add_argument(
+        "--models",
+        type=str,
+        nargs="+",
+        default=["sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist"],
+    )
     parser.add_argument("--threads", type=int, nargs="+", default=[1, 2, 4, 8, 16])
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--timeout-s", type=float, default=15.0)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--speedup-ymax", type=float, default=4.0)
     args = parser.parse_args()
 
     if args.collect:
@@ -180,7 +193,12 @@ def main() -> None:
     rows = payload["final_rows"]
     thread_grid = sorted({int(r["threads"]) for r in rows})
     by_model = _collect_by_model(rows)
-    _plot(by_model, thread_grid=thread_grid, out_png=args.output_png)
+    _plot(
+        by_model,
+        thread_grid=thread_grid,
+        out_png=args.output_png,
+        speedup_ymax=args.speedup_ymax,
+    )
     print(json.dumps({"output_png": args.output_png, "thread_grid": thread_grid}))
 
 
