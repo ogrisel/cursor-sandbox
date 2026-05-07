@@ -1,0 +1,174 @@
+{
+  "constraints": {
+    "min_n_estimators": 10,
+    "min_num_leaves": 31
+  },
+  "params": {
+    "n_estimators": 120,
+    "learning_rate": 0.1,
+    "max_depth": 5,
+    "num_leaves": 31,
+    "max_bin": 255,
+    "subsample": 1.0,
+    "l2_regularization": 0.0,
+    "min_samples_leaf": 20,
+    "min_child_weight": 20.0,
+    "min_split_gain": 0.0,
+    "random_state": 42,
+    "loss": "squared_error"
+  },
+  "parameter_name_validation": {
+    "method": "sklearn/xgboost via get_params; lightgbm via _ConfigAliases alias registry",
+    "sklearn_valid": true,
+    "xgboost_valid": true,
+    "lightgbm_valid": true,
+    "sklearn_kwargs": [
+      "early_stopping",
+      "l2_regularization",
+      "learning_rate",
+      "loss",
+      "max_bins",
+      "max_depth",
+      "max_iter",
+      "max_leaf_nodes",
+      "min_samples_leaf",
+      "random_state"
+    ],
+    "xgboost_kwargs": [
+      "colsample_bytree",
+      "gamma",
+      "grow_policy",
+      "learning_rate",
+      "max_bin",
+      "max_depth",
+      "max_leaves",
+      "min_child_weight",
+      "n_estimators",
+      "n_jobs",
+      "objective",
+      "random_state",
+      "reg_lambda",
+      "subsample",
+      "tree_method",
+      "verbosity"
+    ],
+    "lightgbm_kwargs": [
+      "learning_rate",
+      "max_bin",
+      "max_depth",
+      "min_child_samples",
+      "min_child_weight",
+      "min_split_gain",
+      "n_estimators",
+      "n_jobs",
+      "num_leaves",
+      "objective",
+      "random_state",
+      "reg_lambda",
+      "subsample",
+      "subsample_freq",
+      "verbose"
+    ]
+  },
+  "dataset": {
+    "n_samples": 176000,
+    "n_features": 120,
+    "seed": 42
+  },
+  "sklearn_default_r2_floor": 0.6393927406205122,
+  "final_rows": [
+    {
+      "model": "sklearn_hgb",
+      "threads": 1,
+      "n_samples": 176000,
+      "n_features": 120,
+      "fit_mean": 1.8776267196638703,
+      "predict_mean": 0.07250301033248736,
+      "total_mean": 1.9501297299963578,
+      "r2_mean": 0.6507149204341418
+    },
+    {
+      "model": "sklearn_hgb",
+      "threads": 2,
+      "n_samples": 176000,
+      "n_features": 120,
+      "fit_mean": 1.8773625056661938,
+      "predict_mean": 0.0742473760037683,
+      "total_mean": 1.951609881669962,
+      "r2_mean": 0.6507149204341418
+    },
+    {
+      "model": "sklearn_hgb",
+      "threads": 4,
+      "n_samples": 176000,
+      "n_features": 120,
+      "fit_mean": 1.8830449429976095,
+      "predict_mean": 0.0734379586695771,
+      "total_mean": 1.9564829016671865,
+      "r2_mean": 0.6507149204341418
+    },
+    {
+      "model": "xgboost_hist",
+      "threads": 1,
+      "n_samples": 176000,
+      "n_features": 120,
+      "fit_mean": 8.034829270669434,
+      "predict_mean": 0.039691052331666775,
+      "total_mean": 8.074520323001101,
+      "r2_mean": 0.6523186564445496
+    },
+    {
+      "model": "xgboost_hist",
+      "threads": 2,
+      "n_samples": 176000,
+      "n_features": 120,
+      "fit_mean": 4.448863746334003,
+      "predict_mean": 0.023103211332151357,
+      "total_mean": 4.4719669576661545,
+      "r2_mean": 0.6523186564445496
+    },
+    {
+      "model": "xgboost_hist",
+      "threads": 4,
+      "n_samples": 176000,
+      "n_features": 120,
+      "fit_mean": 2.566553932330862,
+      "predict_mean": 0.013961779666715302,
+      "total_mean": 2.5805157119975775,
+      "r2_mean": 0.6523186564445496
+    },
+    {
+      "model": "lightgbm_hist",
+      "threads": 1,
+      "n_samples": 176000,
+      "n_features": 120,
+      "fit_mean": 7.487049216664066,
+      "predict_mean": 0.18894374800098981,
+      "total_mean": 7.675992964665056,
+      "r2_mean": 0.6524710766300269
+    },
+    {
+      "model": "lightgbm_hist",
+      "threads": 2,
+      "n_samples": 176000,
+      "n_features": 120,
+      "fit_mean": 4.193930626337533,
+      "predict_mean": 0.09724482766371996,
+      "total_mean": 4.2911754540012526,
+      "r2_mean": 0.6524710766300269
+    },
+    {
+      "model": "lightgbm_hist",
+      "threads": 4,
+      "n_samples": 176000,
+      "n_features": 120,
+      "fit_mean": 2.63405093633628,
+      "predict_mean": 0.05303381033202944,
+      "total_mean": 2.6870847466683094,
+      "r2_mean": 0.6524710766300269
+    }
+  ],
+  "r2_spread_t1": 0.0017561561958850946,
+  "min_r2_t1": 0.6507149204341418,
+  "all_models_meet_floor_t1": true
+}
