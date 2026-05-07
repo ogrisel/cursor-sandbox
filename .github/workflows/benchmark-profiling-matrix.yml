@@ -50,7 +50,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           uv run --python 3.11 --exclude-newer P7D \
-            --with numpy --with psutil --with scikit-learn --with xgboost --with lightgbm \
+            --with numpy --with pandas --with psutil --with scikit-learn --with xgboost --with lightgbm \
             --with matplotlib --with threadpoolctl --with py-spy \
             python run_ci_benchmarks_profiles.py \
             --machine-tag "${{ matrix.machine_tag }}" \
@@ -64,7 +64,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           uv run --python 3.11 --exclude-newer P7D `
-            --with numpy --with psutil --with scikit-learn --with xgboost --with lightgbm `
+            --with numpy --with pandas --with psutil --with scikit-learn --with xgboost --with lightgbm `
             --with matplotlib --with threadpoolctl `
             python run_ci_benchmarks_profiles.py `
             --machine-tag "${{ matrix.machine_tag }}" `
