@@ -66,6 +66,15 @@ Core scripts:
    - Extended implementation comparison:
      - [`artifacts/oversubscription_xgboost_vs_sklearn_impl_analysis.md`](artifacts/oversubscription_xgboost_vs_sklearn_impl_analysis.md)
 
+5. **In the deep-few-trees regime, sklearn leads at 1-2 threads while LightGBM is fastest at 4 threads.**
+   - Regime analysis and data:
+     - [`artifacts/deep_few_trees_report.md`](artifacts/deep_few_trees_report.md)
+     - [`artifacts/deep_few_trees_analysis.md`](artifacts/deep_few_trees_analysis.md)
+     - [`artifacts/deep_few_trees_results.json`](artifacts/deep_few_trees_results.json)
+     - [`artifacts/deep_few_trees_scalability_data.json`](artifacts/deep_few_trees_scalability_data.json)
+
+     ![Deep few trees scalability plot](artifacts/deep_few_trees_scalability.png)
+
 ## Implementation strategy to improve sklearn efficiency (for the slow setting)
 
 Priority plan:
@@ -95,5 +104,3 @@ Rationale and evidence links:
   - [`artifacts/deep_few_trees_results.json`](artifacts/deep_few_trees_results.json)
   - [`artifacts/deep_few_trees_scalability_data.json`](artifacts/deep_few_trees_scalability_data.json)
   - [`artifacts/deep_few_trees_scalability.png`](artifacts/deep_few_trees_scalability.png)
-
-  ![Deep few trees scalability plot](artifacts/deep_few_trees_scalability.png)
