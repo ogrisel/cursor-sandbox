@@ -94,6 +94,7 @@ def _build_model(model_name: str, threads: int, common: dict[str, Any]):
             grow_policy="lossguide",
             random_state=common["random_state"],
             n_jobs=threads,
+            early_stopping_rounds=None,
             verbosity=0,
         )
     if model_name == "lightgbm_hist":
@@ -147,6 +148,20 @@ def _monitor_peak_rss(stop_event: threading.Event, interval_s: float = 0.01) -> 
     return peak_rss / (1024 ** 2)
 
 
+def _fitted_tree_count(model_name: str, model: Any) -> int:
+    if model_name in {"sklearn_hgb", "sklearn_hgb_fixed"}:
+        return int(getattr(model, "n_iter_", 0))
+    if model_name == "xgboost_hist":
+        booster = model.get_booster()
+        return int(booster.num_boosted_rounds())
+    if model_name == "lightgbm_hist":
+        booster = getattr(model, "booster_", None)
+        if booster is None:
+            return 0
+        return int(booster.current_iteration())
+    raise ValueError(f"Unknown model for tree counting: {model_name}")
+
+
 def _single_run(
     model_name: str,
     n_samples: int,
@@ -191,6 +206,14 @@ def _single_run(
 
     rmse = math.sqrt(mean_squared_error(y_test, y_pred))
     r2 = r2_score(y_test, y_pred)
+    expected_trees = int(common["n_estimators"])
+    fitted_trees = _fitted_tree_count(model_name=model_name, model=model)
+    fitted_trees_match_expected = fitted_trees == expected_trees
+    if not fitted_trees_match_expected:
+        raise RuntimeError(
+            f"Unexpected fitted tree count for {model_name}: "
+            f"fitted_trees={fitted_trees}, expected_trees={expected_trees}"
+        )
     return {
         "model": model_name,
         "threads": threads,
@@ -203,6 +226,9 @@ def _single_run(
         "peak_rss_mb": peak_holder["peak_mb"],
         "rmse": rmse,
         "r2": r2,
+        "fitted_trees": fitted_trees,
+        "expected_trees": expected_trees,
+        "fitted_trees_match_expected": fitted_trees_match_expected,
         "hyperparameters": common,
     }
 

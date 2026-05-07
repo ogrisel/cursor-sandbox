@@ -36,6 +36,8 @@ def _collect_rows(
             total_values = []
             r2_values = []
             effective_values = []
+            fitted_trees_values = []
+            fitted_trees_match_values = []
             for rep in range(repeats):
                 cmd = [
                     sys.executable,
@@ -67,6 +69,8 @@ def _collect_rows(
                 total_values.append(run["total_seconds"])
                 r2_values.append(run["r2"])
                 effective_values.append(run.get("effective_threads", thread_count))
+                fitted_trees_values.append(run.get("fitted_trees"))
+                fitted_trees_match_values.append(run.get("fitted_trees_match_expected", False))
             rows.append(
                 {
                     "model": model,
@@ -76,6 +80,8 @@ def _collect_rows(
                     "predict_mean": statistics.mean(pred_values),
                     "total_mean": statistics.mean(total_values),
                     "r2_mean": statistics.mean(r2_values),
+                    "fitted_trees_mean": statistics.mean(fitted_trees_values),
+                    "fitted_trees_match_all": all(fitted_trees_match_values),
                     "fit_std": statistics.pstdev(fit_values),
                     "repeats": repeats,
                 }

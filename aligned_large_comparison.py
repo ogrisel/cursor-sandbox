@@ -223,7 +223,16 @@ def _calibrate(
             )
             for model in MODELS
         ]
+        if not all(run.get("fitted_trees_match_expected", False) for run in runs):
+            raise RuntimeError(
+                "Calibration run found fitted tree count mismatch: "
+                + "; ".join(
+                    f"{r['model']} fitted={r.get('fitted_trees')} expected={r.get('expected_trees')}"
+                    for r in runs
+                )
+            )
         r2_values = [r["r2"] for r in runs]
+        tree_values = [r["fitted_trees"] for r in runs]
         row = {
             "candidate": candidate["name"],
             "n_estimators": params["n_estimators"],
@@ -232,6 +241,9 @@ def _calibrate(
             "n_features": n_features,
             "r2_spread": max(r2_values) - min(r2_values),
             "r2_mean": statistics.mean(r2_values),
+            "fitted_trees_min": min(tree_values),
+            "fitted_trees_max": max(tree_values),
+            "fitted_trees_spread": max(tree_values) - min(tree_values),
             "max_total_s": max(r["total_seconds"] for r in runs),
             "runs": runs,
             "params": params,
@@ -266,6 +278,7 @@ def _final_benchmark(
             total_values = []
             r2_values = []
             rss_values = []
+            fitted_trees_values = []
             for rep in range(repeats):
                 run = _run_single(
                     model=model,
@@ -276,11 +289,17 @@ def _final_benchmark(
                     params_json=params_json,
                     timeout_s=timeout_s,
                 )
+                if not run.get("fitted_trees_match_expected", False):
+                    raise RuntimeError(
+                        f"Final benchmark tree mismatch for {model} threads={threads}: "
+                        f"fitted={run.get('fitted_trees')} expected={run.get('expected_trees')}"
+                    )
                 fit_values.append(run["fit_seconds"])
                 pred_values.append(run["predict_seconds"])
                 total_values.append(run["total_seconds"])
                 r2_values.append(run["r2"])
                 rss_values.append(run["peak_rss_mb"])
+                fitted_trees_values.append(run["fitted_trees"])
 
             rows.append(
                 {
@@ -295,6 +314,8 @@ def _final_benchmark(
                     "r2_mean": statistics.mean(r2_values),
                     "r2_std": statistics.pstdev(r2_values),
                     "peak_rss_mean_mb": statistics.mean(rss_values),
+                    "fitted_trees_mean": statistics.mean(fitted_trees_values),
+                    "fitted_trees_std": statistics.pstdev(fitted_trees_values),
                 }
             )
     return rows
@@ -336,14 +357,14 @@ def _write_report_md(
             "## Final comparable timing table",
             f"(all runs on same dataset `n_samples={best['n_samples']}`, `n_features={best['n_features']}`, repeats={repeats})",
             "",
-            "| model | threads | fit_mean_s | predict_mean_s | total_mean_s | r2_mean | peak_rss_mean_mb |",
-            "| --- | --- | --- | --- | --- | --- | --- |",
+            "| model | threads | fit_mean_s | predict_mean_s | total_mean_s | r2_mean | peak_rss_mean_mb | fitted_trees_mean |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
     )
     for row in sorted(final_rows, key=lambda r: (r["threads"], r["total_mean"])):
         lines.append(
             f"| {row['model']} | {row['threads']} | {row['fit_mean']:.4f} | {row['predict_mean']:.4f} | "
-            f"{row['total_mean']:.4f} | {row['r2_mean']:.6f} | {row['peak_rss_mean_mb']:.2f} |"
+            f"{row['total_mean']:.4f} | {row['r2_mean']:.6f} | {row['peak_rss_mean_mb']:.2f} | {row['fitted_trees_mean']:.1f} |"
         )
 
     lines.extend(
@@ -351,6 +372,7 @@ def _write_report_md(
             "",
             "## Final comparability check",
             f"- R² spread across libraries at thread=1: `{r2_spread_final:.6f}`",
+            f"- Fitted trees at thread=1: `{[int(by_model[m]['fitted_trees_mean']) for m in sorted(by_model)]}`",
         ]
     )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
