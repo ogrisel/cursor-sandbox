@@ -7,7 +7,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+import matplotlib
+
 from artifact_layout import machine_artifacts_dir, resolve_machine_tag
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -80,6 +85,37 @@ def _profile_once(
     return payload
 
 
+def _write_ranked_models_plot(benchmark_summary_json: Path, output_png: Path) -> None:
+    summary = json.loads(benchmark_summary_json.read_text(encoding="utf-8"))
+    ranked = summary.get("ranked_models", [])
+    if not ranked:
+        return
+    model_labels = [str(row["model"]) for row in ranked]
+    median_totals = [float(row["median_total_s"]) for row in ranked]
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    bars = ax.bar(
+        model_labels,
+        median_totals,
+        color=["#4e79a7", "#f28e2b", "#59a14f", "#e15759"][: len(model_labels)],
+    )
+    ax.set_ylabel("Median total time (s)")
+    ax.set_title("Per-machine model ranking (lower is better)")
+    ax.grid(axis="y", alpha=0.25)
+    for bar, value in zip(bars, median_totals):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            value,
+            f"{value:.3f}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+    fig.tight_layout()
+    output_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_png, dpi=160)
+    plt.close(fig)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--artifacts-root", default=str(BASE_DIR / "artifacts"))
@@ -105,6 +141,7 @@ def main() -> None:
     benchmark_json = out_dir / "benchmark_results.json"
     benchmark_summary_json = out_dir / "benchmark_summary.json"
     benchmark_summary_md = out_dir / "benchmark_report.md"
+    benchmark_ranked_models_png = out_dir / "benchmark_ranked_models.png"
     profile_spec_json = out_dir / "profile_spec.json"
     profile_summary_json = out_dir / "profile_summary.json"
     profile_summary_md = out_dir / "profile_summary.md"
@@ -146,6 +183,10 @@ def main() -> None:
             str(benchmark_summary_md),
         ]
     )
+    _write_ranked_models_plot(
+        benchmark_summary_json=benchmark_summary_json,
+        output_png=benchmark_ranked_models_png,
+    )
 
     native_enabled = platform.system().strip().lower() != "windows"
     profile_spec: dict[str, dict[str, str]] = {}
@@ -185,6 +226,7 @@ def main() -> None:
             "benchmark_json": str(benchmark_json),
             "benchmark_summary_json": str(benchmark_summary_json),
             "benchmark_summary_md": str(benchmark_summary_md),
+            "benchmark_ranked_models_png": str(benchmark_ranked_models_png),
             "profile_spec_json": str(profile_spec_json),
             "profile_summary_json": str(profile_summary_json),
             "profile_summary_md": str(profile_summary_md),

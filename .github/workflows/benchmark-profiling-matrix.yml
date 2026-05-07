@@ -42,6 +42,10 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v5
 
+      - name: Install libomp (macOS)
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
       - name: Run benchmark + profiling pipeline (non-Windows)
         if: runner.os != 'Windows'
         run: |
@@ -50,7 +54,11 @@ jobs:
             --with matplotlib --with threadpoolctl --with py-spy \
             python run_ci_benchmarks_profiles.py \
             --machine-tag "${{ matrix.machine_tag }}" \
-            --artifacts-root artifacts
+            --artifacts-root artifacts \
+            --timeout-s 8 \
+            --benchmark-min-n-samples 1000 \
+            --benchmark-reduction-factor 0.5 \
+            --profile-threads 2
 
       - name: Run benchmark + profiling pipeline (Windows)
         if: runner.os == 'Windows'
@@ -60,7 +68,11 @@ jobs:
             --with matplotlib --with threadpoolctl `
             python run_ci_benchmarks_profiles.py `
             --machine-tag "${{ matrix.machine_tag }}" `
-            --artifacts-root artifacts
+            --artifacts-root artifacts `
+            --timeout-s 8 `
+            --benchmark-min-n-samples 1000 `
+            --benchmark-reduction-factor 0.5 `
+            --profile-threads 2
 
       - name: Upload machine-scoped artifacts
         uses: actions/upload-artifact@v4
