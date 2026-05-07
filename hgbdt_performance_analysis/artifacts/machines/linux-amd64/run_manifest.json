@@ -3,11 +3,28 @@
   "system": "Linux",
   "architecture": "x86_64",
   "native_profile_enabled": true,
+  "settings": {
+    "baseline_default": {
+      "benchmark_json": "artifacts/machines/linux-amd64/benchmark_results.json",
+      "benchmark_summary_json": "artifacts/machines/linux-amd64/benchmark_summary.json",
+      "benchmark_summary_md": "artifacts/machines/linux-amd64/benchmark_report.md",
+      "benchmark_ranked_models_png": "artifacts/machines/linux-amd64/benchmark_ranked_models.png",
+      "scalability_png": "artifacts/machines/linux-amd64/scalability.png"
+    },
+    "deep_few_trees": {
+      "benchmark_json": "artifacts/machines/linux-amd64/benchmark_results_deep_few_trees.json",
+      "benchmark_summary_json": "artifacts/machines/linux-amd64/benchmark_summary_deep_few_trees.json",
+      "benchmark_summary_md": "artifacts/machines/linux-amd64/benchmark_report_deep_few_trees.md",
+      "benchmark_ranked_models_png": "artifacts/machines/linux-amd64/benchmark_ranked_models_deep_few_trees.png",
+      "scalability_png": "artifacts/machines/linux-amd64/scalability_deep_few_trees.png"
+    }
+  },
   "outputs": {
     "benchmark_json": "artifacts/machines/linux-amd64/benchmark_results.json",
     "benchmark_summary_json": "artifacts/machines/linux-amd64/benchmark_summary.json",
     "benchmark_summary_md": "artifacts/machines/linux-amd64/benchmark_report.md",
     "benchmark_ranked_models_png": "artifacts/machines/linux-amd64/benchmark_ranked_models.png",
+    "scalability_png": "artifacts/machines/linux-amd64/scalability.png",
     "profile_spec_json": "artifacts/machines/linux-amd64/profile_spec.json",
     "profile_summary_json": "artifacts/machines/linux-amd64/profile_summary.json",
     "profile_summary_md": "artifacts/machines/linux-amd64/profile_summary.md"

@@ -4,33 +4,33 @@
 ### Python-level (cProfile) top cumulative entries
 | function | primitive_calls | total_calls | total_time_s | cumulative_time_s |
 | --- | --- | --- | --- | --- |
-| ~:0:<built-in method builtins.exec> | 1 | 1386 | 0.0196154 | 3.36363 |
-| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:1:<module> | 1 | 1 | 5.7792e-05 | 3.36359 |
-| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:418:main | 1 | 1 | 9.541e-06 | 1.91411 |
-| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:374:_emit_single | 1 | 1 | 0.000645334 | 1.91217 |
-| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:168:_single_run | 1 | 1 | 0.000545293 | 1.91148 |
-| /Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/sklearn/base.py:1319:wrapper | 1 | 1 | 0.000672792 | 1.69143 |
-| /Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/sklearn/ensemble/_hist_gradient_boosting/gradient_boosting.py:512:fit | 1 | 1 | 0.0394006 | 1.69035 |
-| <frozen importlib._bootstrap>:1165:_find_and_load | 13 | 1352 | 0.00409827 | 1.44963 |
-| <frozen importlib._bootstrap>:1120:_find_and_load_unlocked | 13 | 1310 | 0.00343867 | 1.44942 |
-| <frozen importlib._bootstrap>:666:_load_unlocked | 13 | 1266 | 0.0028038 | 1.44811 |
-| <frozen importlib._bootstrap_external>:934:exec_module | 12 | 1066 | 0.00153915 | 1.44755 |
-| <frozen importlib._bootstrap>:233:_call_with_frames_removed | 27 | 3105 | 0.000989379 | 1.446 |
+| ~:0:<built-in method builtins.exec> | 1 | 1671 | 0.0249798 | 4.1725 |
+| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:1:<module> | 1 | 1 | 5.1751e-05 | 4.17247 |
+| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:447:main | 1 | 1 | 8.125e-06 | 2.37744 |
+| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:405:_emit_single | 1 | 1 | 0.000664124 | 2.37555 |
+| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:195:_single_run | 1 | 1 | 0.000604707 | 2.37484 |
+| /Users/runner/work/_temp/setup-uv-cache/archive-v0/IAWbRp1XpcBQ_Twc/lib/python3.11/site-packages/sklearn/base.py:1319:wrapper | 1 | 1 | 0.00058004 | 2.19197 |
+| /Users/runner/work/_temp/setup-uv-cache/archive-v0/IAWbRp1XpcBQ_Twc/lib/python3.11/site-packages/sklearn/ensemble/_hist_gradient_boosting/gradient_boosting.py:512:fit | 1 | 1 | 0.0648116 | 2.19088 |
+| <frozen importlib._bootstrap>:1165:_find_and_load | 12 | 1673 | 0.00638945 | 1.79591 |
+| <frozen importlib._bootstrap>:1120:_find_and_load_unlocked | 12 | 1630 | 0.00511577 | 1.79568 |
+| <frozen importlib._bootstrap>:666:_load_unlocked | 12 | 1577 | 0.00416316 | 1.79423 |
+| <frozen importlib._bootstrap_external>:934:exec_module | 11 | 1331 | 0.00291238 | 1.79365 |
+| <frozen importlib._bootstrap>:233:_call_with_frames_removed | 25 | 3835 | 0.00166622 | 1.7917 |
 
 ## lightgbm_hist
 ### Python-level (cProfile) top cumulative entries
 | function | primitive_calls | total_calls | total_time_s | cumulative_time_s |
 | --- | --- | --- | --- | --- |
-| ~:0:<built-in method builtins.exec> | 1 | 1384 | 0.0199725 | 3.40467 |
-| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:1:<module> | 1 | 1 | 4.1708e-05 | 3.40462 |
-| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:418:main | 1 | 1 | 5.875e-06 | 2.07791 |
-| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:374:_emit_single | 1 | 1 | 0.00126492 | 2.07616 |
-| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:168:_single_run | 1 | 1 | 0.000601164 | 2.07477 |
-| /Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/lightgbm/sklearn.py:1381:fit | 1 | 1 | 1.275e-05 | 1.90673 |
-| /Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/lightgbm/sklearn.py:907:fit | 1 | 1 | 6.825e-05 | 1.90672 |
-| /Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/lightgbm/engine.py:109:train | 1 | 1 | 0.00231242 | 1.90537 |
-| /Users/runner/work/_temp/setup-uv-cache/archive-v0/c8I0ajD6kxAP2HbI/lib/python3.11/site-packages/lightgbm/basic.py:4092:update | 220 | 220 | 1.72436 | 1.72489 |
-| <frozen importlib._bootstrap>:1165:_find_and_load | 12 | 1350 | 0.00460217 | 1.32598 |
-| <frozen importlib._bootstrap>:1120:_find_and_load_unlocked | 12 | 1308 | 0.00340109 | 1.32584 |
-| <frozen importlib._bootstrap>:666:_load_unlocked | 12 | 1264 | 0.00276108 | 1.32475 |
+| ~:0:<built-in method builtins.exec> | 1 | 1669 | 0.0232462 | 3.97581 |
+| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:1:<module> | 1 | 1 | 4.9791e-05 | 3.97573 |
+| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:447:main | 1 | 1 | 7.709e-06 | 2.42487 |
+| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:405:_emit_single | 1 | 1 | 0.00100017 | 2.42308 |
+| /Users/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:195:_single_run | 1 | 1 | 0.000586459 | 2.42188 |
+| /Users/runner/work/_temp/setup-uv-cache/archive-v0/IAWbRp1XpcBQ_Twc/lib/python3.11/site-packages/lightgbm/sklearn.py:1381:fit | 1 | 1 | 1.7208e-05 | 2.13742 |
+| /Users/runner/work/_temp/setup-uv-cache/archive-v0/IAWbRp1XpcBQ_Twc/lib/python3.11/site-packages/lightgbm/sklearn.py:907:fit | 1 | 1 | 0.000156873 | 2.1374 |
+| /Users/runner/work/_temp/setup-uv-cache/archive-v0/IAWbRp1XpcBQ_Twc/lib/python3.11/site-packages/lightgbm/engine.py:109:train | 1 | 1 | 0.00272725 | 2.13587 |
+| /Users/runner/work/_temp/setup-uv-cache/archive-v0/IAWbRp1XpcBQ_Twc/lib/python3.11/site-packages/lightgbm/basic.py:4092:update | 220 | 220 | 1.9468 | 1.9477 |
+| <frozen importlib._bootstrap>:1165:_find_and_load | 11 | 1671 | 0.00532697 | 1.55001 |
+| <frozen importlib._bootstrap>:1120:_find_and_load_unlocked | 11 | 1628 | 0.00446101 | 1.54987 |
+| <frozen importlib._bootstrap>:666:_load_unlocked | 11 | 1575 | 0.00357669 | 1.54871 |
 
