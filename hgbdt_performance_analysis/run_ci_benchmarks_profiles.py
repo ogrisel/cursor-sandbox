@@ -96,7 +96,6 @@ def _profile_once(
                 )
                 payload["speedscope"] = str(speedscope_path)
             except RuntimeError:
-                # Keep CI green on environments where native tracing is restricted.
                 pass
     return payload
 
@@ -118,14 +117,7 @@ def _write_ranked_models_plot(benchmark_summary_json: Path, output_png: Path, ti
     ax.set_title(title)
     ax.grid(axis="y", alpha=0.25)
     for bar, value in zip(bars, median_totals):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            value,
-            f"{value:.3f}",
-            ha="center",
-            va="bottom",
-            fontsize=9,
-        )
+        ax.text(bar.get_x() + bar.get_width() / 2, value, f"{value:.3f}", ha="center", va="bottom", fontsize=9)
     fig.tight_layout()
     output_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_png, dpi=160)
@@ -158,7 +150,7 @@ def _write_scalability_plot(benchmark_results_json: Path, output_png: Path, titl
             baseline = float(per_thread[1]["fit_seconds"])
             speedup = [baseline / float(per_thread[t]["fit_seconds"]) for t in threads]
             ax.plot(threads, speedup, marker="o", label=model)
-        ax.set_title(f"{dataset}")
+        ax.set_title(dataset)
         ax.set_xlabel("Threads")
         ax.set_ylabel("Fit speedup vs 1-thread")
         ax.grid(alpha=0.3)
@@ -211,10 +203,6 @@ def _run_benchmark_setting(
         [
             sys.executable,
             str(ANALYZE_SCRIPT),
-            "--artifacts-root",
-            args.artifacts_root,
-            "--machine-tag",
-            machine_tag,
             "--input-json",
             str(benchmark_json),
             "--output-json",
@@ -301,10 +289,6 @@ def main() -> None:
         [
             sys.executable,
             str(EXTRACT_SCRIPT),
-            "--artifacts-root",
-            args.artifacts_root,
-            "--machine-tag",
-            machine_tag,
             "--spec-json",
             str(profile_spec_json),
             "--output-json",
