@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import platform
 import shutil
 import subprocess
@@ -35,6 +36,13 @@ DEEP_FEW_TREES_PARAMS = {
     "min_split_gain": 0.0,
     "random_state": 42,
 }
+
+
+def _resolve_thread_grid(requested_grid: list[int] | None) -> list[int]:
+    if requested_grid:
+        return sorted({max(1, int(t)) for t in requested_grid})
+    cpu_count = max(1, os.cpu_count() or 1)
+    return sorted({1, 2, cpu_count, 2 * cpu_count, 4 * cpu_count})
 
 
 def _run(cmd: list[str]) -> str:
@@ -217,7 +225,7 @@ def main() -> None:
     parser.add_argument("--artifacts-root", default=str(BASE_DIR / "artifacts"))
     parser.add_argument("--machine-tag", default=None)
     parser.add_argument("--timeout-s", type=float, default=4.0)
-    parser.add_argument("--thread-grid", nargs="+", type=int, default=[1, 2, 4])
+    parser.add_argument("--thread-grid", nargs="+", type=int, default=None)
     parser.add_argument("--benchmark-min-n-samples", type=int, default=5_000)
     parser.add_argument("--benchmark-reduction-factor", type=float, default=0.6)
     parser.add_argument("--profile-n-samples", type=int, default=40_000)
@@ -226,6 +234,8 @@ def main() -> None:
     parser.add_argument("--profile-models", nargs="+", default=["sklearn_hgb", "lightgbm_hist"])
     parser.add_argument("--skip-alt-hparams", action="store_true")
     args = parser.parse_args()
+    thread_grid = _resolve_thread_grid(args.thread_grid)
+    args.thread_grid = thread_grid
 
     out_dir = machine_artifacts_dir(base_dir=BASE_DIR, artifacts_root=args.artifacts_root, machine_tag=args.machine_tag)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -277,6 +287,13 @@ def main() -> None:
         "machine_tag": resolve_machine_tag(args.machine_tag),
         "system": platform.system(),
         "architecture": platform.machine(),
+        "cpu_count": max(1, os.cpu_count() or 1),
+        "thread_grid": thread_grid,
+        "oversubscription_targets": {
+            "cores": max(1, os.cpu_count() or 1),
+            "x2_cores": 2 * max(1, os.cpu_count() or 1),
+            "x4_cores": 4 * max(1, os.cpu_count() or 1),
+        },
         "native_profile_enabled": native_enabled,
         "settings": setting_outputs,
         "outputs": {

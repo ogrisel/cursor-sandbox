@@ -73,6 +73,36 @@ def _scalability_rows(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def _oversubscription_rows(runs: list[dict[str, Any]], core_threads: int) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str], dict[int, dict[str, Any]]] = {}
+    for row in runs:
+        key = (str(row["dataset_name"]), str(row["model"]))
+        grouped.setdefault(key, {})[int(row["threads"])] = row
+
+    rows: list[dict[str, Any]] = []
+    t2 = 2 * core_threads
+    t4 = 4 * core_threads
+    for (dataset, model), per_thread in sorted(grouped.items()):
+        if core_threads not in per_thread:
+            continue
+        fit_core = float(per_thread[core_threads]["fit_seconds"])
+        fit_2x = float(per_thread[t2]["fit_seconds"]) if t2 in per_thread else None
+        fit_4x = float(per_thread[t4]["fit_seconds"]) if t4 in per_thread else None
+        rows.append(
+            {
+                "dataset": dataset,
+                "model": model,
+                "core_threads": core_threads,
+                "fit_s_cores": fit_core,
+                "fit_s_2x_cores": fit_2x,
+                "fit_s_4x_cores": fit_4x,
+                "fit_ratio_2x_vs_cores": None if fit_2x is None else (fit_2x / fit_core),
+                "fit_ratio_4x_vs_cores": None if fit_4x is None else (fit_4x / fit_core),
+            }
+        )
+    return rows
+
+
 def _infer_root_cause(machine_dir: Path) -> tuple[str, list[str]]:
     profile_summary_path = machine_dir / "profile_summary.json"
     if not profile_summary_path.exists():
@@ -117,7 +147,7 @@ def _infer_root_cause(machine_dir: Path) -> tuple[str, list[str]]:
     )
 
 
-def _identify_issues(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _identify_issues(runs: list[dict[str, Any]], core_threads: int) -> list[dict[str, Any]]:
     issues: list[dict[str, Any]] = []
     by_dataset = sorted({str(r["dataset_name"]) for r in runs})
     for dataset in by_dataset:
@@ -156,6 +186,29 @@ def _identify_issues(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
                         "detail": f"Best sklearn speedup trails best alternative by {gap:.3f} (1->max threads).",
                     }
                 )
+    for dataset in by_dataset:
+        rows_core = [r for r in runs if str(r["dataset_name"]) == dataset and int(r["threads"]) == core_threads]
+        rows_4x = [r for r in runs if str(r["dataset_name"]) == dataset and int(r["threads"]) == 4 * core_threads]
+        if not rows_core or not rows_4x:
+            continue
+        sk_core = [float(r["fit_seconds"]) for r in rows_core if str(r["model"]) in SKLEARN_MODELS]
+        sk_4x = [float(r["fit_seconds"]) for r in rows_4x if str(r["model"]) in SKLEARN_MODELS]
+        alt_core = [float(r["fit_seconds"]) for r in rows_core if str(r["model"]) in ALT_MODELS]
+        alt_4x = [float(r["fit_seconds"]) for r in rows_4x if str(r["model"]) in ALT_MODELS]
+        if sk_core and sk_4x and alt_core and alt_4x:
+            sk_ratio = min(sk_4x) / min(sk_core)
+            alt_ratio = min(alt_4x) / min(alt_core)
+            if sk_ratio > alt_ratio + 0.15:
+                issues.append(
+                    {
+                        "type": "oversubscription",
+                        "dataset": dataset,
+                        "detail": (
+                            f"At 4x cores, sklearn fit-time ratio vs cores is {sk_ratio:.3f} "
+                            f"vs {alt_ratio:.3f} for best alternative."
+                        ),
+                    }
+                )
     return issues
 
 
@@ -165,7 +218,9 @@ def _table(rows: list[dict[str, Any]], columns: list[tuple[str, str]]) -> list[s
         vals: list[str] = []
         for key, _ in columns:
             value = row.get(key, "n/a")
-            if isinstance(value, float):
+            if value is None:
+                vals.append("n/a")
+            elif isinstance(value, float):
                 vals.append(f"{value:.6g}")
             else:
                 vals.append(str(value))
@@ -177,12 +232,16 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
     root_cause_text, root_cause_plan = _infer_root_cause(machine_dir)
     lines = [f"# Detailed platform analysis: {machine_dir.name}", ""]
     manifest_path = machine_dir / "run_manifest.json"
+    core_threads = 1
     if manifest_path.exists():
         manifest = _load_json(manifest_path)
+        core_threads = int(manifest.get("cpu_count", 1))
         lines.extend(
             [
                 f"- System: `{manifest.get('system', 'unknown')}`",
                 f"- Architecture: `{manifest.get('architecture', 'unknown')}`",
+                f"- CPU count (logical): `{core_threads}`",
+                f"- Thread grid: `{manifest.get('thread_grid', [])}`",
                 f"- Native profile enabled: `{manifest.get('native_profile_enabled', False)}`",
                 "",
             ]
@@ -192,7 +251,8 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
         runs = payload["results"]["runs"]
         parity = _parity_rows(runs)
         scalability = _scalability_rows(runs)
-        issues = _identify_issues(runs)
+        issues = _identify_issues(runs=runs, core_threads=core_threads)
+        oversub = _oversubscription_rows(runs=runs, core_threads=core_threads)
         plot_suffix = "" if setting_name == "baseline_default" else f"_{setting_name}"
         scalability_plot = machine_dir / f"scalability{plot_suffix}.png"
 
@@ -228,6 +288,22 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
                     ("fit_s_1_thread", "fit_s_1_thread"),
                     ("fit_s_max_threads", "fit_s_max_threads"),
                     ("speedup_1_to_max", "speedup_1_to_max"),
+                ],
+            )
+        )
+        lines.append("")
+        lines.extend([f"### Oversubscription regime summary (`cores={core_threads}`, `2x`, `4x`)", ""])
+        lines.extend(
+            _table(
+                oversub,
+                [
+                    ("dataset", "dataset"),
+                    ("model", "model"),
+                    ("fit_s_cores", "fit_s_cores"),
+                    ("fit_s_2x_cores", "fit_s_2x_cores"),
+                    ("fit_s_4x_cores", "fit_s_4x_cores"),
+                    ("fit_ratio_2x_vs_cores", "fit_ratio_2x_vs_cores"),
+                    ("fit_ratio_4x_vs_cores", "fit_ratio_4x_vs_cores"),
                 ],
             )
         )
