@@ -1,0 +1,10 @@
+{
+  "sklearn_hgb": {
+    "cprofile": "artifacts/machines/linux-amd64/profiles/sklearn_hgb.pstats",
+    "speedscope": "artifacts/machines/linux-amd64/profiles/sklearn_hgb.speedscope.json"
+  },
+  "lightgbm_hist": {
+    "cprofile": "artifacts/machines/linux-amd64/profiles/lightgbm_hist.pstats",
+    "speedscope": "artifacts/machines/linux-amd64/profiles/lightgbm_hist.speedscope.json"
+  }
+}

@@ -5,9 +5,10 @@ import pstats
 from collections import Counter
 from pathlib import Path
 
+from artifact_layout import machine_artifacts_dir
+
 
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
 
 def _cprofile_top(pstats_path: str, n: int) -> list[dict]:
@@ -76,10 +77,22 @@ def _write_md(path: str, payload: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--spec-json", required=True, help="JSON mapping model->profile files")
-    parser.add_argument("--output-json", default=str(DEFAULT_ARTIFACTS_DIR / "profile_summary.json"))
-    parser.add_argument("--output-md", default=str(DEFAULT_ARTIFACTS_DIR / "profile_summary.md"))
+    parser.add_argument("--output-json", default=None)
+    parser.add_argument("--output-md", default=None)
+    parser.add_argument("--artifacts-root", type=str, default=str(BASE_DIR / "artifacts"))
+    parser.add_argument("--machine-tag", type=str, default=None)
     parser.add_argument("--top-n", type=int, default=12)
     args = parser.parse_args()
+    artifacts_dir = machine_artifacts_dir(
+        base_dir=BASE_DIR,
+        artifacts_root=args.artifacts_root,
+        machine_tag=args.machine_tag,
+    )
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    if args.output_json is None:
+        args.output_json = str(artifacts_dir / "profile_summary.json")
+    if args.output_md is None:
+        args.output_md = str(artifacts_dir / "profile_summary.md")
 
     spec = json.loads(Path(args.spec_json).read_text(encoding="utf-8"))
     out: dict = {}

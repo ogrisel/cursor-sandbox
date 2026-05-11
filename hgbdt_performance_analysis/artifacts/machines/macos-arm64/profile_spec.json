@@ -1,0 +1,8 @@
+{
+  "sklearn_hgb": {
+    "cprofile": "artifacts/machines/macos-arm64/profiles/sklearn_hgb.pstats"
+  },
+  "lightgbm_hist": {
+    "cprofile": "artifacts/machines/macos-arm64/profiles/lightgbm_hist.pstats"
+  }
+}

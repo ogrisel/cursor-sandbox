@@ -1,0 +1,129 @@
+name: benchmark-profiling-matrix
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "hgbdt_performance_analysis/**"
+      - ".github/workflows/benchmark-profiling-matrix.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "hgbdt_performance_analysis/**"
+      - ".github/workflows/benchmark-profiling-matrix.yml"
+
+jobs:
+  benchmark-profile:
+    name: "${{ matrix.machine_tag }}"
+    runs-on: ${{ matrix.runs_on }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runs_on: ubuntu-24.04
+            machine_tag: linux-amd64
+          - runs_on: ubuntu-24.04-arm
+            machine_tag: linux-arm64
+          - runs_on: macos-14
+            machine_tag: macos-arm64
+          - runs_on: windows-2022
+            machine_tag: windows-amd64
+
+    defaults:
+      run:
+        working-directory: hgbdt_performance_analysis
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install libomp (macOS)
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
+      - name: Run benchmark + profiling pipeline (non-Windows)
+        if: runner.os != 'Windows'
+        run: |
+          uv run --python 3.11 --exclude-newer P7D \
+            --with numpy --with pandas --with psutil --with scikit-learn --with xgboost --with lightgbm \
+            --with matplotlib --with threadpoolctl --with py-spy \
+            python run_ci_benchmarks_profiles.py \
+            --machine-tag "${{ matrix.machine_tag }}" \
+            --artifacts-root artifacts \
+            --timeout-s 12 \
+            --benchmark-min-n-samples 500 \
+            --benchmark-reduction-factor 0.5 \
+            --profile-threads 2
+
+      - name: Run benchmark + profiling pipeline (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          uv run --python 3.11 --exclude-newer P7D `
+            --with numpy --with pandas --with psutil --with scikit-learn --with xgboost --with lightgbm `
+            --with matplotlib --with threadpoolctl `
+            python run_ci_benchmarks_profiles.py `
+            --machine-tag "${{ matrix.machine_tag }}" `
+            --artifacts-root artifacts `
+            --timeout-s 12 `
+            --benchmark-min-n-samples 500 `
+            --benchmark-reduction-factor 0.5 `
+            --profile-threads 2
+
+      - name: Upload machine-scoped artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "benchmark-profiles-${{ matrix.machine_tag }}"
+          path: "hgbdt_performance_analysis/artifacts/machines/${{ matrix.machine_tag }}"
+          if-no-files-found: error
+          retention-days: 14
+
+  consolidate:
+    name: consolidate-platform-results
+    runs-on: ubuntu-24.04
+    needs: benchmark-profile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Download machine artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "benchmark-profiles-*"
+          path: downloaded-artifacts
+          merge-multiple: false
+
+      - name: Consolidate into machine subfolders and update platform conclusions
+        run: |
+          uv run --python 3.11 --exclude-newer P7D \
+            python hgbdt_performance_analysis/consolidate_ci_results.py \
+            --downloaded-artifacts-root downloaded-artifacts \
+            --artifacts-root hgbdt_performance_analysis/artifacts
+
+      - name: Generate per-platform detailed analysis reports
+        run: |
+          uv run --python 3.11 --exclude-newer P7D \
+            python hgbdt_performance_analysis/generate_platform_detailed_analysis.py \
+            --artifacts-root hgbdt_performance_analysis/artifacts
+
+      - name: Publish consolidated summary in job output
+        run: cat hgbdt_performance_analysis/artifacts/platform_specific_conclusions.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload consolidated artifacts bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: "benchmark-profiles-consolidated"
+          path: |
+            hgbdt_performance_analysis/artifacts/machines
+            hgbdt_performance_analysis/artifacts/platform_specific_summary.json
+            hgbdt_performance_analysis/artifacts/platform_specific_conclusions.md
+            hgbdt_performance_analysis/artifacts/platform_detailed_analysis_index.md
+          if-no-files-found: error
+          retention-days: 14

@@ -164,6 +164,34 @@ def _fitted_tree_count(model_name: str, model: Any) -> int:
     raise ValueError(f"Unknown model for tree counting: {model_name}")
 
 
+def _count_tree_nodes(model_name: str, model: Any) -> int:
+    if model_name in {"sklearn_hgb", "sklearn_hgb_fixed"}:
+        total_nodes = 0
+        for stage in getattr(model, "_predictors", []):
+            for predictor in stage:
+                nodes = getattr(predictor, "nodes", None)
+                if nodes is None:
+                    continue
+                total_nodes += int(getattr(nodes, "shape", [0])[0])
+        return total_nodes
+    if model_name == "xgboost_hist":
+        return int(model.get_booster().trees_to_dataframe().shape[0])
+    if model_name == "lightgbm_hist":
+        booster = getattr(model, "booster_", None)
+        if booster is None:
+            return 0
+
+        def _walk(node: dict[str, Any]) -> int:
+            left = node.get("left_child")
+            right = node.get("right_child")
+            if left is None and right is None:
+                return 1
+            return 1 + (_walk(left) if left is not None else 0) + (_walk(right) if right is not None else 0)
+
+        return int(sum(_walk(tree["tree_structure"]) for tree in booster.dump_model().get("tree_info", [])))
+    raise ValueError(f"Unknown model for node counting: {model_name}")
+
+
 def _single_run(
     model_name: str,
     n_samples: int,
@@ -210,6 +238,8 @@ def _single_run(
     r2 = r2_score(y_test, y_pred)
     expected_trees = int(common["n_estimators"])
     fitted_trees = _fitted_tree_count(model_name=model_name, model=model)
+    total_nodes = _count_tree_nodes(model_name=model_name, model=model)
+    avg_nodes_per_tree = 0.0 if fitted_trees == 0 else total_nodes / fitted_trees
     fitted_trees_match_expected = fitted_trees == expected_trees
     if not fitted_trees_match_expected:
         raise RuntimeError(
@@ -231,6 +261,8 @@ def _single_run(
         "fitted_trees": fitted_trees,
         "expected_trees": expected_trees,
         "fitted_trees_match_expected": fitted_trees_match_expected,
+        "total_nodes": total_nodes,
+        "avg_nodes_per_tree": avg_nodes_per_tree,
         "hyperparameters": common,
     }
 

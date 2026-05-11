@@ -1,0 +1,278 @@
+{
+  "sklearn_hgb": {
+    "cprofile_top": [
+      {
+        "function": "~:0:<built-in method builtins.exec>",
+        "primitive_calls": 1,
+        "total_calls": 1666,
+        "total_time_s": 0.034155858000000004,
+        "cumulative_time_s": 4.07740065
+      },
+      {
+        "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:1:<module>",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.00011463700000000001,
+        "cumulative_time_s": 4.077367652
+      },
+      {
+        "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:447:main",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 1.1184e-05,
+        "cumulative_time_s": 2.27602758
+      },
+      {
+        "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:405:_emit_single",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.00018999700000000002,
+        "cumulative_time_s": 2.27358862
+      },
+      {
+        "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:195:_single_run",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.000315192,
+        "cumulative_time_s": 2.273302325
+      },
+      {
+        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/V_NtNyvpTlkMW5nT/lib/python3.11/site-packages/sklearn/base.py:1319:wrapper",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 8.3508e-05,
+        "cumulative_time_s": 2.121066366
+      },
+      {
+        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/V_NtNyvpTlkMW5nT/lib/python3.11/site-packages/sklearn/ensemble/_hist_gradient_boosting/gradient_boosting.py:512:fit",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.039262091000000006,
+        "cumulative_time_s": 2.12029953
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
+        "primitive_calls": 12,
+        "total_calls": 1668,
+        "total_time_s": 0.009030723000000001,
+        "cumulative_time_s": 1.8008520710000002
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
+        "primitive_calls": 12,
+        "total_calls": 1625,
+        "total_time_s": 0.006401192,
+        "cumulative_time_s": 1.800613849
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
+        "primitive_calls": 12,
+        "total_calls": 1572,
+        "total_time_s": 0.005137252,
+        "cumulative_time_s": 1.799130257
+      },
+      {
+        "function": "<frozen importlib._bootstrap_external>:934:exec_module",
+        "primitive_calls": 11,
+        "total_calls": 1326,
+        "total_time_s": 0.00338957,
+        "cumulative_time_s": 1.7987563290000002
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:233:_call_with_frames_removed",
+        "primitive_calls": 24,
+        "total_calls": 3788,
+        "total_time_s": 0.0019639510000000002,
+        "cumulative_time_s": 1.796664422
+      }
+    ],
+    "speedscope_top_leaf": [
+      {
+        "leaf_frame": "split_next",
+        "sample_weight": 0.8200000000000005
+      },
+      {
+        "leaf_frame": "_compute_best_split_and_push",
+        "sample_weight": 0.7000000000000004
+      },
+      {
+        "leaf_frame": "_initialize_root",
+        "sample_weight": 0.3200000000000001
+      },
+      {
+        "leaf_frame": "_compile_bytecode",
+        "sample_weight": 0.13999999999999999
+      },
+      {
+        "leaf_frame": "_call_with_frames_removed",
+        "sample_weight": 0.13999999999999999
+      },
+      {
+        "leaf_frame": "<module>",
+        "sample_weight": 0.10999999999999999
+      },
+      {
+        "leaf_frame": "dedent",
+        "sample_weight": 0.09999999999999999
+      },
+      {
+        "leaf_frame": "make_regression",
+        "sample_weight": 0.09
+      },
+      {
+        "leaf_frame": "sort",
+        "sample_weight": 0.08
+      },
+      {
+        "leaf_frame": "_unique1d",
+        "sample_weight": 0.07
+      },
+      {
+        "leaf_frame": "get_data",
+        "sample_weight": 0.05
+      },
+      {
+        "leaf_frame": "full",
+        "sample_weight": 0.05
+      }
+    ]
+  },
+  "lightgbm_hist": {
+    "cprofile_top": [
+      {
+        "function": "~:0:<built-in method builtins.exec>",
+        "primitive_calls": 1,
+        "total_calls": 1664,
+        "total_time_s": 0.035891968,
+        "cumulative_time_s": 3.764000143
+      },
+      {
+        "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:1:<module>",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 8.246e-05,
+        "cumulative_time_s": 3.7639791600000003
+      },
+      {
+        "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:447:main",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 8.496000000000001e-06,
+        "cumulative_time_s": 1.935232091
+      },
+      {
+        "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:405:_emit_single",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 6.1852e-05,
+        "cumulative_time_s": 1.9328056800000002
+      },
+      {
+        "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:195:_single_run",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 0.000368163,
+        "cumulative_time_s": 1.932382354
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
+        "primitive_calls": 11,
+        "total_calls": 1666,
+        "total_time_s": 0.009005551,
+        "cumulative_time_s": 1.8275924630000002
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
+        "primitive_calls": 11,
+        "total_calls": 1623,
+        "total_time_s": 0.006590401,
+        "cumulative_time_s": 1.827391524
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
+        "primitive_calls": 11,
+        "total_calls": 1570,
+        "total_time_s": 0.005085359,
+        "cumulative_time_s": 1.8259722200000001
+      },
+      {
+        "function": "<frozen importlib._bootstrap_external>:934:exec_module",
+        "primitive_calls": 10,
+        "total_calls": 1324,
+        "total_time_s": 0.0034451330000000004,
+        "cumulative_time_s": 1.8256277470000002
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:233:_call_with_frames_removed",
+        "primitive_calls": 22,
+        "total_calls": 3784,
+        "total_time_s": 0.0020132880000000002,
+        "cumulative_time_s": 1.8235635010000002
+      },
+      {
+        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/V_NtNyvpTlkMW5nT/lib/python3.11/site-packages/lightgbm/sklearn.py:1381:fit",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 1.8447e-05,
+        "cumulative_time_s": 1.70230268
+      },
+      {
+        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/V_NtNyvpTlkMW5nT/lib/python3.11/site-packages/lightgbm/sklearn.py:907:fit",
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "total_time_s": 7.374000000000001e-05,
+        "cumulative_time_s": 1.702284233
+      }
+    ],
+    "speedscope_top_leaf": [
+      {
+        "leaf_frame": "update",
+        "sample_weight": 1.6800000000000013
+      },
+      {
+        "leaf_frame": "_call_with_frames_removed",
+        "sample_weight": 0.13999999999999999
+      },
+      {
+        "leaf_frame": "make_regression",
+        "sample_weight": 0.13999999999999999
+      },
+      {
+        "leaf_frame": "__init_from_np2d",
+        "sample_weight": 0.12999999999999998
+      },
+      {
+        "leaf_frame": "dedent",
+        "sample_weight": 0.09999999999999999
+      },
+      {
+        "leaf_frame": "_compile_bytecode",
+        "sample_weight": 0.07
+      },
+      {
+        "leaf_frame": "<module>",
+        "sample_weight": 0.060000000000000005
+      },
+      {
+        "leaf_frame": "dump_model",
+        "sample_weight": 0.060000000000000005
+      },
+      {
+        "leaf_frame": "raw_decode",
+        "sample_weight": 0.05
+      },
+      {
+        "leaf_frame": "cleandoc",
+        "sample_weight": 0.04
+      },
+      {
+        "leaf_frame": "get_data",
+        "sample_weight": 0.03
+      },
+      {
+        "leaf_frame": "_attach_argparser_methods",
+        "sample_weight": 0.03
+      }
+    ]
+  }
+}

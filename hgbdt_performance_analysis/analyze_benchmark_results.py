@@ -115,10 +115,16 @@ def _table_md(rows: list[dict], columns: list[str]) -> str:
         return "_No data_\n"
     header = "| " + " | ".join(columns) + " |"
     sep = "| " + " | ".join(["---"] * len(columns)) + " |"
-    body = [
-        "| " + " | ".join(f"{row[col]:.6g}" if isinstance(row[col], float) else str(row[col]) for col in columns) + " |"
-        for row in rows
-    ]
+    body = []
+    for row in rows:
+        values = []
+        for col in columns:
+            value = row.get(col, "n/a")
+            if isinstance(value, float):
+                values.append(f"{value:.6g}")
+            else:
+                values.append(str(value))
+        body.append("| " + " | ".join(values) + " |")
     return "\n".join([header, sep, *body]) + "\n"
 
 
@@ -162,6 +168,10 @@ def _write_markdown(out_path: str, payload: dict, ranked: list[dict], single_thr
                 "total_seconds",
                 "peak_rss_mb",
                 "r2",
+                "fitted_trees",
+                "expected_trees",
+                "total_nodes",
+                "avg_nodes_per_tree",
             ],
         ),
         "",
