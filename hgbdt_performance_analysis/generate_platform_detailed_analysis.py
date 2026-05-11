@@ -172,8 +172,8 @@ def _identify_issues(runs: list[dict[str, Any]], core_threads: int) -> list[dict
     scalability = _scalability_rows(runs=runs, core_threads=core_threads)
     for dataset in by_dataset:
         rows = [r for r in scalability if r["dataset"] == dataset]
-        sk_speed = [float(r["speedup_1_to_max"]) for r in rows if r["model"] in SKLEARN_MODELS]
-        alt_speed = [float(r["speedup_1_to_max"]) for r in rows if r["model"] in ALT_MODELS]
+        sk_speed = [float(r["speedup_1_to_regular_max"]) for r in rows if r["model"] in SKLEARN_MODELS]
+        alt_speed = [float(r["speedup_1_to_regular_max"]) for r in rows if r["model"] in ALT_MODELS]
         if sk_speed and alt_speed:
             best_sk = max(sk_speed)
             best_alt = max(alt_speed)
@@ -184,7 +184,7 @@ def _identify_issues(runs: list[dict[str, Any]], core_threads: int) -> list[dict
                         "type": "scalability",
                         "dataset": dataset,
                         "gap": gap,
-                        "detail": f"Best sklearn speedup trails best alternative by {gap:.3f} (1->max threads).",
+                        "detail": f"Best sklearn speedup trails best alternative by {gap:.3f} (1->regular max threads).",
                     }
                 )
     for dataset in by_dataset:
@@ -257,7 +257,7 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
     for setting_name, payload in sorted(payloads.items()):
         runs = payload["results"]["runs"]
         parity = _parity_rows(runs)
-        scalability = _scalability_rows(runs)
+        scalability = _scalability_rows(runs=runs, core_threads=core_threads)
         issues = _identify_issues(runs=runs, core_threads=core_threads)
         oversub = _oversubscription_rows(runs=runs, core_threads=core_threads)
         plot_suffix = "" if setting_name == "baseline_default" else f"_{setting_name}"
