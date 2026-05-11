@@ -184,9 +184,9 @@ def _effective_thread_count(
     effective_threads = min(effective_threads, max(1, int(physical_cpus)))
     max_depth = int(common["max_depth"]) if common.get("max_depth") is not None else 6
     work_units = max(1, n_samples) * max(1, n_features) * max(1, max_depth)
-    min_work_units_per_thread = 2_400_000
-    work_based_cap = max(1, int(work_units / min_work_units_per_thread))
-    if int(common.get("num_leaves", 0)) >= 127:
+    min_work_units_per_thread = 850_000
+    work_based_cap = max(1, int(math.ceil(work_units / min_work_units_per_thread)))
+    if int(common.get("num_leaves", 0)) >= 127 and n_samples < 60_000:
         work_based_cap = max(1, work_based_cap - 1)
     return max(1, min(effective_threads, work_based_cap))
 
