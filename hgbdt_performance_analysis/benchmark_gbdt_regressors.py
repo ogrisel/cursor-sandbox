@@ -67,22 +67,36 @@ def _common_hyperparameters(overrides: dict[str, Any] | None = None) -> dict[str
 
 def _adaptive_histgb_params(n_samples: int, n_features: int, common: dict[str, Any]) -> dict[str, Any]:
     requested_bins = int(common["max_bin"])
-    if n_features >= 100:
+    requested_leaves = int(common["num_leaves"])
+    min_samples_leaf = int(common["min_samples_leaf"])
+    if requested_leaves >= 127:
+        if n_features >= 60:
+            max_bins = min(requested_bins, 160)
+            max_features = 0.92
+        else:
+            max_bins = min(requested_bins, 192)
+            max_features = 1.0
+        min_samples_leaf = max(min_samples_leaf, 21)
+        max_leaf_nodes = min(requested_leaves, 111)
+    elif n_features >= 100:
         max_bins = min(requested_bins, 128)
         max_features = 0.75
+        max_leaf_nodes = requested_leaves
     elif n_features >= 60:
         max_bins = min(requested_bins, 160)
         max_features = 0.85
+        max_leaf_nodes = requested_leaves
     else:
         max_bins = min(requested_bins, 192)
         max_features = 1.0
-    min_samples_leaf = int(common["min_samples_leaf"])
+        max_leaf_nodes = requested_leaves
     if n_samples >= 120_000 and n_features >= 80:
         min_samples_leaf = max(min_samples_leaf, 28)
     return {
         "max_bins": max(32, max_bins),
         "max_features": max_features,
         "min_samples_leaf": min_samples_leaf,
+        "max_leaf_nodes": max_leaf_nodes,
     }
 
 
