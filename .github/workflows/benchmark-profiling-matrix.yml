@@ -55,10 +55,14 @@ jobs:
             python run_ci_benchmarks_profiles.py \
             --machine-tag "${{ matrix.machine_tag }}" \
             --artifacts-root artifacts \
-            --timeout-s 12 \
-            --benchmark-min-n-samples 500 \
-            --benchmark-reduction-factor 0.5 \
-            --profile-threads 2
+            --timeout-s 7 \
+            --benchmark-min-n-samples 1200 \
+            --benchmark-reduction-factor 0.6 \
+            --dataset-profile ci_balanced \
+            --profile-n-samples 24000 \
+            --profile-n-features 64 \
+            --profile-threads 1 \
+            --profile-models sklearn_hgb
 
       - name: Run benchmark + profiling pipeline (Windows)
         if: runner.os == 'Windows'
@@ -69,10 +73,14 @@ jobs:
             python run_ci_benchmarks_profiles.py `
             --machine-tag "${{ matrix.machine_tag }}" `
             --artifacts-root artifacts `
-            --timeout-s 12 `
-            --benchmark-min-n-samples 500 `
-            --benchmark-reduction-factor 0.5 `
-            --profile-threads 2
+            --timeout-s 7 `
+            --benchmark-min-n-samples 1200 `
+            --benchmark-reduction-factor 0.6 `
+            --dataset-profile ci_balanced `
+            --profile-n-samples 24000 `
+            --profile-n-features 64 `
+            --profile-threads 1 `
+            --profile-models sklearn_hgb
 
       - name: Upload machine-scoped artifacts
         uses: actions/upload-artifact@v4

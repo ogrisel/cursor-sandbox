@@ -25,6 +25,20 @@ from xgboost import XGBRegressor
 MODEL_NAMES = ("sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist")
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
+DATASET_PROFILES: dict[str, list[dict[str, int | str]]] = {
+    "standard": [
+        {"name": "small", "start_n_samples": 50_000, "n_features": 40},
+        {"name": "medium", "start_n_samples": 140_000, "n_features": 80},
+        {"name": "large", "start_n_samples": 320_000, "n_features": 120},
+    ],
+    # CI profile keeps all three dataset regimes while reducing timeout-driven
+    # retries to fit short matrix execution budgets.
+    "ci_balanced": [
+        {"name": "small", "start_n_samples": 24_000, "n_features": 32},
+        {"name": "medium", "start_n_samples": 72_000, "n_features": 64},
+        {"name": "large", "start_n_samples": 160_000, "n_features": 96},
+    ],
+}
 
 
 @dataclass
@@ -322,15 +336,17 @@ def _default_thread_grid() -> list[int]:
     return sorted(set(grid))
 
 
+def _resolve_dataset_grid(dataset_profile: str) -> list[dict[str, int | str]]:
+    if dataset_profile not in DATASET_PROFILES:
+        raise ValueError(f"Unknown dataset profile: {dataset_profile}")
+    return [dict(row) for row in DATASET_PROFILES[dataset_profile]]
+
+
 def _benchmark(args: argparse.Namespace) -> None:
     out_path = Path(args.output_json)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     thread_grid = _default_thread_grid() if args.thread_grid is None else sorted(set(args.thread_grid))
-    dataset_grid = [
-        {"name": "small", "start_n_samples": 50_000, "n_features": 40},
-        {"name": "medium", "start_n_samples": 140_000, "n_features": 80},
-        {"name": "large", "start_n_samples": 320_000, "n_features": 120},
-    ]
+    dataset_grid = _resolve_dataset_grid(args.dataset_profile)
     all_runs: list[dict[str, Any]] = []
 
     for dataset in dataset_grid:
@@ -388,6 +404,7 @@ def _benchmark(args: argparse.Namespace) -> None:
                 "metadata": {
                     "timeout_s": args.timeout_s,
                     "thread_grid": thread_grid,
+                    "dataset_profile": args.dataset_profile,
                     "dataset_grid": dataset_grid,
                     "reduction_factor": args.reduction_factor,
                     "min_n_samples": args.min_n_samples,
@@ -439,6 +456,7 @@ def _parse_args() -> argparse.Namespace:
     bench.add_argument("--seed", type=int, default=42)
     bench.add_argument("--max-r2-spread", type=float, default=0.03)
     bench.add_argument("--thread-grid", type=int, nargs="*", default=None)
+    bench.add_argument("--dataset-profile", choices=sorted(DATASET_PROFILES), default="standard")
     bench.add_argument("--common-params-json", type=str, default=None)
 
     return parser.parse_args()
