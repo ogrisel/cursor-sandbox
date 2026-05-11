@@ -42,7 +42,7 @@ def _resolve_thread_grid(requested_grid: list[int] | None) -> list[int]:
     if requested_grid:
         return sorted({max(1, int(t)) for t in requested_grid})
     cpu_count = max(1, os.cpu_count() or 1)
-    return sorted({1, cpu_count, 2 * cpu_count, 4 * cpu_count})
+    return sorted({1, cpu_count, 4 * cpu_count})
 
 
 def _run_capture(cmd: list[str], timeout_s: float = 5.0) -> str | None:
@@ -403,6 +403,8 @@ def _run_benchmark_setting(
         str(args.benchmark_min_n_samples),
         "--reduction-factor",
         str(args.benchmark_reduction_factor),
+        "--execution-mode",
+        args.benchmark_execution_mode,
         "--dataset-profile",
         args.dataset_profile,
     ]
@@ -447,9 +449,10 @@ def main() -> None:
     parser.add_argument("--thread-grid", nargs="+", type=int, default=None)
     parser.add_argument("--benchmark-min-n-samples", type=int, default=5_000)
     parser.add_argument("--benchmark-reduction-factor", type=float, default=0.6)
+    parser.add_argument("--benchmark-execution-mode", choices=["subprocess", "inprocess"], default="inprocess")
     parser.add_argument("--dataset-profile", choices=["standard", "ci_balanced"], default="ci_balanced")
-    parser.add_argument("--profile-n-samples", type=int, default=24_000)
-    parser.add_argument("--profile-n-features", type=int, default=64)
+    parser.add_argument("--profile-n-samples", type=int, default=16_000)
+    parser.add_argument("--profile-n-features", type=int, default=48)
     parser.add_argument("--profile-threads", type=int, default=4)
     parser.add_argument("--profile-models", nargs="+", default=["sklearn_hgb"])
     parser.add_argument("--skip-alt-hparams", action="store_true")

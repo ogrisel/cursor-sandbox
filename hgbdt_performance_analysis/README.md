@@ -47,6 +47,8 @@ The matrix uploads:
 - per-machine artifacts: `benchmark-profiles-<machine-tag>`
 - consolidated bundle: `benchmark-profiles-consolidated`
 
+CI matrix jobs use a runtime-bounded profile (`benchmark_execution_mode=inprocess`, `dataset_profile=ci_balanced`, thread regimes `1/cores/4x-cores`, and `--skip-alt-hparams`) to keep each machine run under ~5 minutes while still producing parity, scalability, and oversubscription diagnostics.
+
 ## Collecting CI outputs into the repo
 
 Download artifacts from a run:
@@ -100,7 +102,7 @@ From `artifacts/platform_specific_summary.json`:
 
 ### Cross-platform comparison by performance regime
 
-Regime summaries below are computed from all datasets (`small`, `medium`, `large`) and both hyperparameter settings (`baseline_default`, `deep_few_trees`) in the consolidated machine artifacts.
+Regime summaries below are computed from all datasets (`small`, `medium`, `large`) and both hyperparameter settings (`baseline_default`, `deep_few_trees`) in the consolidated artifacts committed in this repository. CI matrix jobs now run a faster baseline-only profile (`--skip-alt-hparams`) to stay within runtime budget, while preserving the same mono-thread/scalability/oversubscription measurement structure.
 
 #### 1) Mono-thread performance (`threads=1`, lower `total_seconds` is better)
 

@@ -34,9 +34,9 @@ DATASET_PROFILES: dict[str, list[dict[str, int | str]]] = {
     # CI profile keeps all three dataset regimes while reducing timeout-driven
     # retries to fit short matrix execution budgets.
     "ci_balanced": [
-        {"name": "small", "start_n_samples": 24_000, "n_features": 32},
-        {"name": "medium", "start_n_samples": 72_000, "n_features": 64},
-        {"name": "large", "start_n_samples": 160_000, "n_features": 96},
+        {"name": "small", "start_n_samples": 12_000, "n_features": 24},
+        {"name": "medium", "start_n_samples": 36_000, "n_features": 48},
+        {"name": "large", "start_n_samples": 90_000, "n_features": 80},
     ],
 }
 
@@ -348,36 +348,27 @@ def _benchmark(args: argparse.Namespace) -> None:
     thread_grid = _default_thread_grid() if args.thread_grid is None else sorted(set(args.thread_grid))
     dataset_grid = _resolve_dataset_grid(args.dataset_profile)
     all_runs: list[dict[str, Any]] = []
+    common_overrides = None if args.common_params_json is None else json.loads(args.common_params_json)
 
-    for dataset in dataset_grid:
-        current_n_samples = dataset["start_n_samples"]
-        reduction_round = 0
-        while True:
-            timeout_happened = False
+    if args.execution_mode == "inprocess":
+        for dataset in dataset_grid:
             dataset_runs: list[dict[str, Any]] = []
             for threads in thread_grid:
                 per_thread_runs: list[dict[str, Any]] = []
                 for model in MODEL_NAMES:
-                    run = _run_in_subprocess(
-                        model=model,
-                        n_samples=current_n_samples,
-                        n_features=dataset["n_features"],
+                    run = _single_run(
+                        model_name=model,
+                        n_samples=int(dataset["start_n_samples"]),
+                        n_features=int(dataset["n_features"]),
                         threads=threads,
                         seed=args.seed,
-                        timeout_s=args.timeout_s,
-                        common_params_json=args.common_params_json,
+                        common_overrides=common_overrides,
                     )
-                    if run.get("timeout", False):
-                        timeout_happened = True
-                        break
                     run["dataset_name"] = dataset["name"]
                     run["timeout_s"] = args.timeout_s
                     run["reduced_from_n_samples"] = dataset["start_n_samples"]
-                    run["reduction_round"] = reduction_round
+                    run["reduction_round"] = 0
                     per_thread_runs.append(run)
-                if timeout_happened:
-                    break
-
                 r2_values = [r["r2"] for r in per_thread_runs]
                 r2_spread = max(r2_values) - min(r2_values)
                 for r in per_thread_runs:
@@ -385,18 +376,56 @@ def _benchmark(args: argparse.Namespace) -> None:
                     r["r2_spread_tolerance"] = args.max_r2_spread
                     r["r2_spread_within_tolerance"] = r2_spread <= args.max_r2_spread
                 dataset_runs.extend(per_thread_runs)
-            if timeout_happened:
-                reduced = int(current_n_samples * args.reduction_factor)
-                if reduced < args.min_n_samples:
-                    raise RuntimeError(
-                        f"Could not keep runtimes <= {args.timeout_s}s for dataset={dataset['name']} "
-                        f"for all thread settings even after reducing to n_samples={current_n_samples}."
-                    )
-                current_n_samples = reduced
-                reduction_round += 1
-                continue
             all_runs.extend(dataset_runs)
-            break
+    else:
+        for dataset in dataset_grid:
+            current_n_samples = dataset["start_n_samples"]
+            reduction_round = 0
+            while True:
+                timeout_happened = False
+                dataset_runs: list[dict[str, Any]] = []
+                for threads in thread_grid:
+                    per_thread_runs: list[dict[str, Any]] = []
+                    for model in MODEL_NAMES:
+                        run = _run_in_subprocess(
+                            model=model,
+                            n_samples=current_n_samples,
+                            n_features=dataset["n_features"],
+                            threads=threads,
+                            seed=args.seed,
+                            timeout_s=args.timeout_s,
+                            common_params_json=args.common_params_json,
+                        )
+                        if run.get("timeout", False):
+                            timeout_happened = True
+                            break
+                        run["dataset_name"] = dataset["name"]
+                        run["timeout_s"] = args.timeout_s
+                        run["reduced_from_n_samples"] = dataset["start_n_samples"]
+                        run["reduction_round"] = reduction_round
+                        per_thread_runs.append(run)
+                    if timeout_happened:
+                        break
+
+                    r2_values = [r["r2"] for r in per_thread_runs]
+                    r2_spread = max(r2_values) - min(r2_values)
+                    for r in per_thread_runs:
+                        r["r2_spread_for_scenario"] = r2_spread
+                        r["r2_spread_tolerance"] = args.max_r2_spread
+                        r["r2_spread_within_tolerance"] = r2_spread <= args.max_r2_spread
+                    dataset_runs.extend(per_thread_runs)
+                if timeout_happened:
+                    reduced = int(current_n_samples * args.reduction_factor)
+                    if reduced < args.min_n_samples:
+                        raise RuntimeError(
+                            f"Could not keep runtimes <= {args.timeout_s}s for dataset={dataset['name']} "
+                            f"for all thread settings even after reducing to n_samples={current_n_samples}."
+                        )
+                    current_n_samples = reduced
+                    reduction_round += 1
+                    continue
+                all_runs.extend(dataset_runs)
+                break
 
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(
@@ -404,6 +433,7 @@ def _benchmark(args: argparse.Namespace) -> None:
                 "metadata": {
                     "timeout_s": args.timeout_s,
                     "thread_grid": thread_grid,
+                    "execution_mode": args.execution_mode,
                     "dataset_profile": args.dataset_profile,
                     "dataset_grid": dataset_grid,
                     "reduction_factor": args.reduction_factor,
@@ -456,6 +486,7 @@ def _parse_args() -> argparse.Namespace:
     bench.add_argument("--seed", type=int, default=42)
     bench.add_argument("--max-r2-spread", type=float, default=0.03)
     bench.add_argument("--thread-grid", type=int, nargs="*", default=None)
+    bench.add_argument("--execution-mode", choices=["subprocess", "inprocess"], default="subprocess")
     bench.add_argument("--dataset-profile", choices=sorted(DATASET_PROFILES), default="standard")
     bench.add_argument("--common-params-json", type=str, default=None)
 
