@@ -13,6 +13,10 @@ on:
       - "hgbdt_performance_analysis/**"
       - ".github/workflows/benchmark-profiling-matrix.yml"
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
 jobs:
   benchmark-profile:
     name: "${{ matrix.machine_tag }}"
