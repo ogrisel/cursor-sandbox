@@ -2,6 +2,19 @@
   "machine_tag": "macos-arm64",
   "system": "Darwin",
   "architecture": "arm64",
+  "cpu_count": 3,
+  "thread_grid": [
+    1,
+    2,
+    3,
+    6,
+    12
+  ],
+  "oversubscription_targets": {
+    "cores": 3,
+    "x2_cores": 6,
+    "x4_cores": 12
+  },
   "native_profile_enabled": true,
   "settings": {
     "baseline_default": {

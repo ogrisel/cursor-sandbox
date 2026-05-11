@@ -63,17 +63,17 @@ Generate detailed reports:
 
 ## Main conclusions
 
-1. Relative runtime ranking is regime-dependent and not globally stable across platforms.
-2. `xgboost_hist` remains the slowest model on all four CI platforms in this benchmark regime.
+1. Relative runtime ranking is regime-dependent and not globally stable across platforms, especially once oversubscribed regimes are included.
+2. With oversubscription included, `sklearn_hgb_fixed` is the most frequent winner (`3/4` platforms), while the unmitigated `sklearn_hgb` or `xgboost_hist` are slowest depending on platform.
 3. Platform-specific conclusions are required before claiming a global winner.
 
-### Per-platform benchmark plots (CI run `25525901055`)
+### Per-platform benchmark plots (CI run `25664430396`)
 
 These plots show median total runtime ranking (lower is better):
 
-- **linux-amd64** (winner: `lightgbm_hist`)
+- **linux-amd64** (winner: `sklearn_hgb_fixed`)
   - ![linux-amd64 ranking](artifacts/machines/linux-amd64/benchmark_ranked_models.png)
-- **linux-arm64** (winner: `lightgbm_hist`)
+- **linux-arm64** (winner: `sklearn_hgb_fixed`)
   - ![linux-arm64 ranking](artifacts/machines/linux-arm64/benchmark_ranked_models.png)
 - **macos-arm64** (winner: `sklearn_hgb_fixed`)
   - ![macos-arm64 ranking](artifacts/machines/macos-arm64/benchmark_ranked_models.png)
@@ -85,15 +85,16 @@ These plots show median total runtime ranking (lower is better):
 From `artifacts/platform_specific_summary.json`:
 
 - Winner split:
-  - `lightgbm_hist`: 3/4 platforms
-  - `sklearn_hgb_fixed`: 1/4 platforms
+  - `sklearn_hgb_fixed`: 3/4 platforms
+  - `lightgbm_hist`: 1/4 platforms
 - Slowest model:
-  - `xgboost_hist`: 4/4 platforms
+  - `xgboost_hist`: 2/4 platforms
+  - `sklearn_hgb`: 2/4 platforms
 - Worst/best median runtime ratio by model:
-  - `lightgbm_hist`: `1.628x`
-  - `sklearn_hgb`: `1.348x`
-  - `sklearn_hgb_fixed`: `1.354x`
-  - `xgboost_hist`: `1.424x`
+  - `lightgbm_hist`: `2.158x`
+  - `sklearn_hgb`: `2.981x`
+  - `sklearn_hgb_fixed`: `3.596x`
+  - `xgboost_hist`: `2.627x`
 - Profiling coverage note:
   - Windows artifacts are generated without native py-spy (`native_profile_enabled=false`), while Linux/macOS include native profile snapshots.
 
@@ -110,6 +111,7 @@ Each detailed report includes:
 - Scalability plots for both settings:
   - `baseline_default` (`scalability.png`)
   - `deep_few_trees` (`scalability_deep_few_trees.png`)
+- Oversubscription regime tables at `cores`, `2x cores`, and `4x cores`.
 - Measured per-model `r2` parity tables.
 - Effective tree-count and node-per-tree parity checks (`fitted_trees`, `expected_trees`, `total_nodes`, `avg_nodes_per_tree`).
 - Root-cause diagnostics for sklearn single-thread/scalability underperformance when detected, plus implementation plans for each issue.

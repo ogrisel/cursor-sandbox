@@ -2,6 +2,19 @@
   "machine_tag": "windows-amd64",
   "system": "Windows",
   "architecture": "AMD64",
+  "cpu_count": 4,
+  "thread_grid": [
+    1,
+    2,
+    4,
+    8,
+    16
+  ],
+  "oversubscription_targets": {
+    "cores": 4,
+    "x2_cores": 8,
+    "x4_cores": 16
+  },
   "native_profile_enabled": false,
   "settings": {
     "baseline_default": {
