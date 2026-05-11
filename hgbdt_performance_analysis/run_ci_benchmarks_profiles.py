@@ -125,9 +125,13 @@ def _collect_cpu_info() -> dict[str, Any]:
             for line in lscpu_out.splitlines():
                 if line.lower().startswith("model name:"):
                     info["model_name"] = line.split(":", 1)[1].strip()
-        phys_pairs = _run_capture(["bash", "-lc", "lscpu -p=core,socket | rg -v '^#'"])
+        phys_pairs = _run_capture(["lscpu", "-p=core,socket"])
         if phys_pairs:
-            unique_pairs = {line.strip() for line in phys_pairs.splitlines() if line.strip()}
+            unique_pairs = {
+                line.strip()
+                for line in phys_pairs.splitlines()
+                if line.strip() and not line.strip().startswith("#")
+            }
             info["physical_cpu_count"] = len(unique_pairs)
         if info["physical_cpu_count"]:
             info["hyperthreading_enabled"] = logical > int(info["physical_cpu_count"])
