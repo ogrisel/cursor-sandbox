@@ -3,6 +3,24 @@
   "system": "Linux",
   "architecture": "aarch64",
   "cpu_count": 4,
+  "cpu_info": {
+    "system": "Linux",
+    "architecture": "aarch64",
+    "logical_cpu_count": 4,
+    "physical_cpu_count": null,
+    "hyperthreading_enabled": null,
+    "core_type_counts": {
+      "performance": 4,
+      "efficiency": null,
+      "low_power": null
+    },
+    "cfs_quota": null,
+    "cpuset": "0-3",
+    "model_name": "Neoverse-N2",
+    "data_sources": [
+      "lscpu"
+    ]
+  },
   "thread_grid": [
     1,
     2,
@@ -22,14 +40,16 @@
       "benchmark_summary_json": "artifacts/machines/linux-arm64/benchmark_summary.json",
       "benchmark_summary_md": "artifacts/machines/linux-arm64/benchmark_report.md",
       "benchmark_ranked_models_png": "artifacts/machines/linux-arm64/benchmark_ranked_models.png",
-      "scalability_png": "artifacts/machines/linux-arm64/scalability.png"
+      "scalability_png": "artifacts/machines/linux-arm64/scalability.png",
+      "fit_time_threads_png": "artifacts/machines/linux-arm64/fit_time_threads.png"
     },
     "deep_few_trees": {
       "benchmark_json": "artifacts/machines/linux-arm64/benchmark_results_deep_few_trees.json",
       "benchmark_summary_json": "artifacts/machines/linux-arm64/benchmark_summary_deep_few_trees.json",
       "benchmark_summary_md": "artifacts/machines/linux-arm64/benchmark_report_deep_few_trees.md",
       "benchmark_ranked_models_png": "artifacts/machines/linux-arm64/benchmark_ranked_models_deep_few_trees.png",
-      "scalability_png": "artifacts/machines/linux-arm64/scalability_deep_few_trees.png"
+      "scalability_png": "artifacts/machines/linux-arm64/scalability_deep_few_trees.png",
+      "fit_time_threads_png": "artifacts/machines/linux-arm64/fit_time_threads_deep_few_trees.png"
     }
   },
   "outputs": {
@@ -38,6 +58,7 @@
     "benchmark_summary_md": "artifacts/machines/linux-arm64/benchmark_report.md",
     "benchmark_ranked_models_png": "artifacts/machines/linux-arm64/benchmark_ranked_models.png",
     "scalability_png": "artifacts/machines/linux-arm64/scalability.png",
+    "fit_time_threads_png": "artifacts/machines/linux-arm64/fit_time_threads.png",
     "profile_spec_json": "artifacts/machines/linux-arm64/profile_spec.json",
     "profile_summary_json": "artifacts/machines/linux-arm64/profile_summary.json",
     "profile_summary_md": "artifacts/machines/linux-arm64/profile_summary.md"

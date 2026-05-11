@@ -63,11 +63,11 @@ Generate detailed reports:
 
 ## Main conclusions
 
-1. Relative runtime ranking is regime-dependent and not globally stable across platforms, especially once oversubscribed regimes are included.
-2. With oversubscription included, `sklearn_hgb_fixed` is the most frequent winner (`3/4` platforms), while the unmitigated `sklearn_hgb` or `xgboost_hist` are slowest depending on platform.
-3. Platform-specific conclusions are required before claiming a global winner.
+1. No single model dominates every platform and every threading regime.
+2. `lightgbm_hist` leads most often for mono-thread runtime and regular `1 -> cores` scaling, while `sklearn_hgb_fixed` is strongest in oversubscribed `4x cores` robustness.
+3. Platform-specific diagnostics remain mandatory before declaring a global winner.
 
-### Per-platform benchmark plots (CI run `25664430396`)
+### Per-platform benchmark plots
 
 These plots show median total runtime ranking (lower is better):
 
@@ -91,12 +91,45 @@ From `artifacts/platform_specific_summary.json`:
   - `xgboost_hist`: 2/4 platforms
   - `sklearn_hgb`: 2/4 platforms
 - Worst/best median runtime ratio by model:
-  - `lightgbm_hist`: `2.158x`
-  - `sklearn_hgb`: `2.981x`
-  - `sklearn_hgb_fixed`: `3.596x`
-  - `xgboost_hist`: `2.627x`
+  - `lightgbm_hist`: `1.911x`
+  - `sklearn_hgb`: `1.144x`
+  - `sklearn_hgb_fixed`: `1.866x`
+  - `xgboost_hist`: `2.021x`
 - Profiling coverage note:
   - Windows artifacts are generated without native py-spy (`native_profile_enabled=false`), while Linux/macOS include native profile snapshots.
+
+### Cross-platform comparison by performance regime
+
+Regime summaries below are computed from all datasets (`small`, `medium`, `large`) and both hyperparameter settings (`baseline_default`, `deep_few_trees`) in the consolidated machine artifacts.
+
+#### 1) Mono-thread performance (`threads=1`, lower `total_seconds` is better)
+
+- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb` leading on linux-amd64.
+- Global median `total_seconds` across all runs:
+  - `lightgbm_hist`: `5.3195s`
+  - `sklearn_hgb`: `5.4498s`
+  - `sklearn_hgb_fixed`: `5.4821s`
+  - `xgboost_hist`: `7.0055s`
+
+#### 2) Regular-regime scalability (`1 -> cores`, higher `fit_speedup` is better)
+
+- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb_fixed` leading on macos-arm64.
+- Global median `fit_speedup(1->cores)`:
+  - `lightgbm_hist`: `2.2608x`
+  - `sklearn_hgb_fixed`: `1.9872x`
+  - `sklearn_hgb`: `1.9519x`
+  - `xgboost_hist`: `1.6619x`
+
+#### 3) Oversubscription robustness (`4x cores / cores`, lower fit-time ratio is better)
+
+- Most frequent winner by platform: `sklearn_hgb_fixed` (3/4 platforms), with `xgboost_hist` leading on windows-amd64.
+- Global median `fit_time_ratio(4x_vs_cores)`:
+  - `xgboost_hist`: `1.0150x`
+  - `sklearn_hgb_fixed`: `1.0163x`
+  - `lightgbm_hist`: `1.6208x`
+  - `sklearn_hgb`: `3.1016x`
+
+Interpretation: `lightgbm_hist` usually wins in non-oversubscribed throughput, while `sklearn_hgb_fixed` and `xgboost_hist` are substantially more resilient than `lightgbm_hist` and especially `sklearn_hgb` under heavy oversubscription.
 
 ## Per-platform detailed analysis (root causes + implementation plans)
 
@@ -111,7 +144,12 @@ Each detailed report includes:
 - Scalability plots for both settings:
   - `baseline_default` (`scalability.png`)
   - `deep_few_trees` (`scalability_deep_few_trees.png`)
+- Absolute fit-time plots for both settings:
+  - `baseline_default` (`fit_time_threads.png`)
+  - `deep_few_trees` (`fit_time_threads_deep_few_trees.png`)
+  - Vertical markers annotate `cores`, `2x cores`, and `4x cores` regimes.
 - Oversubscription regime tables at `cores`, `2x cores`, and `4x cores`.
 - Measured per-model `r2` parity tables.
 - Effective tree-count and node-per-tree parity checks (`fitted_trees`, `expected_trees`, `total_nodes`, `avg_nodes_per_tree`).
+- Machine metadata (`logical/physical` CPU counts, core-type breakdown, hyper-threading flag, CFS quota, and cpuset when available).
 - Root-cause diagnostics for sklearn single-thread/scalability underperformance when detected, plus implementation plans for each issue.

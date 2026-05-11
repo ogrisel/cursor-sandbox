@@ -120,11 +120,22 @@ def _collect_cpu_info() -> dict[str, Any]:
 
     if system == "linux":
         lscpu_out = _run_capture(["lscpu"])
+        cores_per_socket = None
+        sockets = None
         if lscpu_out:
             info["data_sources"].append("lscpu")
             for line in lscpu_out.splitlines():
-                if line.lower().startswith("model name:"):
+                lower = line.lower()
+                if lower.startswith("model name:"):
                     info["model_name"] = line.split(":", 1)[1].strip()
+                elif lower.startswith("core(s) per socket:"):
+                    value = line.split(":", 1)[1].strip()
+                    if value.isdigit():
+                        cores_per_socket = int(value)
+                elif lower.startswith("socket(s):"):
+                    value = line.split(":", 1)[1].strip()
+                    if value.isdigit():
+                        sockets = int(value)
         phys_pairs = _run_capture(["lscpu", "-p=core,socket"])
         if phys_pairs:
             unique_pairs = {
@@ -132,7 +143,10 @@ def _collect_cpu_info() -> dict[str, Any]:
                 for line in phys_pairs.splitlines()
                 if line.strip() and not line.strip().startswith("#")
             }
-            info["physical_cpu_count"] = len(unique_pairs)
+            if unique_pairs:
+                info["physical_cpu_count"] = len(unique_pairs)
+        if info["physical_cpu_count"] is None and cores_per_socket and sockets:
+            info["physical_cpu_count"] = cores_per_socket * sockets
         if info["physical_cpu_count"]:
             info["hyperthreading_enabled"] = logical > int(info["physical_cpu_count"])
         info["core_type_counts"] = _linux_core_type_counts(logical_cpu_count=logical)

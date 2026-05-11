@@ -229,6 +229,14 @@ def _table(rows: list[dict[str, Any]], columns: list[tuple[str, str]]) -> list[s
     return lines
 
 
+def _fmt_meta(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    if isinstance(value, str) and not value.strip():
+        return "n/a"
+    return str(value)
+
+
 def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any]]) -> Path:
     root_cause_text, root_cause_plan = _infer_root_cause(machine_dir)
     lines = [f"# Detailed platform analysis: {machine_dir.name}", ""]
@@ -240,16 +248,17 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
         cpu_info = manifest.get("cpu_info", {})
         lines.extend(
             [
-                f"- System: `{manifest.get('system', 'unknown')}`",
-                f"- Architecture: `{manifest.get('architecture', 'unknown')}`",
-                f"- CPU count (logical): `{core_threads}`",
-                f"- CPU count (physical): `{cpu_info.get('physical_cpu_count', 'unknown')}`",
-                f"- Hyper-threading enabled: `{cpu_info.get('hyperthreading_enabled', 'unknown')}`",
-                f"- CPU model: `{cpu_info.get('model_name', 'unknown')}`",
-                f"- Core type counts: `{cpu_info.get('core_type_counts', {})}`",
-                f"- CFS/CPU quota: `{cpu_info.get('cfs_quota', 'n/a')}`",
-                f"- Thread grid: `{manifest.get('thread_grid', [])}`",
-                f"- Native profile enabled: `{manifest.get('native_profile_enabled', False)}`",
+                f"- System: `{_fmt_meta(manifest.get('system'))}`",
+                f"- Architecture: `{_fmt_meta(manifest.get('architecture'))}`",
+                f"- CPU count (logical): `{_fmt_meta(cpu_info.get('logical_cpu_count', core_threads))}`",
+                f"- CPU count (physical): `{_fmt_meta(cpu_info.get('physical_cpu_count'))}`",
+                f"- Hyper-threading enabled: `{_fmt_meta(cpu_info.get('hyperthreading_enabled'))}`",
+                f"- CPU model: `{_fmt_meta(cpu_info.get('model_name'))}`",
+                f"- Core type counts: `{_fmt_meta(cpu_info.get('core_type_counts'))}`",
+                f"- CFS/CPU quota: `{_fmt_meta(cpu_info.get('cfs_quota'))}`",
+                f"- CPU set: `{_fmt_meta(cpu_info.get('cpuset'))}`",
+                f"- Thread grid: `{_fmt_meta(manifest.get('thread_grid'))}`",
+                f"- Native profile enabled: `{_fmt_meta(manifest.get('native_profile_enabled'))}`",
                 "",
             ]
         )
@@ -269,6 +278,12 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
             lines.extend([f"![scalability-{setting_name}]({scalability_plot.name})", ""])
         if fit_time_plot.exists():
             lines.extend([f"![absolute-fit-time-{setting_name}]({fit_time_plot.name})", ""])
+            lines.extend(
+                [
+                    f"_Vertical markers denote `cores={core_threads}`, `2x={2 * core_threads}`, and `4x={4 * core_threads}` thread regimes._",
+                    "",
+                ]
+            )
 
         lines.extend(["### Parity checks (thread=1)", ""])
         lines.extend(
@@ -287,7 +302,7 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
             )
         )
         lines.append("")
-        lines.extend(["### Scalability summary", ""])
+        lines.extend([f"### Scalability summary (`1 -> cores={core_threads}`)", ""])
         lines.extend(
             _table(
                 scalability,

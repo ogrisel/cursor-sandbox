@@ -3,6 +3,12 @@
 - System: `Linux`
 - Architecture: `x86_64`
 - CPU count (logical): `4`
+- CPU count (physical): `n/a`
+- Hyper-threading enabled: `n/a`
+- CPU model: `Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz`
+- Core type counts: `{'performance': 4, 'efficiency': None, 'low_power': None}`
+- CFS/CPU quota: `n/a`
+- CPU set: `0-3`
 - Thread grid: `[1, 2, 4, 8, 16]`
 - Native profile enabled: `True`
 
@@ -10,117 +16,160 @@
 
 ![scalability-baseline_default](scalability.png)
 
+![absolute-fit-time-baseline_default](fit_time_threads.png)
+
+_Vertical markers denote `cores=4`, `2x=8`, and `4x=16` thread regimes._
+
 ### Parity checks (thread=1)
 
 | dataset | model | r2 | fitted_trees | expected_trees | trees_match | total_nodes | avg_nodes_per_tree |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 0.634649 | 220 | 220 | True | 12342 | 56.1 |
-| large | sklearn_hgb | 0.603268 | 220 | 220 | True | 12804 | 58.2 |
-| large | sklearn_hgb_fixed | 0.603268 | 220 | 220 | True | 12804 | 58.2 |
-| large | xgboost_hist | 0.636891 | 220 | 220 | True | 12378 | 56.2636 |
-| medium | lightgbm_hist | 0.720404 | 220 | 220 | True | 13190 | 59.9545 |
-| medium | sklearn_hgb | 0.687753 | 220 | 220 | True | 13340 | 60.6364 |
-| medium | sklearn_hgb_fixed | 0.687753 | 220 | 220 | True | 13340 | 60.6364 |
-| medium | xgboost_hist | 0.719562 | 220 | 220 | True | 13198 | 59.9909 |
-| small | lightgbm_hist | 0.89957 | 220 | 220 | True | 13420 | 61 |
-| small | sklearn_hgb | 0.891404 | 220 | 220 | True | 13420 | 61 |
-| small | sklearn_hgb_fixed | 0.891404 | 220 | 220 | True | 13420 | 61 |
-| small | xgboost_hist | 0.900025 | 220 | 220 | True | 13420 | 61 |
+| large | lightgbm_hist | 0.692337 | 220 | 220 | True | 13420 | 61 |
+| large | sklearn_hgb | 0.675577 | 220 | 220 | True | 13420 | 61 |
+| large | sklearn_hgb_fixed | 0.675577 | 220 | 220 | True | 13420 | 61 |
+| large | xgboost_hist | 0.69332 | 220 | 220 | True | 13420 | 61 |
+| medium | lightgbm_hist | 0.79359 | 220 | 220 | True | 13420 | 61 |
+| medium | sklearn_hgb | 0.785099 | 220 | 220 | True | 13420 | 61 |
+| medium | sklearn_hgb_fixed | 0.785099 | 220 | 220 | True | 13420 | 61 |
+| medium | xgboost_hist | 0.793248 | 220 | 220 | True | 13420 | 61 |
+| small | lightgbm_hist | 0.893078 | 220 | 220 | True | 13420 | 61 |
+| small | sklearn_hgb | 0.88762 | 220 | 220 | True | 13420 | 61 |
+| small | sklearn_hgb_fixed | 0.88762 | 220 | 220 | True | 13420 | 61 |
+| small | xgboost_hist | 0.894341 | 220 | 220 | True | 13420 | 61 |
 
-### Scalability summary
+### Scalability summary (`1 -> cores=4`)
 
-| dataset | model | max_threads | fit_s_1_thread | fit_s_max_threads | speedup_1_to_max |
+| dataset | model | max_regular_threads | fit_s_1_thread | fit_s_regular_max_threads | speedup_1_to_regular_max |
 | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 16 | 1.66456 | 3.65439 | 0.455495 |
-| large | sklearn_hgb | 16 | 1.52587 | 9.22585 | 0.16539 |
-| large | sklearn_hgb_fixed | 16 | 1.51083 | 0.980294 | 1.5412 |
-| large | xgboost_hist | 16 | 2.9774 | 2.0446 | 1.45623 |
-| medium | lightgbm_hist | 16 | 1.44101 | 3.85009 | 0.37428 |
-| medium | sklearn_hgb | 16 | 1.33509 | 9.87433 | 0.135208 |
-| medium | sklearn_hgb_fixed | 16 | 1.39866 | 0.914233 | 1.52988 |
-| medium | xgboost_hist | 16 | 2.3957 | 1.7199 | 1.39293 |
-| small | lightgbm_hist | 16 | 1.561 | 4.18671 | 0.372846 |
-| small | sklearn_hgb | 16 | 1.41925 | 10.2818 | 0.138034 |
-| small | sklearn_hgb_fixed | 16 | 1.42159 | 0.926503 | 1.53436 |
-| small | xgboost_hist | 16 | 2.13201 | 1.35468 | 1.57381 |
+| large | lightgbm_hist | 4 | 5.40205 | 2.37927 | 2.27047 |
+| large | sklearn_hgb | 4 | 5.30422 | 2.71782 | 1.95165 |
+| large | sklearn_hgb_fixed | 4 | 5.35296 | 2.68567 | 1.99315 |
+| large | xgboost_hist | 4 | 7.51141 | 4.67194 | 1.60777 |
+| medium | lightgbm_hist | 4 | 5.13426 | 2.31241 | 2.22031 |
+| medium | sklearn_hgb | 4 | 4.96071 | 2.63602 | 1.88189 |
+| medium | sklearn_hgb_fixed | 4 | 4.97149 | 2.66439 | 1.8659 |
+| medium | xgboost_hist | 4 | 6.43017 | 3.90854 | 1.64516 |
+| small | lightgbm_hist | 4 | 2.15228 | 0.994686 | 2.16377 |
+| small | sklearn_hgb | 4 | 2.19558 | 1.28684 | 1.70618 |
+| small | sklearn_hgb_fixed | 4 | 2.17447 | 1.2681 | 1.71475 |
+| small | xgboost_hist | 4 | 2.66919 | 1.75279 | 1.52282 |
 
 ### Oversubscription regime summary (`cores=4`, `2x`, `4x`)
 
 | dataset | model | fit_s_cores | fit_s_2x_cores | fit_s_4x_cores | fit_ratio_2x_vs_cores | fit_ratio_4x_vs_cores |
 | --- | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 0.647445 | 2.12662 | 3.65439 | 3.28463 | 5.64433 |
-| large | sklearn_hgb | 0.977212 | 4.94601 | 9.22585 | 5.06134 | 9.441 |
-| large | sklearn_hgb_fixed | 0.975032 | 0.979941 | 0.980294 | 1.00504 | 1.0054 |
-| large | xgboost_hist | 1.92174 | 2.0076 | 2.0446 | 1.04468 | 1.06393 |
-| medium | lightgbm_hist | 0.58209 | 2.1256 | 3.85009 | 3.65167 | 6.61425 |
-| medium | sklearn_hgb | 0.883226 | 5.17011 | 9.87433 | 5.85366 | 11.1798 |
-| medium | sklearn_hgb_fixed | 0.889742 | 0.885297 | 0.914233 | 0.995005 | 1.02753 |
-| medium | xgboost_hist | 1.53404 | 1.63773 | 1.7199 | 1.06759 | 1.12115 |
-| small | lightgbm_hist | 0.712824 | 2.3291 | 4.18671 | 3.26742 | 5.87342 |
-| small | sklearn_hgb | 0.91583 | 5.38681 | 10.2818 | 5.88189 | 11.2268 |
-| small | sklearn_hgb_fixed | 0.922943 | 0.928175 | 0.926503 | 1.00567 | 1.00386 |
-| small | xgboost_hist | 1.30678 | 1.34342 | 1.35468 | 1.02804 | 1.03666 |
+| large | lightgbm_hist | 2.37927 | 3.40509 | 4.62645 | 1.43115 | 1.94448 |
+| large | sklearn_hgb | 2.71782 | 6.27198 | 8.99255 | 2.30772 | 3.30874 |
+| large | sklearn_hgb_fixed | 2.68567 | 2.70903 | 2.73026 | 1.0087 | 1.0166 |
+| large | xgboost_hist | 4.67194 | 4.77375 | 4.99765 | 1.02179 | 1.06972 |
+| medium | lightgbm_hist | 2.31241 | 3.36658 | 4.65214 | 1.45587 | 2.01181 |
+| medium | sklearn_hgb | 2.63602 | 5.88219 | 8.77341 | 2.23147 | 3.32828 |
+| medium | sklearn_hgb_fixed | 2.66439 | 2.6027 | 2.62308 | 0.976849 | 0.984497 |
+| medium | xgboost_hist | 3.90854 | 3.93934 | 3.96195 | 1.00788 | 1.01367 |
+| small | lightgbm_hist | 0.994686 | 2.12911 | 3.2482 | 2.14049 | 3.26555 |
+| small | sklearn_hgb | 1.28684 | 4.35406 | 7.28174 | 3.38353 | 5.65862 |
+| small | sklearn_hgb_fixed | 1.2681 | 1.39111 | 1.30003 | 1.09701 | 1.02518 |
+| small | xgboost_hist | 1.75279 | 1.89042 | 1.83202 | 1.07852 | 1.0452 |
 
-### Underperformance findings
+### Underperformance findings and root cause analysis
 
-- No material sklearn underperformance flags detected for this setting under current thresholds.
+- Root cause signal: Native hotspots indicate synchronization/runtime overhead (OpenMP/pthread wait-heavy stacks).
+- Issue (scalability, dataset `large`): Best sklearn speedup trails best alternative by 0.277 (1->regular max threads).
+  - Implementation plan:
+    - Introduce adaptive thread gating based on node sample count and feature count.
+    - Batch multiple frontier nodes per parallel region to increase task granularity.
+    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
+- Issue (scalability, dataset `medium`): Best sklearn speedup trails best alternative by 0.338 (1->regular max threads).
+  - Implementation plan:
+    - Introduce adaptive thread gating based on node sample count and feature count.
+    - Batch multiple frontier nodes per parallel region to increase task granularity.
+    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
+- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.449 (1->regular max threads).
+  - Implementation plan:
+    - Introduce adaptive thread gating based on node sample count and feature count.
+    - Batch multiple frontier nodes per parallel region to increase task granularity.
+    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
 
 ## Setting: `deep_few_trees`
 
 ![scalability-deep_few_trees](scalability_deep_few_trees.png)
 
+![absolute-fit-time-deep_few_trees](fit_time_threads_deep_few_trees.png)
+
+_Vertical markers denote `cores=4`, `2x=8`, and `4x=16` thread regimes._
+
 ### Parity checks (thread=1)
 
 | dataset | model | r2 | fitted_trees | expected_trees | trees_match | total_nodes | avg_nodes_per_tree |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 0.460974 | 48 | 48 | True | 12072 | 251.5 |
-| large | sklearn_hgb | 0.443827 | 48 | 48 | True | 12032 | 250.667 |
-| large | sklearn_hgb_fixed | 0.443827 | 48 | 48 | True | 12032 | 250.667 |
-| large | xgboost_hist | 0.459013 | 48 | 48 | True | 12126 | 252.625 |
-| medium | lightgbm_hist | 0.571939 | 48 | 48 | True | 12144 | 253 |
-| medium | sklearn_hgb | 0.570187 | 48 | 48 | True | 12144 | 253 |
-| medium | sklearn_hgb_fixed | 0.570187 | 48 | 48 | True | 12144 | 253 |
-| medium | xgboost_hist | 0.571463 | 48 | 48 | True | 12144 | 253 |
-| small | lightgbm_hist | 0.777653 | 48 | 48 | True | 12144 | 253 |
-| small | sklearn_hgb | 0.775221 | 48 | 48 | True | 12144 | 253 |
-| small | sklearn_hgb_fixed | 0.775221 | 48 | 48 | True | 12144 | 253 |
-| small | xgboost_hist | 0.777123 | 48 | 48 | True | 12144 | 253 |
+| large | lightgbm_hist | 0.491423 | 48 | 48 | True | 12144 | 253 |
+| large | sklearn_hgb | 0.490287 | 48 | 48 | True | 12144 | 253 |
+| large | sklearn_hgb_fixed | 0.490287 | 48 | 48 | True | 12144 | 253 |
+| large | xgboost_hist | 0.491074 | 48 | 48 | True | 12144 | 253 |
+| medium | lightgbm_hist | 0.56851 | 48 | 48 | True | 12144 | 253 |
+| medium | sklearn_hgb | 0.568235 | 48 | 48 | True | 12144 | 253 |
+| medium | sklearn_hgb_fixed | 0.568235 | 48 | 48 | True | 12144 | 253 |
+| medium | xgboost_hist | 0.568178 | 48 | 48 | True | 12144 | 253 |
+| small | lightgbm_hist | 0.749752 | 48 | 48 | True | 12144 | 253 |
+| small | sklearn_hgb | 0.751461 | 48 | 48 | True | 12144 | 253 |
+| small | sklearn_hgb_fixed | 0.751461 | 48 | 48 | True | 12144 | 253 |
+| small | xgboost_hist | 0.752362 | 48 | 48 | True | 12144 | 253 |
 
-### Scalability summary
+### Scalability summary (`1 -> cores=4`)
 
-| dataset | model | max_threads | fit_s_1_thread | fit_s_max_threads | speedup_1_to_max |
+| dataset | model | max_regular_threads | fit_s_1_thread | fit_s_regular_max_threads | speedup_1_to_regular_max |
 | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 16 | 1.70401 | 3.51771 | 0.48441 |
-| large | sklearn_hgb | 16 | 1.59812 | 8.91853 | 0.179191 |
-| large | sklearn_hgb_fixed | 16 | 1.60073 | 0.942795 | 1.69785 |
-| large | xgboost_hist | 16 | 3.19278 | 2.06746 | 1.5443 |
-| medium | lightgbm_hist | 16 | 1.60739 | 4.51889 | 0.355705 |
-| medium | sklearn_hgb | 16 | 1.40911 | 10.1689 | 0.138571 |
-| medium | sklearn_hgb_fixed | 16 | 1.41421 | 0.914895 | 1.54576 |
-| medium | xgboost_hist | 16 | 2.61238 | 1.76894 | 1.4768 |
-| small | lightgbm_hist | 16 | 1.17734 | 3.73819 | 0.314949 |
-| small | sklearn_hgb | 16 | 1.1537 | 10.5815 | 0.10903 |
-| small | sklearn_hgb_fixed | 16 | 1.16427 | 0.806397 | 1.44379 |
-| small | xgboost_hist | 16 | 1.79014 | 1.22706 | 1.45889 |
+| large | lightgbm_hist | 4 | 6.06889 | 2.65034 | 2.28985 |
+| large | sklearn_hgb | 4 | 5.80408 | 2.84119 | 2.04283 |
+| large | sklearn_hgb_fixed | 4 | 5.89654 | 2.87628 | 2.05006 |
+| large | xgboost_hist | 4 | 8.06121 | 4.90204 | 1.64446 |
+| medium | lightgbm_hist | 4 | 5.68987 | 2.56251 | 2.22043 |
+| medium | sklearn_hgb | 4 | 5.35695 | 2.74419 | 1.95211 |
+| medium | sklearn_hgb_fixed | 4 | 5.40238 | 2.72663 | 1.98134 |
+| medium | xgboost_hist | 4 | 6.66734 | 3.99949 | 1.66705 |
+| small | lightgbm_hist | 4 | 1.50059 | 0.702916 | 2.13481 |
+| small | sklearn_hgb | 4 | 1.64966 | 0.969712 | 1.70118 |
+| small | sklearn_hgb_fixed | 4 | 1.66552 | 0.962269 | 1.73083 |
+| small | xgboost_hist | 4 | 2.11793 | 1.47587 | 1.43504 |
 
 ### Oversubscription regime summary (`cores=4`, `2x`, `4x`)
 
 | dataset | model | fit_s_cores | fit_s_2x_cores | fit_s_4x_cores | fit_ratio_2x_vs_cores | fit_ratio_4x_vs_cores |
 | --- | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 0.812334 | 2.50235 | 3.51771 | 3.08045 | 4.33038 |
-| large | sklearn_hgb | 1.05904 | 4.87771 | 8.91853 | 4.60578 | 8.42133 |
-| large | sklearn_hgb_fixed | 0.945235 | 0.924751 | 0.942795 | 0.978329 | 0.997419 |
-| large | xgboost_hist | 2.03168 | 2.06961 | 2.06746 | 1.01867 | 1.01762 |
-| medium | lightgbm_hist | 0.671995 | 2.17251 | 4.51889 | 3.23292 | 6.72459 |
-| medium | sklearn_hgb | 0.934299 | 5.32943 | 10.1689 | 5.7042 | 10.884 |
-| medium | sklearn_hgb_fixed | 0.941859 | 0.924977 | 0.914895 | 0.982076 | 0.971371 |
-| medium | xgboost_hist | 1.71346 | 1.73125 | 1.76894 | 1.01038 | 1.03238 |
-| small | lightgbm_hist | 0.527079 | 1.97316 | 3.73819 | 3.74357 | 7.09227 |
-| small | sklearn_hgb | 0.824036 | 5.45968 | 10.5815 | 6.62553 | 12.841 |
-| small | sklearn_hgb_fixed | 0.809638 | 0.816946 | 0.806397 | 1.00903 | 0.995997 |
-| small | xgboost_hist | 1.16677 | 1.227 | 1.22706 | 1.05163 | 1.05167 |
+| large | lightgbm_hist | 2.65034 | 3.59256 | 4.71 | 1.35551 | 1.77713 |
+| large | sklearn_hgb | 2.84119 | 6.5013 | 9.45501 | 2.28823 | 3.32783 |
+| large | sklearn_hgb_fixed | 2.87628 | 2.85644 | 2.92245 | 0.9931 | 1.01605 |
+| large | xgboost_hist | 4.90204 | 4.95196 | 4.96987 | 1.01018 | 1.01384 |
+| medium | lightgbm_hist | 2.56251 | 3.53553 | 4.87636 | 1.37971 | 1.90296 |
+| medium | sklearn_hgb | 2.74419 | 6.20535 | 9.30707 | 2.26127 | 3.39156 |
+| medium | sklearn_hgb_fixed | 2.72663 | 2.67282 | 2.69732 | 0.980264 | 0.989249 |
+| medium | xgboost_hist | 3.99949 | 4.05055 | 4.20084 | 1.01277 | 1.05034 |
+| small | lightgbm_hist | 0.702916 | 1.68037 | 2.68297 | 2.39056 | 3.81691 |
+| small | sklearn_hgb | 0.969712 | 4.09229 | 7.06018 | 4.22011 | 7.2807 |
+| small | sklearn_hgb_fixed | 0.962269 | 0.99477 | 1.00903 | 1.03378 | 1.04859 |
+| small | xgboost_hist | 1.47587 | 1.56456 | 1.49972 | 1.06009 | 1.01616 |
 
-### Underperformance findings
+### Underperformance findings and root cause analysis
 
-- No material sklearn underperformance flags detected for this setting under current thresholds.
+- Root cause signal: Native hotspots indicate synchronization/runtime overhead (OpenMP/pthread wait-heavy stacks).
+- Issue (single_thread, dataset `small`): Best sklearn total is 1.088x slower than best alternative at thread=1.
+  - Implementation plan:
+    - Introduce adaptive thread gating based on node sample count and feature count.
+    - Batch multiple frontier nodes per parallel region to increase task granularity.
+    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
+- Issue (scalability, dataset `large`): Best sklearn speedup trails best alternative by 0.240 (1->regular max threads).
+  - Implementation plan:
+    - Introduce adaptive thread gating based on node sample count and feature count.
+    - Batch multiple frontier nodes per parallel region to increase task granularity.
+    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
+- Issue (scalability, dataset `medium`): Best sklearn speedup trails best alternative by 0.239 (1->regular max threads).
+  - Implementation plan:
+    - Introduce adaptive thread gating based on node sample count and feature count.
+    - Batch multiple frontier nodes per parallel region to increase task granularity.
+    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
+- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.404 (1->regular max threads).
+  - Implementation plan:
+    - Introduce adaptive thread gating based on node sample count and feature count.
+    - Batch multiple frontier nodes per parallel region to increase task granularity.
+    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
 
