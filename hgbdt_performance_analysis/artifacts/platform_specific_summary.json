@@ -7,32 +7,32 @@
       "architecture": "x86_64",
       "native_profile_enabled": true,
       "benchmark_rank_plot": "hgbdt_performance_analysis/artifacts/machines/linux-amd64/benchmark_ranked_models.png",
-      "top_model": "sklearn_hgb_fixed",
-      "bottom_model": "lightgbm_hist",
+      "top_model": "lightgbm_hist",
+      "bottom_model": "xgboost_hist",
       "ranked_models": [
         {
-          "model": "sklearn_hgb_fixed",
-          "median_total_s": 1.2439647399999956,
-          "mean_total_s": 2.0745288165555524,
-          "mean_r2": 0.8574859016623088
+          "model": "lightgbm_hist",
+          "median_total_s": 0.42972345000001155,
+          "mean_total_s": 0.5607361263333436,
+          "mean_r2": 0.6876877315698918
         },
         {
-          "model": "xgboost_hist",
-          "median_total_s": 1.7142529879999984,
-          "mean_total_s": 2.763339283777779,
-          "mean_r2": 0.8648505608240763
+          "model": "sklearn_hgb_fixed",
+          "median_total_s": 0.49023206299997923,
+          "mean_total_s": 0.5255737886666623,
+          "mean_r2": 0.6363654150982047
         },
         {
           "model": "sklearn_hgb",
-          "median_total_s": 2.9088623629999972,
-          "mean_total_s": 5.241325256777781,
-          "mean_r2": 0.8574859016623088
+          "median_total_s": 0.7350864569999942,
+          "mean_total_s": 1.3574823599999963,
+          "mean_r2": 0.6363654150982047
         },
         {
-          "model": "lightgbm_hist",
-          "median_total_s": 3.1194532609999897,
-          "mean_total_s": 3.3804948615555537,
-          "mean_r2": 0.8660030663395356
+          "model": "xgboost_hist",
+          "median_total_s": 0.7442528745000203,
+          "mean_total_s": 0.7945339828333383,
+          "mean_r2": 0.6780025660991669
         }
       ]
     },
@@ -47,27 +47,27 @@
       "ranked_models": [
         {
           "model": "sklearn_hgb_fixed",
-          "median_total_s": 0.8801183620000046,
-          "mean_total_s": 1.7135376624444472,
-          "mean_r2": 0.8574859016623088
-        },
-        {
-          "model": "xgboost_hist",
-          "median_total_s": 1.0271336200000007,
-          "mean_total_s": 2.0977443048888853,
-          "mean_r2": 0.8648505608240763
+          "median_total_s": 0.7845385299999634,
+          "mean_total_s": 0.8955116893333752,
+          "mean_r2": 0.760874829783988
         },
         {
           "model": "lightgbm_hist",
-          "median_total_s": 1.716085798000023,
-          "mean_total_s": 2.0224257804444394,
-          "mean_r2": 0.8660030663395356
+          "median_total_s": 0.9933051019999084,
+          "mean_total_s": 0.9785854044999951,
+          "mean_r2": 0.7846759775541128
+        },
+        {
+          "model": "xgboost_hist",
+          "median_total_s": 1.0458368305000931,
+          "mean_total_s": 1.1857386985000555,
+          "mean_r2": 0.782728910446167
         },
         {
           "model": "sklearn_hgb",
-          "median_total_s": 2.1201459349999965,
-          "mean_total_s": 3.1841032836666603,
-          "mean_r2": 0.8574859016623088
+          "median_total_s": 1.3442146070000263,
+          "mean_total_s": 1.8317836044999847,
+          "mean_r2": 0.760874829783988
         }
       ]
     },
@@ -77,32 +77,32 @@
       "architecture": "arm64",
       "native_profile_enabled": true,
       "benchmark_rank_plot": "hgbdt_performance_analysis/artifacts/machines/macos-arm64/benchmark_ranked_models.png",
-      "top_model": "sklearn_hgb_fixed",
-      "bottom_model": "sklearn_hgb",
+      "top_model": "lightgbm_hist",
+      "bottom_model": "sklearn_hgb_fixed",
       "ranked_models": [
         {
-          "model": "sklearn_hgb_fixed",
-          "median_total_s": 1.5710676249999835,
-          "mean_total_s": 2.476033124999996,
-          "mean_r2": 0.8574859016623088
-        },
-        {
           "model": "lightgbm_hist",
-          "median_total_s": 1.5970607920000077,
-          "mean_total_s": 2.466539296222221,
-          "mean_r2": 0.8660030663395356
+          "median_total_s": 0.9444499164999627,
+          "mean_total_s": 1.0692397291666491,
+          "mean_r2": 0.7803108999929542
         },
         {
           "model": "xgboost_hist",
-          "median_total_s": 2.2138248750000002,
-          "mean_total_s": 2.7992278242222173,
-          "mean_r2": 0.8648505608240763
+          "median_total_s": 1.368717583499972,
+          "mean_total_s": 1.6180347776666697,
+          "mean_r2": 0.7893772721290588
         },
         {
           "model": "sklearn_hgb",
-          "median_total_s": 4.197028417000013,
-          "mean_total_s": 3.7736612270000034,
-          "mean_r2": 0.8574859016623088
+          "median_total_s": 1.4090167914999938,
+          "mean_total_s": 1.5515038749999899,
+          "mean_r2": 0.7542836286860745
+        },
+        {
+          "model": "sklearn_hgb_fixed",
+          "median_total_s": 1.6746833750000008,
+          "mean_total_s": 1.6410070971666642,
+          "mean_r2": 0.7542836286860745
         }
       ]
     },
@@ -113,75 +113,76 @@
       "native_profile_enabled": false,
       "benchmark_rank_plot": "hgbdt_performance_analysis/artifacts/machines/windows-amd64/benchmark_ranked_models.png",
       "top_model": "lightgbm_hist",
-      "bottom_model": "sklearn_hgb",
+      "bottom_model": "xgboost_hist",
       "ranked_models": [
         {
           "model": "lightgbm_hist",
-          "median_total_s": 1.304434899999933,
-          "mean_total_s": 2.322769233333323,
-          "mean_r2": 0.8660030663395356
+          "median_total_s": 0.7236928500000204,
+          "mean_total_s": 0.7918964500000053,
+          "mean_r2": 0.7680051529015439
         },
         {
           "model": "sklearn_hgb_fixed",
-          "median_total_s": 1.5764012999998158,
-          "mean_total_s": 2.602210344444428,
-          "mean_r2": 0.8574859016623088
-        },
-        {
-          "model": "xgboost_hist",
-          "median_total_s": 1.9937932999998793,
-          "mean_total_s": 3.343722511111082,
-          "mean_r2": 0.8649130198690627
+          "median_total_s": 1.231918549999932,
+          "mean_total_s": 1.2887471833333468,
+          "mean_r2": 0.7360931007399751
         },
         {
           "model": "sklearn_hgb",
-          "median_total_s": 2.078587299999981,
-          "mean_total_s": 2.8250347999999628,
-          "mean_r2": 0.8574859016623088
+          "median_total_s": 1.2470056500001192,
+          "mean_total_s": 1.380567833333392,
+          "mean_r2": 0.7360931007399751
+        },
+        {
+          "model": "xgboost_hist",
+          "median_total_s": 1.5254479999998694,
+          "mean_total_s": 1.5609011166665898,
+          "mean_r2": 0.7714486420154572
         }
       ]
     }
   ],
   "top_model_counts": {
-    "sklearn_hgb_fixed": 3,
-    "lightgbm_hist": 1
+    "lightgbm_hist": 3,
+    "sklearn_hgb_fixed": 1
   },
   "bottom_model_counts": {
-    "lightgbm_hist": 1,
-    "sklearn_hgb": 3
+    "xgboost_hist": 2,
+    "sklearn_hgb": 1,
+    "sklearn_hgb_fixed": 1
   },
   "model_variation": [
     {
       "model": "lightgbm_hist",
       "machines_seen": 4,
-      "mean_median_total_s": 1.9342586877499883,
-      "best_median_total_s": 1.304434899999933,
-      "worst_median_total_s": 3.1194532609999897,
-      "worst_to_best_ratio": 2.3914211901261995
+      "mean_median_total_s": 0.7727928296249758,
+      "best_median_total_s": 0.42972345000001155,
+      "worst_median_total_s": 0.9933051019999084,
+      "worst_to_best_ratio": 2.3114984811740706
     },
     {
       "model": "sklearn_hgb",
       "machines_seen": 4,
-      "mean_median_total_s": 2.826156003749997,
-      "best_median_total_s": 2.078587299999981,
-      "worst_median_total_s": 4.197028417000013,
-      "worst_to_best_ratio": 2.0191735112593303
+      "mean_median_total_s": 1.1838308763750334,
+      "best_median_total_s": 0.7350864569999942,
+      "worst_median_total_s": 1.4090167914999938,
+      "worst_to_best_ratio": 1.916804177362235
     },
     {
       "model": "sklearn_hgb_fixed",
       "machines_seen": 4,
-      "mean_median_total_s": 1.3178880067499499,
-      "best_median_total_s": 0.8801183620000046,
-      "worst_median_total_s": 1.5764012999998158,
-      "worst_to_best_ratio": 1.7911242033600563
+      "mean_median_total_s": 1.0453431294999689,
+      "best_median_total_s": 0.49023206299997923,
+      "worst_median_total_s": 1.6746833750000008,
+      "worst_to_best_ratio": 3.4161033139117047
     },
     {
       "model": "xgboost_hist",
       "machines_seen": 4,
-      "mean_median_total_s": 1.7372511957499697,
-      "best_median_total_s": 1.0271336200000007,
-      "worst_median_total_s": 2.2138248750000002,
-      "worst_to_best_ratio": 2.1553426271841816
+      "mean_median_total_s": 1.1710638221249887,
+      "best_median_total_s": 0.7442528745000203,
+      "worst_median_total_s": 1.5254479999998694,
+      "worst_to_best_ratio": 2.049636692400612
     }
   ],
   "missing_or_invalid_inputs": []

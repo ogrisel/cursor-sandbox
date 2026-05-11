@@ -16,20 +16,20 @@
     },
     "cfs_quota": null,
     "cpuset": null,
-    "model_name": "AMD EPYC 9V74 80-Core Processor",
+    "model_name": "AMD EPYC 7763 64-Core Processor",
     "data_sources": [
+      "joblib",
       "powershell-cim"
     ]
   },
   "thread_grid": [
     1,
     4,
-    16
+    8
   ],
   "oversubscription_targets": {
     "cores": 4,
-    "x2_cores": 8,
-    "x4_cores": 16
+    "x2_cores": 8
   },
   "native_profile_enabled": false,
   "settings": {

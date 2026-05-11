@@ -18,18 +18,18 @@
     "cpuset": "0-3",
     "model_name": "Neoverse-N2",
     "data_sources": [
+      "joblib",
       "lscpu"
     ]
   },
   "thread_grid": [
     1,
     4,
-    16
+    8
   ],
   "oversubscription_targets": {
     "cores": 4,
-    "x2_cores": 8,
-    "x4_cores": 16
+    "x2_cores": 8
   },
   "native_profile_enabled": true,
   "settings": {

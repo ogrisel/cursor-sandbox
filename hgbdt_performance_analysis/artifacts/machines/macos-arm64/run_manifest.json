@@ -18,18 +18,18 @@
     "cpuset": null,
     "model_name": "Apple M1 (Virtual)",
     "data_sources": [
+      "joblib",
       "sysctl"
     ]
   },
   "thread_grid": [
     1,
     3,
-    12
+    6
   ],
   "oversubscription_targets": {
     "cores": 3,
-    "x2_cores": 6,
-    "x4_cores": 12
+    "x2_cores": 6
   },
   "native_profile_enabled": true,
   "settings": {

@@ -3,59 +3,51 @@
 ## Experiment controls
 - Timeout budget per individual run: `5.0 s`
 - Adaptive reduction factor after timeout: `0.6`
-- Threads tested: `[1, 4, 16]`
-- Dataset templates: `[{'name': 'small', 'start_n_samples': 12000, 'n_features': 24}, {'name': 'medium', 'start_n_samples': 36000, 'n_features': 48}, {'name': 'large', 'start_n_samples': 90000, 'n_features': 80}]`
+- Threads tested: `[1, 4, 8]`
+- Dataset templates: `[{'name': 'small', 'start_n_samples': 12000, 'n_features': 24}, {'name': 'large', 'start_n_samples': 180000, 'n_features': 120}]`
 
 ## Overall ranking (lower is faster)
 | model | median_total_s | mean_total_s | geo_mean_total_s | mean_peak_rss_mb | mean_r2 | max_r2_spread_for_matched_scenario |
 | --- | --- | --- | --- | --- | --- | --- |
-| sklearn_hgb_fixed | 0.880118 | 1.71354 | 1.22431 | 308.021 | 0.857486 | 0.00991913 |
-| xgboost_hist | 1.02713 | 2.09774 | 1.4096 | 313.661 | 0.864851 | 0.00991913 |
-| lightgbm_hist | 1.71609 | 2.02243 | 1.39751 | 328.073 | 0.866003 | 0.00991913 |
-| sklearn_hgb | 2.12015 | 3.1841 | 2.22363 | 307.492 | 0.857486 | 0.00991913 |
+| sklearn_hgb_fixed | 0.784539 | 0.895512 | 0.815959 | 204.729 | 0.760875 | 0.0405318 |
+| lightgbm_hist | 0.993305 | 0.978585 | 0.809715 | 208.86 | 0.784676 | 0.0405318 |
+| xgboost_hist | 1.04584 | 1.18574 | 0.976932 | 223.012 | 0.782729 | 0.0405318 |
+| sklearn_hgb | 1.34421 | 1.83178 | 1.41194 | 205.079 | 0.760875 | 0.0405318 |
 
 
 ## Single-thread behavior
 | dataset_name | model | n_samples | n_features | fit_seconds | predict_seconds | total_seconds | peak_rss_mb | r2 | fitted_trees | expected_trees | total_nodes | avg_nodes_per_tree |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 90000 | 80 | 5.75651 | 0.210968 | 5.97332 | 426.805 | 0.774775 | 220 | 220 | 13420 | 61 |
-| large | sklearn_hgb_fixed | 90000 | 80 | 5.83911 | 0.170555 | 6.01555 | 394.082 | 0.766213 | 220 | 220 | 13420 | 61 |
-| large | sklearn_hgb | 90000 | 80 | 5.85708 | 0.173543 | 6.03107 | 393.816 | 0.766213 | 220 | 220 | 13420 | 61 |
-| large | xgboost_hist | 90000 | 80 | 7.47725 | 0.0445607 | 7.52889 | 418.508 | 0.772948 | 220 | 220 | 13420 | 61 |
-| medium | lightgbm_hist | 36000 | 48 | 1.81766 | 0.0778887 | 1.90063 | 265.121 | 0.873865 | 220 | 220 | 13420 | 61 |
-| medium | sklearn_hgb_fixed | 36000 | 48 | 2.02953 | 0.0644142 | 2.09949 | 266.965 | 0.863946 | 220 | 220 | 13420 | 61 |
-| medium | sklearn_hgb | 36000 | 48 | 2.05218 | 0.064668 | 2.12015 | 267.051 | 0.863946 | 220 | 220 | 13420 | 61 |
-| medium | xgboost_hist | 36000 | 48 | 2.62328 | 0.0179988 | 2.6473 | 282.953 | 0.87185 | 220 | 220 | 13420 | 61 |
-| small | lightgbm_hist | 12000 | 24 | 0.530997 | 0.0247291 | 0.556996 | 222.305 | 0.949369 | 220 | 220 | 13386 | 60.8455 |
-| small | sklearn_hgb_fixed | 12000 | 24 | 0.715941 | 0.0208371 | 0.742594 | 208.316 | 0.942299 | 220 | 220 | 13414 | 60.9727 |
-| small | sklearn_hgb | 12000 | 24 | 0.731139 | 0.0208955 | 0.759699 | 208.25 | 0.942299 | 220 | 220 | 13414 | 60.9727 |
-| small | xgboost_hist | 12000 | 24 | 0.829698 | 0.00654925 | 0.839466 | 216.48 | 0.949753 | 220 | 220 | 13390 | 60.8636 |
+| large | lightgbm_hist | 3022 | 120 | 1.5134 | 0.00833926 | 1.52688 | 214.633 | 0.619983 | 220 | 220 | 12996 | 59.0727 |
+| large | sklearn_hgb | 3022 | 120 | 1.83221 | 0.0081221 | 1.84945 | 209.645 | 0.579451 | 220 | 220 | 13266 | 60.3 |
+| large | sklearn_hgb_fixed | 3022 | 120 | 1.83425 | 0.00865356 | 1.84993 | 209.66 | 0.579451 | 220 | 220 | 13266 | 60.3 |
+| large | xgboost_hist | 3022 | 120 | 2.74285 | 0.00266197 | 2.74792 | 232.832 | 0.615705 | 220 | 220 | 13032 | 59.2364 |
+| small | lightgbm_hist | 12000 | 24 | 0.545134 | 0.0243342 | 0.569643 | 202.305 | 0.949369 | 220 | 220 | 13386 | 60.8455 |
+| small | sklearn_hgb_fixed | 12000 | 24 | 0.735239 | 0.0208935 | 0.762432 | 198.195 | 0.942299 | 220 | 220 | 13414 | 60.9727 |
+| small | sklearn_hgb | 12000 | 24 | 0.74301 | 0.0209545 | 0.773738 | 198.141 | 0.942299 | 220 | 220 | 13414 | 60.9727 |
+| small | xgboost_hist | 12000 | 24 | 0.843572 | 0.00646467 | 0.855307 | 206.738 | 0.949753 | 220 | 220 | 13390 | 60.8636 |
 
 
 ## Multi-thread scalability
 | dataset_name | model | max_threads | fit_s_1_thread | fit_s_max_threads | speedup_vs_1_thread | parallel_efficiency |
 | --- | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 16 | 5.75651 | 3.46281 | 1.66238 | 0.103899 |
-| medium | lightgbm_hist | 16 | 1.81766 | 2.07167 | 0.877386 | 0.0548366 |
-| small | lightgbm_hist | 16 | 0.530997 | 1.53136 | 0.346748 | 0.0216718 |
-| large | sklearn_hgb | 16 | 5.85708 | 6.52693 | 0.897371 | 0.0560857 |
-| medium | sklearn_hgb | 16 | 2.05218 | 5.14147 | 0.399143 | 0.0249464 |
-| small | sklearn_hgb | 16 | 0.731139 | 4.56948 | 0.160005 | 0.0100003 |
-| large | sklearn_hgb_fixed | 16 | 5.83911 | 1.85874 | 3.14143 | 0.19634 |
-| medium | sklearn_hgb_fixed | 16 | 2.02953 | 0.851485 | 2.38351 | 0.14897 |
-| small | sklearn_hgb_fixed | 16 | 0.715941 | 0.472977 | 1.51369 | 0.0946058 |
-| large | xgboost_hist | 16 | 7.47725 | 2.42466 | 3.08384 | 0.19274 |
-| medium | xgboost_hist | 16 | 2.62328 | 1.0181 | 2.57665 | 0.161041 |
-| small | xgboost_hist | 16 | 0.829698 | 0.444717 | 1.86568 | 0.116605 |
+| large | lightgbm_hist | 8 | 1.5134 | 1.54175 | 0.981611 | 0.122701 |
+| small | lightgbm_hist | 8 | 0.545134 | 1.40649 | 0.387584 | 0.048448 |
+| large | sklearn_hgb | 8 | 1.83221 | 3.73475 | 0.490585 | 0.0613232 |
+| small | sklearn_hgb | 8 | 0.74301 | 3.19952 | 0.232225 | 0.0290282 |
+| large | sklearn_hgb_fixed | 8 | 1.83425 | 0.79912 | 2.29534 | 0.286917 |
+| small | sklearn_hgb_fixed | 8 | 0.735239 | 0.548217 | 1.34115 | 0.167643 |
+| large | xgboost_hist | 8 | 2.74285 | 1.31694 | 2.08275 | 0.260344 |
+| small | xgboost_hist | 8 | 0.843572 | 0.487713 | 1.72965 | 0.216206 |
 
 
 ## Memory growth trend (thread=1)
 | model | smallest_samples | largest_samples | peak_mb_smallest | peak_mb_largest | approx_mb_per_1k_samples |
 | --- | --- | --- | --- | --- | --- |
-| lightgbm_hist | 12000 | 90000 | 222.305 | 426.805 | 2.62179 |
-| sklearn_hgb | 12000 | 90000 | 208.25 | 393.816 | 2.37906 |
-| sklearn_hgb_fixed | 12000 | 90000 | 208.316 | 394.082 | 2.38161 |
-| xgboost_hist | 12000 | 90000 | 216.48 | 418.508 | 2.59009 |
+| lightgbm_hist | 3022 | 12000 | 214.633 | 202.305 | -1.37315 |
+| sklearn_hgb | 3022 | 12000 | 209.645 | 198.141 | -1.28134 |
+| sklearn_hgb_fixed | 3022 | 12000 | 209.66 | 198.195 | -1.27699 |
+| xgboost_hist | 3022 | 12000 | 232.832 | 206.738 | -2.90641 |
 
 
 ## Initial conclusion
