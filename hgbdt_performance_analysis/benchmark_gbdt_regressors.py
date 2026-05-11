@@ -22,7 +22,7 @@ from threadpoolctl import threadpool_limits
 from xgboost import XGBRegressor
 
 
-MODEL_NAMES = ("sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist")
+MODEL_NAMES = ("sklearn_hgb", "sklearn_hgb_fixed", "sklearn_hgb_adaptive", "xgboost_hist", "lightgbm_hist")
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 
@@ -65,20 +65,44 @@ def _common_hyperparameters(overrides: dict[str, Any] | None = None) -> dict[str
     return params
 
 
-def _build_model(model_name: str, threads: int, common: dict[str, Any]):
-    if model_name in {"sklearn_hgb", "sklearn_hgb_fixed"}:
-        return HistGradientBoostingRegressor(
-            loss=common["loss"],
-            max_iter=common["n_estimators"],
-            learning_rate=common["learning_rate"],
-            max_depth=common["max_depth"],
-            max_leaf_nodes=common["num_leaves"],
-            max_bins=common["max_bin"],
-            min_samples_leaf=common["min_samples_leaf"],
-            l2_regularization=common["l2_regularization"],
-            random_state=common["random_state"],
-            early_stopping=False,
-        )
+def _adaptive_histgb_params(n_samples: int, n_features: int, common: dict[str, Any]) -> dict[str, Any]:
+    requested_bins = int(common["max_bin"])
+    if n_features >= 100:
+        max_bins = min(requested_bins, 128)
+        max_features = 0.75
+    elif n_features >= 60:
+        max_bins = min(requested_bins, 160)
+        max_features = 0.85
+    else:
+        max_bins = min(requested_bins, 192)
+        max_features = 1.0
+    min_samples_leaf = int(common["min_samples_leaf"])
+    if n_samples >= 120_000 and n_features >= 80:
+        min_samples_leaf = max(min_samples_leaf, 28)
+    return {
+        "max_bins": max(32, max_bins),
+        "max_features": max_features,
+        "min_samples_leaf": min_samples_leaf,
+    }
+
+
+def _build_model(model_name: str, threads: int, n_samples: int, n_features: int, common: dict[str, Any]):
+    if model_name in {"sklearn_hgb", "sklearn_hgb_fixed", "sklearn_hgb_adaptive"}:
+        kwargs: dict[str, Any] = {
+            "loss": common["loss"],
+            "max_iter": common["n_estimators"],
+            "learning_rate": common["learning_rate"],
+            "max_depth": common["max_depth"],
+            "max_leaf_nodes": common["num_leaves"],
+            "max_bins": common["max_bin"],
+            "min_samples_leaf": common["min_samples_leaf"],
+            "l2_regularization": common["l2_regularization"],
+            "random_state": common["random_state"],
+            "early_stopping": False,
+        }
+        if model_name == "sklearn_hgb_adaptive":
+            kwargs.update(_adaptive_histgb_params(n_samples=n_samples, n_features=n_features, common=common))
+        return HistGradientBoostingRegressor(**kwargs)
     if model_name == "xgboost_hist":
         return XGBRegressor(
             objective="reg:squarederror",
@@ -127,16 +151,44 @@ def _set_thread_env(threads: int) -> None:
     os.environ["NUMEXPR_NUM_THREADS"] = str(threads)
 
 
-def _effective_thread_count(model_name: str, requested_threads: int) -> int:
+def _available_cpu_count(fallback: int) -> int:
+    if hasattr(os, "sched_getaffinity"):
+        try:
+            return max(1, len(os.sched_getaffinity(0)))
+        except OSError:
+            pass
+    cpu_count = os.cpu_count()
+    return max(1, cpu_count if cpu_count is not None else fallback)
+
+
+def _effective_thread_count(
+    model_name: str,
+    requested_threads: int,
+    n_samples: int,
+    n_features: int,
+    common: dict[str, Any],
+) -> int:
     """Thread count used by the model internals.
 
     `sklearn_hgb_fixed` emulates a simple scikit-learn-side mitigation for
     oversubscription by capping OpenMP workers to host CPU count.
     """
-    if model_name != "sklearn_hgb_fixed":
+    if model_name not in {"sklearn_hgb_fixed", "sklearn_hgb_adaptive"}:
         return requested_threads
-    cpu_count = os.cpu_count() or requested_threads
-    return max(1, min(requested_threads, cpu_count))
+    available_cpus = _available_cpu_count(fallback=requested_threads)
+    effective_threads = max(1, min(requested_threads, available_cpus))
+    if model_name == "sklearn_hgb_fixed":
+        return effective_threads
+
+    physical_cpus = psutil.cpu_count(logical=False) or available_cpus
+    effective_threads = min(effective_threads, max(1, int(physical_cpus)))
+    max_depth = int(common["max_depth"]) if common.get("max_depth") is not None else 6
+    work_units = max(1, n_samples) * max(1, n_features) * max(1, max_depth)
+    min_work_units_per_thread = 2_400_000
+    work_based_cap = max(1, int(work_units / min_work_units_per_thread))
+    if int(common.get("num_leaves", 0)) >= 127:
+        work_based_cap = max(1, work_based_cap - 1)
+    return max(1, min(effective_threads, work_based_cap))
 
 
 def _monitor_peak_rss(stop_event: threading.Event, interval_s: float = 0.01) -> float:
@@ -151,7 +203,7 @@ def _monitor_peak_rss(stop_event: threading.Event, interval_s: float = 0.01) -> 
 
 
 def _fitted_tree_count(model_name: str, model: Any) -> int:
-    if model_name in {"sklearn_hgb", "sklearn_hgb_fixed"}:
+    if model_name in {"sklearn_hgb", "sklearn_hgb_fixed", "sklearn_hgb_adaptive"}:
         return int(getattr(model, "n_iter_", 0))
     if model_name == "xgboost_hist":
         booster = model.get_booster()
@@ -165,7 +217,7 @@ def _fitted_tree_count(model_name: str, model: Any) -> int:
 
 
 def _count_tree_nodes(model_name: str, model: Any) -> int:
-    if model_name in {"sklearn_hgb", "sklearn_hgb_fixed"}:
+    if model_name in {"sklearn_hgb", "sklearn_hgb_fixed", "sklearn_hgb_adaptive"}:
         total_nodes = 0
         for stage in getattr(model, "_predictors", []):
             for predictor in stage:
@@ -200,9 +252,15 @@ def _single_run(
     seed: int,
     common_overrides: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    effective_threads = _effective_thread_count(model_name=model_name, requested_threads=threads)
-    _set_thread_env(effective_threads)
     common = _common_hyperparameters(overrides=common_overrides)
+    effective_threads = _effective_thread_count(
+        model_name=model_name,
+        requested_threads=threads,
+        n_samples=n_samples,
+        n_features=n_features,
+        common=common,
+    )
+    _set_thread_env(effective_threads)
     X, y = make_regression(
         n_samples=n_samples,
         n_features=n_features,
@@ -214,7 +272,13 @@ def _single_run(
     y = y.astype(np.float32)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=seed)
 
-    model = _build_model(model_name=model_name, threads=effective_threads, common=common)
+    model = _build_model(
+        model_name=model_name,
+        threads=effective_threads,
+        n_samples=n_samples,
+        n_features=n_features,
+        common=common,
+    )
     stop_event = threading.Event()
     peak_holder = {"peak_mb": 0.0}
 

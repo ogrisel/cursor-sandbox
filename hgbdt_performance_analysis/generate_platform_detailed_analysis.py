@@ -7,7 +7,7 @@ from typing import Any
 
 BASE_DIR = Path(__file__).resolve().parent
 
-SKLEARN_MODELS = {"sklearn_hgb", "sklearn_hgb_fixed"}
+SKLEARN_MODELS = {"sklearn_hgb", "sklearn_hgb_fixed", "sklearn_hgb_adaptive"}
 ALT_MODELS = {"lightgbm_hist", "xgboost_hist"}
 
 
