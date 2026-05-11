@@ -73,11 +73,13 @@ def _adaptive_histgb_params(n_samples: int, n_features: int, common: dict[str, A
         if n_features >= 60:
             max_bins = min(requested_bins, 160)
             max_features = 0.92
+            min_samples_leaf = max(min_samples_leaf, 21)
+            max_leaf_nodes = min(requested_leaves, 111)
         else:
-            max_bins = min(requested_bins, 192)
-            max_features = 1.0
-        min_samples_leaf = max(min_samples_leaf, 21)
-        max_leaf_nodes = min(requested_leaves, 111)
+            max_bins = min(requested_bins, 160)
+            max_features = 0.95
+            min_samples_leaf = max(min_samples_leaf, 22)
+            max_leaf_nodes = min(requested_leaves, 95)
     elif n_features >= 100:
         max_bins = min(requested_bins, 128)
         max_features = 0.75
@@ -198,9 +200,15 @@ def _effective_thread_count(
     effective_threads = min(effective_threads, max(1, int(physical_cpus)))
     max_depth = int(common["max_depth"]) if common.get("max_depth") is not None else 6
     work_units = max(1, n_samples) * max(1, n_features) * max(1, max_depth)
-    min_work_units_per_thread = 850_000
+    requested_leaves = int(common.get("num_leaves", 0))
+    if requested_leaves <= 31:
+        min_work_units_per_thread = 350_000
+    elif requested_leaves >= 127:
+        min_work_units_per_thread = 700_000
+    else:
+        min_work_units_per_thread = 850_000
     work_based_cap = max(1, int(math.ceil(work_units / min_work_units_per_thread)))
-    if int(common.get("num_leaves", 0)) >= 127 and n_samples < 60_000:
+    if requested_leaves >= 127 and n_samples < 60_000:
         work_based_cap = max(1, work_based_cap - 1)
     return max(1, min(effective_threads, work_based_cap))
 
