@@ -70,7 +70,12 @@ def _adaptive_histgb_params(n_samples: int, n_features: int, common: dict[str, A
     requested_leaves = int(common["num_leaves"])
     min_samples_leaf = int(common["min_samples_leaf"])
     if requested_leaves >= 127:
-        if n_features >= 60:
+        if n_samples < 10_000 and n_features <= 40:
+            max_bins = min(requested_bins, 128)
+            max_features = 0.90
+            min_samples_leaf = max(min_samples_leaf, 24)
+            max_leaf_nodes = min(requested_leaves, 63)
+        elif n_features >= 60:
             max_bins = min(requested_bins, 160)
             max_features = 0.92
             min_samples_leaf = max(min_samples_leaf, 21)
@@ -208,8 +213,6 @@ def _effective_thread_count(
     else:
         min_work_units_per_thread = 850_000
     work_based_cap = max(1, int(math.ceil(work_units / min_work_units_per_thread)))
-    if requested_leaves >= 127 and n_samples < 60_000:
-        work_based_cap = max(1, work_based_cap - 1)
     return max(1, min(effective_threads, work_based_cap))
 
 
