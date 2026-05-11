@@ -82,13 +82,11 @@ def _oversubscription_rows(runs: list[dict[str, Any]], core_threads: int) -> lis
 
     rows: list[dict[str, Any]] = []
     t2 = 2 * core_threads
-    t4 = 4 * core_threads
     for (dataset, model), per_thread in sorted(grouped.items()):
         if core_threads not in per_thread:
             continue
         fit_core = float(per_thread[core_threads]["fit_seconds"])
         fit_2x = float(per_thread[t2]["fit_seconds"]) if t2 in per_thread else None
-        fit_4x = float(per_thread[t4]["fit_seconds"]) if t4 in per_thread else None
         rows.append(
             {
                 "dataset": dataset,
@@ -96,9 +94,7 @@ def _oversubscription_rows(runs: list[dict[str, Any]], core_threads: int) -> lis
                 "core_threads": core_threads,
                 "fit_s_cores": fit_core,
                 "fit_s_2x_cores": fit_2x,
-                "fit_s_4x_cores": fit_4x,
                 "fit_ratio_2x_vs_cores": None if fit_2x is None else (fit_2x / fit_core),
-                "fit_ratio_4x_vs_cores": None if fit_4x is None else (fit_4x / fit_core),
             }
         )
     return rows
@@ -189,23 +185,23 @@ def _identify_issues(runs: list[dict[str, Any]], core_threads: int) -> list[dict
                 )
     for dataset in by_dataset:
         rows_core = [r for r in runs if str(r["dataset_name"]) == dataset and int(r["threads"]) == core_threads]
-        rows_4x = [r for r in runs if str(r["dataset_name"]) == dataset and int(r["threads"]) == 4 * core_threads]
-        if not rows_core or not rows_4x:
+        rows_2x = [r for r in runs if str(r["dataset_name"]) == dataset and int(r["threads"]) == 2 * core_threads]
+        if not rows_core or not rows_2x:
             continue
         sk_core = [float(r["fit_seconds"]) for r in rows_core if str(r["model"]) in SKLEARN_MODELS]
-        sk_4x = [float(r["fit_seconds"]) for r in rows_4x if str(r["model"]) in SKLEARN_MODELS]
+        sk_2x = [float(r["fit_seconds"]) for r in rows_2x if str(r["model"]) in SKLEARN_MODELS]
         alt_core = [float(r["fit_seconds"]) for r in rows_core if str(r["model"]) in ALT_MODELS]
-        alt_4x = [float(r["fit_seconds"]) for r in rows_4x if str(r["model"]) in ALT_MODELS]
-        if sk_core and sk_4x and alt_core and alt_4x:
-            sk_ratio = min(sk_4x) / min(sk_core)
-            alt_ratio = min(alt_4x) / min(alt_core)
+        alt_2x = [float(r["fit_seconds"]) for r in rows_2x if str(r["model"]) in ALT_MODELS]
+        if sk_core and sk_2x and alt_core and alt_2x:
+            sk_ratio = min(sk_2x) / min(sk_core)
+            alt_ratio = min(alt_2x) / min(alt_core)
             if sk_ratio > alt_ratio + 0.15:
                 issues.append(
                     {
                         "type": "oversubscription",
                         "dataset": dataset,
                         "detail": (
-                            f"At 4x cores, sklearn fit-time ratio vs cores is {sk_ratio:.3f} "
+                            f"At 2x cores, sklearn fit-time ratio vs cores is {sk_ratio:.3f} "
                             f"vs {alt_ratio:.3f} for best alternative."
                         ),
                     }
@@ -280,7 +276,7 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
             lines.extend([f"![absolute-fit-time-{setting_name}]({fit_time_plot.name})", ""])
             lines.extend(
                 [
-                    f"_Vertical markers denote `cores={core_threads}`, `2x={2 * core_threads}`, and `4x={4 * core_threads}` thread regimes._",
+                    f"_Vertical markers denote `cores={core_threads}` and `2x={2 * core_threads}` thread regimes._",
                     "",
                 ]
             )
@@ -317,7 +313,7 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
             )
         )
         lines.append("")
-        lines.extend([f"### Oversubscription regime summary (`cores={core_threads}`, `2x`, `4x`)", ""])
+        lines.extend([f"### Oversubscription regime summary (`cores={core_threads}`, `2x`)", ""])
         lines.extend(
             _table(
                 oversub,
@@ -326,9 +322,7 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
                     ("model", "model"),
                     ("fit_s_cores", "fit_s_cores"),
                     ("fit_s_2x_cores", "fit_s_2x_cores"),
-                    ("fit_s_4x_cores", "fit_s_4x_cores"),
                     ("fit_ratio_2x_vs_cores", "fit_ratio_2x_vs_cores"),
-                    ("fit_ratio_4x_vs_cores", "fit_ratio_4x_vs_cores"),
                 ],
             )
         )

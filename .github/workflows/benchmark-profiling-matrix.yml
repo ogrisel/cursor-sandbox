@@ -58,8 +58,6 @@ jobs:
             --timeout-s 5 \
             --benchmark-min-n-samples 500 \
             --benchmark-reduction-factor 0.6 \
-            --benchmark-execution-mode inprocess \
-            --dataset-profile ci_balanced \
             --profile-n-samples 16000 \
             --profile-n-features 48 \
             --profile-threads 1 \
@@ -78,8 +76,6 @@ jobs:
             --timeout-s 5 `
             --benchmark-min-n-samples 500 `
             --benchmark-reduction-factor 0.6 `
-            --benchmark-execution-mode inprocess `
-            --dataset-profile ci_balanced `
             --profile-n-samples 16000 `
             --profile-n-features 48 `
             --profile-threads 1 `
