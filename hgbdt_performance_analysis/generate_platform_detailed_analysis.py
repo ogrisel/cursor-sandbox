@@ -47,16 +47,17 @@ def _parity_rows(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(rows, key=lambda r: (str(r["dataset_name"]), str(r["model"])))
 
 
-def _scalability_rows(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _scalability_rows(runs: list[dict[str, Any]], core_threads: int) -> list[dict[str, Any]]:
     grouped: dict[tuple[str, str], dict[int, dict[str, Any]]] = {}
     for row in runs:
         key = (str(row["dataset_name"]), str(row["model"]))
         grouped.setdefault(key, {})[int(row["threads"])] = row
     out = []
     for (dataset, model), per_thread in sorted(grouped.items()):
-        if 1 not in per_thread:
+        regular_threads = sorted(t for t in per_thread if t <= core_threads)
+        if 1 not in per_thread or not regular_threads:
             continue
-        max_threads = max(per_thread)
+        max_threads = regular_threads[-1]
         base_fit = float(per_thread[1]["fit_seconds"])
         max_fit = float(per_thread[max_threads]["fit_seconds"])
         speedup = 0.0 if max_fit == 0 else base_fit / max_fit
@@ -64,10 +65,10 @@ def _scalability_rows(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
             {
                 "dataset": dataset,
                 "model": model,
-                "max_threads": max_threads,
+                "max_regular_threads": max_threads,
                 "fit_s_1_thread": base_fit,
-                "fit_s_max_threads": max_fit,
-                "speedup_1_to_max": speedup,
+                "fit_s_regular_max_threads": max_fit,
+                "speedup_1_to_regular_max": speedup,
             }
         )
     return out
@@ -168,7 +169,7 @@ def _identify_issues(runs: list[dict[str, Any]], core_threads: int) -> list[dict
                     }
                 )
 
-    scalability = _scalability_rows(runs)
+    scalability = _scalability_rows(runs=runs, core_threads=core_threads)
     for dataset in by_dataset:
         rows = [r for r in scalability if r["dataset"] == dataset]
         sk_speed = [float(r["speedup_1_to_max"]) for r in rows if r["model"] in SKLEARN_MODELS]
@@ -236,11 +237,17 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
     if manifest_path.exists():
         manifest = _load_json(manifest_path)
         core_threads = int(manifest.get("cpu_count", 1))
+        cpu_info = manifest.get("cpu_info", {})
         lines.extend(
             [
                 f"- System: `{manifest.get('system', 'unknown')}`",
                 f"- Architecture: `{manifest.get('architecture', 'unknown')}`",
                 f"- CPU count (logical): `{core_threads}`",
+                f"- CPU count (physical): `{cpu_info.get('physical_cpu_count', 'unknown')}`",
+                f"- Hyper-threading enabled: `{cpu_info.get('hyperthreading_enabled', 'unknown')}`",
+                f"- CPU model: `{cpu_info.get('model_name', 'unknown')}`",
+                f"- Core type counts: `{cpu_info.get('core_type_counts', {})}`",
+                f"- CFS/CPU quota: `{cpu_info.get('cfs_quota', 'n/a')}`",
                 f"- Thread grid: `{manifest.get('thread_grid', [])}`",
                 f"- Native profile enabled: `{manifest.get('native_profile_enabled', False)}`",
                 "",
@@ -255,10 +262,13 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
         oversub = _oversubscription_rows(runs=runs, core_threads=core_threads)
         plot_suffix = "" if setting_name == "baseline_default" else f"_{setting_name}"
         scalability_plot = machine_dir / f"scalability{plot_suffix}.png"
+        fit_time_plot = machine_dir / f"fit_time_threads{plot_suffix}.png"
 
         lines.extend([f"## Setting: `{setting_name}`", ""])
         if scalability_plot.exists():
             lines.extend([f"![scalability-{setting_name}]({scalability_plot.name})", ""])
+        if fit_time_plot.exists():
+            lines.extend([f"![absolute-fit-time-{setting_name}]({fit_time_plot.name})", ""])
 
         lines.extend(["### Parity checks (thread=1)", ""])
         lines.extend(
@@ -284,10 +294,10 @@ def _write_machine_analysis(machine_dir: Path, payloads: dict[str, dict[str, Any
                 [
                     ("dataset", "dataset"),
                     ("model", "model"),
-                    ("max_threads", "max_threads"),
+                    ("max_regular_threads", "max_regular_threads"),
                     ("fit_s_1_thread", "fit_s_1_thread"),
-                    ("fit_s_max_threads", "fit_s_max_threads"),
-                    ("speedup_1_to_max", "speedup_1_to_max"),
+                    ("fit_s_regular_max_threads", "fit_s_regular_max_threads"),
+                    ("speedup_1_to_regular_max", "speedup_1_to_regular_max"),
                 ],
             )
         )

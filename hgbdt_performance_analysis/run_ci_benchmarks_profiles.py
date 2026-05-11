@@ -45,6 +45,157 @@ def _resolve_thread_grid(requested_grid: list[int] | None) -> list[int]:
     return sorted({1, 2, cpu_count, 2 * cpu_count, 4 * cpu_count})
 
 
+def _run_capture(cmd: list[str], timeout_s: float = 5.0) -> str | None:
+    try:
+        completed = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s, check=False)
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return None
+    if completed.returncode != 0:
+        return None
+    return completed.stdout.strip()
+
+
+def _linux_core_type_counts(logical_cpu_count: int) -> dict[str, int | None]:
+    capacity_files = sorted(Path("/sys/devices/system/cpu").glob("cpu[0-9]*/cpu_capacity"))
+    capacities: dict[int, int] = {}
+    for path in capacity_files:
+        try:
+            value = int(path.read_text(encoding="utf-8").strip())
+        except (ValueError, OSError):
+            continue
+        capacities[value] = capacities.get(value, 0) + 1
+    if not capacities:
+        return {"performance": logical_cpu_count, "efficiency": None, "low_power": None}
+    sorted_caps = sorted(capacities.items(), key=lambda item: item[0], reverse=True)
+    performance = sorted_caps[0][1] if len(sorted_caps) >= 1 else None
+    efficiency = sorted_caps[1][1] if len(sorted_caps) >= 2 else None
+    low_power = sum(count for _, count in sorted_caps[2:]) if len(sorted_caps) >= 3 else None
+    return {"performance": performance, "efficiency": efficiency, "low_power": low_power}
+
+
+def _linux_cgroup_quota() -> dict[str, Any] | None:
+    cpu_max = Path("/sys/fs/cgroup/cpu.max")
+    if cpu_max.exists():
+        payload = cpu_max.read_text(encoding="utf-8").strip().split()
+        if len(payload) == 2:
+            quota_raw, period_raw = payload
+            quota_us = None if quota_raw == "max" else int(quota_raw)
+            period_us = int(period_raw)
+            return {
+                "controller": "cgroup_v2",
+                "quota_us": quota_us,
+                "period_us": period_us,
+                "quota_cores": None if quota_us is None else (quota_us / period_us),
+            }
+    quota_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+    period_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+    if quota_path.exists() and period_path.exists():
+        quota = int(quota_path.read_text(encoding="utf-8").strip())
+        period = int(period_path.read_text(encoding="utf-8").strip())
+        quota_us = None if quota < 0 else quota
+        return {
+            "controller": "cgroup_v1",
+            "quota_us": quota_us,
+            "period_us": period,
+            "quota_cores": None if quota_us is None else (quota_us / period),
+        }
+    return None
+
+
+def _collect_cpu_info() -> dict[str, Any]:
+    system = platform.system().strip().lower()
+    logical = max(1, os.cpu_count() or 1)
+    info: dict[str, Any] = {
+        "system": platform.system(),
+        "architecture": platform.machine(),
+        "logical_cpu_count": logical,
+        "physical_cpu_count": None,
+        "hyperthreading_enabled": None,
+        "core_type_counts": {"performance": None, "efficiency": None, "low_power": None},
+        "cfs_quota": None,
+        "cpuset": None,
+        "model_name": None,
+        "data_sources": [],
+    }
+
+    if system == "linux":
+        lscpu_out = _run_capture(["lscpu"])
+        if lscpu_out:
+            info["data_sources"].append("lscpu")
+            for line in lscpu_out.splitlines():
+                if line.lower().startswith("model name:"):
+                    info["model_name"] = line.split(":", 1)[1].strip()
+        phys_pairs = _run_capture(["bash", "-lc", "lscpu -p=core,socket | rg -v '^#'"])
+        if phys_pairs:
+            unique_pairs = {line.strip() for line in phys_pairs.splitlines() if line.strip()}
+            info["physical_cpu_count"] = len(unique_pairs)
+        if info["physical_cpu_count"]:
+            info["hyperthreading_enabled"] = logical > int(info["physical_cpu_count"])
+        info["core_type_counts"] = _linux_core_type_counts(logical_cpu_count=logical)
+        info["cfs_quota"] = _linux_cgroup_quota()
+        cpuset_candidates = [Path("/sys/fs/cgroup/cpuset.cpus.effective"), Path("/sys/fs/cgroup/cpuset/cpuset.cpus")]
+        for path in cpuset_candidates:
+            if path.exists():
+                info["cpuset"] = path.read_text(encoding="utf-8").strip() or None
+                break
+        return info
+
+    if system == "darwin":
+        info["data_sources"].append("sysctl")
+        logical_out = _run_capture(["sysctl", "-n", "hw.logicalcpu"])
+        physical_out = _run_capture(["sysctl", "-n", "hw.physicalcpu"])
+        model_out = _run_capture(["sysctl", "-n", "machdep.cpu.brand_string"])
+        if logical_out and logical_out.isdigit():
+            info["logical_cpu_count"] = int(logical_out)
+        if physical_out and physical_out.isdigit():
+            info["physical_cpu_count"] = int(physical_out)
+        if model_out:
+            info["model_name"] = model_out
+        p_cores = _run_capture(["sysctl", "-n", "hw.perflevel0.physicalcpu"])
+        e_cores = _run_capture(["sysctl", "-n", "hw.perflevel1.physicalcpu"])
+        l_cores = _run_capture(["sysctl", "-n", "hw.perflevel2.physicalcpu"])
+        info["core_type_counts"] = {
+            "performance": int(p_cores) if p_cores and p_cores.isdigit() else None,
+            "efficiency": int(e_cores) if e_cores and e_cores.isdigit() else None,
+            "low_power": int(l_cores) if l_cores and l_cores.isdigit() else None,
+        }
+        if info["physical_cpu_count"]:
+            info["hyperthreading_enabled"] = int(info["logical_cpu_count"]) > int(info["physical_cpu_count"])
+        return info
+
+    if system == "windows":
+        ps = _run_capture(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors,ThreadCount | ConvertTo-Json -Compress",
+            ],
+            timeout_s=15.0,
+        )
+        if ps:
+            info["data_sources"].append("powershell-cim")
+            payload = json.loads(ps)
+            if isinstance(payload, dict):
+                payload = [payload]
+            if isinstance(payload, list) and payload:
+                cores = [int(row.get("NumberOfCores", 0)) for row in payload if row.get("NumberOfCores")]
+                logicals = [int(row.get("NumberOfLogicalProcessors", 0)) for row in payload if row.get("NumberOfLogicalProcessors")]
+                threads = [int(row.get("ThreadCount", 0)) for row in payload if row.get("ThreadCount")]
+                if cores:
+                    info["physical_cpu_count"] = sum(cores)
+                if logicals:
+                    info["logical_cpu_count"] = sum(logicals)
+                if payload[0].get("Name"):
+                    info["model_name"] = str(payload[0]["Name"]).strip()
+                thread_count = sum(threads) if threads else int(info["logical_cpu_count"])
+                phys = int(info["physical_cpu_count"]) if info["physical_cpu_count"] else 0
+                info["hyperthreading_enabled"] = bool(phys and thread_count > phys)
+        return info
+
+    return info
+
+
 def _run(cmd: list[str]) -> str:
     completed = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if completed.returncode != 0:
@@ -166,10 +317,50 @@ def _write_scalability_plot(benchmark_results_json: Path, output_png: Path, titl
     plt.close(fig)
 
 
+def _write_fit_time_plot(benchmark_results_json: Path, output_png: Path, title: str, core_threads: int) -> None:
+    payload = json.loads(benchmark_results_json.read_text(encoding="utf-8"))
+    runs = payload.get("runs", [])
+    by_dataset: dict[str, list[dict[str, Any]]] = {}
+    for run in runs:
+        by_dataset.setdefault(str(run["dataset_name"]), []).append(run)
+    if not by_dataset:
+        return
+
+    datasets = sorted(by_dataset)
+    fig, axes = plt.subplots(1, len(datasets), figsize=(6 * len(datasets), 4.5), squeeze=False)
+    for idx, dataset in enumerate(datasets):
+        ax = axes[0][idx]
+        rows = by_dataset[dataset]
+        model_thread: dict[str, dict[int, dict[str, Any]]] = {}
+        for row in rows:
+            model = str(row["model"])
+            thread = int(row["threads"])
+            model_thread.setdefault(model, {})[thread] = row
+        for model, per_thread in sorted(model_thread.items()):
+            threads = sorted(per_thread)
+            fit_values = [float(per_thread[t]["fit_seconds"]) for t in threads]
+            ax.plot(threads, fit_values, marker="o", label=model)
+        for thread_value, label in [(core_threads, "cores"), (2 * core_threads, "2x"), (4 * core_threads, "4x")]:
+            ax.axvline(thread_value, color="#777777", linestyle="--", linewidth=0.8, alpha=0.5)
+            ax.text(thread_value, ax.get_ylim()[1], label, rotation=90, va="top", ha="center", fontsize=8, color="#666666")
+        ax.set_title(dataset)
+        ax.set_xlabel("Threads")
+        ax.set_ylabel("Fit time (s)")
+        ax.grid(alpha=0.3)
+    handles, labels = axes[0][0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=min(4, max(1, len(labels))), frameon=False)
+    fig.suptitle(title)
+    fig.tight_layout(rect=(0, 0.07, 1, 0.94))
+    output_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_png, dpi=160)
+    plt.close(fig)
+
+
 def _run_benchmark_setting(
     setting_name: str,
     out_dir: Path,
     args: argparse.Namespace,
+    core_threads: int,
     common_params: dict[str, Any] | None,
 ) -> dict[str, str]:
     suffix = "" if setting_name == "baseline_default" else f"_{setting_name}"
@@ -178,6 +369,7 @@ def _run_benchmark_setting(
     benchmark_summary_md = out_dir / f"benchmark_report{suffix}.md"
     benchmark_rank_png = out_dir / f"benchmark_ranked_models{suffix}.png"
     scalability_png = out_dir / f"scalability{suffix}.png"
+    fit_time_png = out_dir / f"fit_time_threads{suffix}.png"
 
     cmd = [
         sys.executable,
@@ -211,12 +403,19 @@ def _run_benchmark_setting(
     )
     _write_ranked_models_plot(benchmark_summary_json=benchmark_summary_json, output_png=benchmark_rank_png, title=f"Per-machine model ranking ({setting_name})")
     _write_scalability_plot(benchmark_results_json=benchmark_json, output_png=scalability_png, title=f"Scalability by dataset ({setting_name})")
+    _write_fit_time_plot(
+        benchmark_results_json=benchmark_json,
+        output_png=fit_time_png,
+        title=f"Absolute fit time vs threads ({setting_name})",
+        core_threads=core_threads,
+    )
     return {
         "benchmark_json": str(benchmark_json),
         "benchmark_summary_json": str(benchmark_summary_json),
         "benchmark_summary_md": str(benchmark_summary_md),
         "benchmark_ranked_models_png": str(benchmark_rank_png),
         "scalability_png": str(scalability_png),
+        "fit_time_threads_png": str(fit_time_png),
     }
 
 
@@ -234,6 +433,8 @@ def main() -> None:
     parser.add_argument("--profile-models", nargs="+", default=["sklearn_hgb", "lightgbm_hist"])
     parser.add_argument("--skip-alt-hparams", action="store_true")
     args = parser.parse_args()
+    cpu_info = _collect_cpu_info()
+    core_threads = int(cpu_info.get("logical_cpu_count") or max(1, os.cpu_count() or 1))
     thread_grid = _resolve_thread_grid(args.thread_grid)
     args.thread_grid = thread_grid
 
@@ -250,6 +451,7 @@ def main() -> None:
             setting_name=setting_name,
             out_dir=out_dir,
             args=args,
+            core_threads=core_threads,
             common_params=common_params,
         )
 
@@ -287,12 +489,13 @@ def main() -> None:
         "machine_tag": resolve_machine_tag(args.machine_tag),
         "system": platform.system(),
         "architecture": platform.machine(),
-        "cpu_count": max(1, os.cpu_count() or 1),
+        "cpu_count": core_threads,
+        "cpu_info": cpu_info,
         "thread_grid": thread_grid,
         "oversubscription_targets": {
-            "cores": max(1, os.cpu_count() or 1),
-            "x2_cores": 2 * max(1, os.cpu_count() or 1),
-            "x4_cores": 4 * max(1, os.cpu_count() or 1),
+            "cores": core_threads,
+            "x2_cores": 2 * core_threads,
+            "x4_cores": 4 * core_threads,
         },
         "native_profile_enabled": native_enabled,
         "settings": setting_outputs,
