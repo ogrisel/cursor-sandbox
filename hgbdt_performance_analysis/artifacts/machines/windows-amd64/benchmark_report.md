@@ -1,64 +1,64 @@
 # Histogram GBDT Regressor Benchmark Report
 
 ## Experiment controls
-- Timeout budget per individual run: `12.0 s`
-- Adaptive reduction factor after timeout: `0.5`
-- Threads tested: `[1, 2, 4, 8, 16]`
-- Dataset templates: `[{'name': 'small', 'start_n_samples': 50000, 'n_features': 40}, {'name': 'medium', 'start_n_samples': 140000, 'n_features': 80}, {'name': 'large', 'start_n_samples': 320000, 'n_features': 120}]`
+- Timeout budget per individual run: `5.0 s`
+- Adaptive reduction factor after timeout: `0.6`
+- Threads tested: `[1, 4, 16]`
+- Dataset templates: `[{'name': 'small', 'start_n_samples': 12000, 'n_features': 24}, {'name': 'medium', 'start_n_samples': 36000, 'n_features': 48}, {'name': 'large', 'start_n_samples': 90000, 'n_features': 80}]`
 
 ## Overall ranking (lower is faster)
 | model | median_total_s | mean_total_s | geo_mean_total_s | mean_peak_rss_mb | mean_r2 | max_r2_spread_for_matched_scenario |
 | --- | --- | --- | --- | --- | --- | --- |
-| lightgbm_hist | 2.79297 | 3.05309 | 2.70787 | 234.534 | 0.793002 | 0.0191276 |
-| sklearn_hgb_fixed | 4.05138 | 3.97053 | 3.60187 | 229.197 | 0.782765 | 0.0191276 |
-| sklearn_hgb | 4.06037 | 4.07937 | 3.74542 | 230.652 | 0.782765 | 0.0191276 |
-| xgboost_hist | 4.42158 | 4.61767 | 4.15274 | 250.498 | 0.793471 | 0.0191276 |
+| lightgbm_hist | 1.30443 | 2.32277 | 1.56424 | 244.972 | 0.866003 | 0.00991913 |
+| sklearn_hgb_fixed | 1.5764 | 2.60221 | 1.90973 | 234.82 | 0.857486 | 0.00991913 |
+| xgboost_hist | 1.99379 | 3.34372 | 2.37717 | 248.96 | 0.864913 | 0.00991913 |
+| sklearn_hgb | 2.07859 | 2.82503 | 2.17573 | 236.304 | 0.857486 | 0.00991913 |
 
 
 ## Single-thread behavior
 | dataset_name | model | n_samples | n_features | fit_seconds | predict_seconds | total_seconds | peak_rss_mb | r2 | fitted_trees | expected_trees | total_nodes | avg_nodes_per_tree |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 40000 | 120 | 6.49309 | 0.128695 | 6.62974 | 247.879 | 0.692337 | 220 | 220 | 13420 | 61 |
-| large | sklearn_hgb | 40000 | 120 | 7.68034 | 0.376642 | 8.05926 | 242.758 | 0.675577 | 220 | 220 | 13420 | 61 |
-| large | sklearn_hgb_fixed | 40000 | 120 | 7.67244 | 0.393953 | 8.07248 | 243.27 | 0.675577 | 220 | 220 | 13420 | 61 |
-| large | xgboost_hist | 40000 | 120 | 9.33896 | 0.0346706 | 9.38039 | 282.645 | 0.694704 | 220 | 220 | 13420 | 61 |
-| medium | lightgbm_hist | 70000 | 80 | 6.04011 | 0.217602 | 6.26454 | 257.617 | 0.79359 | 220 | 220 | 13420 | 61 |
-| medium | sklearn_hgb | 70000 | 80 | 6.75536 | 0.487311 | 7.24661 | 251.555 | 0.785099 | 220 | 220 | 13420 | 61 |
-| medium | sklearn_hgb_fixed | 70000 | 80 | 6.76673 | 0.494035 | 7.26514 | 250.973 | 0.785099 | 220 | 220 | 13420 | 61 |
-| medium | xgboost_hist | 70000 | 80 | 8.19298 | 0.0561747 | 8.25285 | 279.07 | 0.793602 | 220 | 220 | 13420 | 61 |
-| small | lightgbm_hist | 50000 | 40 | 2.56243 | 0.156325 | 2.72691 | 192.48 | 0.893078 | 220 | 220 | 13420 | 61 |
-| small | sklearn_hgb | 50000 | 40 | 3.02075 | 0.304799 | 3.32758 | 192.117 | 0.88762 | 220 | 220 | 13420 | 61 |
-| small | sklearn_hgb_fixed | 50000 | 40 | 3.27314 | 0.303278 | 3.58163 | 192.32 | 0.88762 | 220 | 220 | 13420 | 61 |
-| small | xgboost_hist | 50000 | 40 | 3.59205 | 0.0378873 | 3.63802 | 201.324 | 0.893059 | 220 | 220 | 13420 | 61 |
+| large | lightgbm_hist | 90000 | 80 | 7.18446 | 0.280221 | 7.47445 | 325.52 | 0.774775 | 220 | 220 | 13420 | 61 |
+| large | sklearn_hgb_fixed | 90000 | 80 | 7.14226 | 0.642076 | 7.7886 | 303.379 | 0.766213 | 220 | 220 | 13420 | 61 |
+| large | sklearn_hgb | 90000 | 80 | 7.16068 | 0.64175 | 7.81056 | 304.594 | 0.766213 | 220 | 220 | 13420 | 61 |
+| large | xgboost_hist | 90000 | 80 | 9.62937 | 0.0715382 | 9.70105 | 335.148 | 0.773861 | 220 | 220 | 13420 | 61 |
+| medium | lightgbm_hist | 36000 | 48 | 2.43689 | 0.111288 | 2.54953 | 218.602 | 0.873865 | 220 | 220 | 13420 | 61 |
+| medium | sklearn_hgb_fixed | 36000 | 48 | 2.65263 | 0.226375 | 2.87915 | 214.793 | 0.863946 | 220 | 220 | 13420 | 61 |
+| medium | sklearn_hgb | 36000 | 48 | 2.91156 | 0.226825 | 3.14587 | 215.281 | 0.863946 | 220 | 220 | 13420 | 61 |
+| medium | xgboost_hist | 36000 | 48 | 3.49808 | 0.0277468 | 3.52734 | 231.031 | 0.873224 | 220 | 220 | 13420 | 61 |
+| small | lightgbm_hist | 12000 | 24 | 0.754449 | 0.0375776 | 0.792809 | 182.289 | 0.949369 | 220 | 220 | 13386 | 60.8455 |
+| small | sklearn_hgb_fixed | 12000 | 24 | 0.8856 | 0.0753619 | 0.968345 | 174.504 | 0.942299 | 220 | 220 | 13414 | 60.9727 |
+| small | sklearn_hgb | 12000 | 24 | 0.910922 | 0.0753109 | 0.987464 | 174.074 | 0.942299 | 220 | 220 | 13414 | 60.9727 |
+| small | xgboost_hist | 12000 | 24 | 1.19587 | 0.0095607 | 1.21048 | 178.84 | 0.948866 | 220 | 220 | 13394 | 60.8818 |
 
 
 ## Multi-thread scalability
 | dataset_name | model | max_threads | fit_s_1_thread | fit_s_max_threads | speedup_vs_1_thread | parallel_efficiency |
 | --- | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 16 | 6.49309 | 3.02242 | 2.14831 | 0.134269 |
-| medium | lightgbm_hist | 16 | 6.04011 | 2.81507 | 2.14563 | 0.134102 |
-| small | lightgbm_hist | 16 | 2.56243 | 1.37231 | 1.86724 | 0.116702 |
-| large | sklearn_hgb | 16 | 7.68034 | 4.76002 | 1.61351 | 0.100844 |
-| medium | sklearn_hgb | 16 | 6.75536 | 4.04277 | 1.67097 | 0.104436 |
-| small | sklearn_hgb | 16 | 3.02075 | 2.34094 | 1.2904 | 0.0806501 |
-| large | sklearn_hgb_fixed | 16 | 7.67244 | 4.09991 | 1.87137 | 0.11696 |
-| medium | sklearn_hgb_fixed | 16 | 6.76673 | 4.19042 | 1.61481 | 0.100926 |
-| small | sklearn_hgb_fixed | 16 | 3.27314 | 1.74405 | 1.87675 | 0.117297 |
-| large | xgboost_hist | 16 | 9.33896 | 5.08123 | 1.83793 | 0.114871 |
-| medium | xgboost_hist | 16 | 8.19298 | 4.38673 | 1.86767 | 0.11673 |
-| small | xgboost_hist | 16 | 3.59205 | 1.99751 | 1.79826 | 0.112391 |
+| large | lightgbm_hist | 16 | 7.18446 | 3.35715 | 2.14004 | 0.133753 |
+| medium | lightgbm_hist | 16 | 2.43689 | 1.25955 | 1.93473 | 0.12092 |
+| small | lightgbm_hist | 16 | 0.754449 | 0.554372 | 1.36091 | 0.0850568 |
+| large | sklearn_hgb | 16 | 7.16068 | 4.00898 | 1.78616 | 0.111635 |
+| medium | sklearn_hgb | 16 | 2.91156 | 1.99719 | 1.45783 | 0.0911143 |
+| small | sklearn_hgb | 16 | 0.910922 | 1.20398 | 0.756593 | 0.0472871 |
+| large | sklearn_hgb_fixed | 16 | 7.14226 | 3.44491 | 2.07328 | 0.12958 |
+| medium | sklearn_hgb_fixed | 16 | 2.65263 | 1.4327 | 1.85149 | 0.115718 |
+| small | sklearn_hgb_fixed | 16 | 0.8856 | 0.673376 | 1.31516 | 0.0821977 |
+| large | xgboost_hist | 16 | 9.62937 | 5.02029 | 1.91809 | 0.119881 |
+| medium | xgboost_hist | 16 | 3.49808 | 1.97435 | 1.77176 | 0.110735 |
+| small | xgboost_hist | 16 | 1.19587 | 0.741926 | 1.61185 | 0.10074 |
 
 
 ## Memory growth trend (thread=1)
 | model | smallest_samples | largest_samples | peak_mb_smallest | peak_mb_largest | approx_mb_per_1k_samples |
 | --- | --- | --- | --- | --- | --- |
-| lightgbm_hist | 40000 | 70000 | 247.879 | 257.617 | 0.324609 |
-| sklearn_hgb | 40000 | 70000 | 242.758 | 251.555 | 0.293229 |
-| sklearn_hgb_fixed | 40000 | 70000 | 243.27 | 250.973 | 0.256771 |
-| xgboost_hist | 40000 | 70000 | 282.645 | 279.07 | -0.119141 |
+| lightgbm_hist | 12000 | 90000 | 182.289 | 325.52 | 1.83629 |
+| sklearn_hgb | 12000 | 90000 | 174.074 | 304.594 | 1.67333 |
+| sklearn_hgb_fixed | 12000 | 90000 | 174.504 | 303.379 | 1.65224 |
+| xgboost_hist | 12000 | 90000 | 178.84 | 335.148 | 2.00396 |
 
 
 ## Initial conclusion
 - Best median runtime model: `lightgbm_hist`
-- Least-performing median runtime model: `xgboost_hist`
+- Least-performing median runtime model: `sklearn_hgb`
 - All scenarios report explicit `r2_spread_for_scenario` to verify score parity while keeping matched hyperparameter values.

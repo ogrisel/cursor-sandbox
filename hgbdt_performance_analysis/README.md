@@ -66,7 +66,7 @@ Generate detailed reports:
 ## Main conclusions
 
 1. No single model dominates every platform and every threading regime.
-2. `lightgbm_hist` leads most often for mono-thread runtime and regular `1 -> cores` scaling, while `sklearn_hgb_fixed` is strongest in oversubscribed `4x cores` robustness.
+2. `lightgbm_hist` leads most often for mono-thread runtime and regular `1 -> cores` scaling, while `xgboost_hist` is strongest in oversubscribed `4x cores` robustness.
 3. Platform-specific diagnostics remain mandatory before declaring a global winner.
 
 ### Per-platform benchmark plots
@@ -90,48 +90,48 @@ From `artifacts/platform_specific_summary.json`:
   - `sklearn_hgb_fixed`: 3/4 platforms
   - `lightgbm_hist`: 1/4 platforms
 - Slowest model:
-  - `xgboost_hist`: 2/4 platforms
-  - `sklearn_hgb`: 2/4 platforms
+  - `sklearn_hgb`: 3/4 platforms
+  - `lightgbm_hist`: 1/4 platforms
 - Worst/best median runtime ratio by model:
-  - `lightgbm_hist`: `1.911x`
-  - `sklearn_hgb`: `1.144x`
-  - `sklearn_hgb_fixed`: `1.866x`
-  - `xgboost_hist`: `2.021x`
+  - `lightgbm_hist`: `2.391x`
+  - `sklearn_hgb`: `2.019x`
+  - `sklearn_hgb_fixed`: `1.791x`
+  - `xgboost_hist`: `2.155x`
 - Profiling coverage note:
   - Windows artifacts are generated without native py-spy (`native_profile_enabled=false`), while Linux/macOS include native profile snapshots.
 
 ### Cross-platform comparison by performance regime
 
-Regime summaries below are computed from all datasets (`small`, `medium`, `large`) and both hyperparameter settings (`baseline_default`, `deep_few_trees`) in the consolidated artifacts committed in this repository. CI matrix jobs now run a faster baseline-only profile (`--skip-alt-hparams`) to stay within runtime budget, while preserving the same mono-thread/scalability/oversubscription measurement structure.
+Regime summaries below are computed from the latest consolidated CI artifacts across all datasets (`small`, `medium`, `large`) using the CI baseline setting (`baseline_default`).
 
 #### 1) Mono-thread performance (`threads=1`, lower `total_seconds` is better)
 
 - Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb` leading on linux-amd64.
 - Global median `total_seconds` across all runs:
-  - `lightgbm_hist`: `5.3195s`
-  - `sklearn_hgb`: `5.4498s`
-  - `sklearn_hgb_fixed`: `5.4821s`
-  - `xgboost_hist`: `7.0055s`
+  - `sklearn_hgb_fixed`: `2.1500s`
+  - `lightgbm_hist`: `2.2201s`
+  - `sklearn_hgb`: `2.3661s`
+  - `xgboost_hist`: `2.8311s`
 
 #### 2) Regular-regime scalability (`1 -> cores`, higher `fit_speedup` is better)
 
-- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb_fixed` leading on macos-arm64.
+- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb` leading on macos-arm64.
 - Global median `fit_speedup(1->cores)`:
-  - `lightgbm_hist`: `2.2608x`
-  - `sklearn_hgb_fixed`: `1.9872x`
-  - `sklearn_hgb`: `1.9519x`
-  - `xgboost_hist`: `1.6619x`
+  - `lightgbm_hist`: `2.2341x`
+  - `sklearn_hgb`: `1.8750x`
+  - `xgboost_hist`: `1.8021x`
+  - `sklearn_hgb_fixed`: `1.7487x`
 
 #### 3) Oversubscription robustness (`4x cores / cores`, lower fit-time ratio is better)
 
-- Most frequent winner by platform: `sklearn_hgb_fixed` (3/4 platforms), with `xgboost_hist` leading on windows-amd64.
+- Most frequent winner by platform: `xgboost_hist` (3/4 platforms), with `sklearn_hgb_fixed` leading on windows-amd64.
 - Global median `fit_time_ratio(4x_vs_cores)`:
-  - `xgboost_hist`: `1.0150x`
-  - `sklearn_hgb_fixed`: `1.0163x`
-  - `lightgbm_hist`: `1.6208x`
-  - `sklearn_hgb`: `3.1016x`
+  - `xgboost_hist`: `0.9909x`
+  - `sklearn_hgb_fixed`: `0.9960x`
+  - `lightgbm_hist`: `2.1660x`
+  - `sklearn_hgb`: `4.2776x`
 
-Interpretation: `lightgbm_hist` usually wins in non-oversubscribed throughput, while `sklearn_hgb_fixed` and `xgboost_hist` are substantially more resilient than `lightgbm_hist` and especially `sklearn_hgb` under heavy oversubscription.
+Interpretation: `lightgbm_hist` usually wins in non-oversubscribed throughput, while `xgboost_hist` and `sklearn_hgb_fixed` are substantially more resilient than `lightgbm_hist` and especially `sklearn_hgb` under heavy oversubscription.
 
 ## Per-platform detailed analysis (root causes + implementation plans)
 
@@ -143,12 +143,12 @@ Interpretation: `lightgbm_hist` usually wins in non-oversubscribed throughput, w
 
 Each detailed report includes:
 
-- Scalability plots for both settings:
+- Scalability plots for available settings:
   - `baseline_default` (`scalability.png`)
-  - `deep_few_trees` (`scalability_deep_few_trees.png`)
-- Absolute fit-time plots for both settings:
+  - optional `deep_few_trees` (`scalability_deep_few_trees.png`) when present in artifacts
+- Absolute fit-time plots for available settings:
   - `baseline_default` (`fit_time_threads.png`)
-  - `deep_few_trees` (`fit_time_threads_deep_few_trees.png`)
+  - optional `deep_few_trees` (`fit_time_threads_deep_few_trees.png`) when present in artifacts
   - Vertical markers annotate `cores`, `2x cores`, and `4x cores` regimes.
 - Oversubscription regime tables at `cores`, `2x cores`, and `4x cores`.
 - Measured per-model `r2` parity tables.

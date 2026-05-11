@@ -7,8 +7,8 @@
     "system": "Linux",
     "architecture": "x86_64",
     "logical_cpu_count": 4,
-    "physical_cpu_count": null,
-    "hyperthreading_enabled": null,
+    "physical_cpu_count": 2,
+    "hyperthreading_enabled": true,
     "core_type_counts": {
       "performance": 4,
       "efficiency": null,
@@ -16,16 +16,14 @@
     },
     "cfs_quota": null,
     "cpuset": "0-3",
-    "model_name": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+    "model_name": "AMD EPYC 9V74 80-Core Processor",
     "data_sources": [
       "lscpu"
     ]
   },
   "thread_grid": [
     1,
-    2,
     4,
-    8,
     16
   ],
   "oversubscription_targets": {
@@ -42,14 +40,6 @@
       "benchmark_ranked_models_png": "artifacts/machines/linux-amd64/benchmark_ranked_models.png",
       "scalability_png": "artifacts/machines/linux-amd64/scalability.png",
       "fit_time_threads_png": "artifacts/machines/linux-amd64/fit_time_threads.png"
-    },
-    "deep_few_trees": {
-      "benchmark_json": "artifacts/machines/linux-amd64/benchmark_results_deep_few_trees.json",
-      "benchmark_summary_json": "artifacts/machines/linux-amd64/benchmark_summary_deep_few_trees.json",
-      "benchmark_summary_md": "artifacts/machines/linux-amd64/benchmark_report_deep_few_trees.md",
-      "benchmark_ranked_models_png": "artifacts/machines/linux-amd64/benchmark_ranked_models_deep_few_trees.png",
-      "scalability_png": "artifacts/machines/linux-amd64/scalability_deep_few_trees.png",
-      "fit_time_threads_png": "artifacts/machines/linux-amd64/fit_time_threads_deep_few_trees.png"
     }
   },
   "outputs": {
