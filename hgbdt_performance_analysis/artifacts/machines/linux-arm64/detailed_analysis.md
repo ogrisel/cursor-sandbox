@@ -37,47 +37,47 @@ _Vertical markers denote `cores=4` and `2x=8` thread regimes._
 
 | dataset | model | max_regular_threads | fit_s_1_thread | fit_s_regular_max_threads | speedup_1_to_regular_max |
 | --- | --- | --- | --- | --- | --- |
-| medium | lightgbm_hist | 4 | 1.84388 | 0.586246 | 3.14524 |
-| medium | sklearn_hgb | 4 | 2.16976 | 0.886299 | 2.44812 |
-| medium | sklearn_hgb_fixed | 4 | 2.13363 | 0.897577 | 2.37709 |
-| medium | xgboost_hist | 4 | 3.29806 | 1.37013 | 2.40712 |
-| small | lightgbm_hist | 4 | 0.531791 | 0.273734 | 1.94273 |
-| small | sklearn_hgb | 4 | 0.724463 | 0.508529 | 1.42463 |
-| small | sklearn_hgb_fixed | 4 | 0.71483 | 0.586718 | 1.21835 |
-| small | xgboost_hist | 4 | 0.825295 | 0.485822 | 1.69876 |
+| medium | lightgbm_hist | 4 | 1.85308 | 0.589642 | 3.14272 |
+| medium | sklearn_hgb | 4 | 2.18136 | 0.886135 | 2.46165 |
+| medium | sklearn_hgb_fixed | 4 | 2.17528 | 0.873789 | 2.48948 |
+| medium | xgboost_hist | 4 | 3.30414 | 1.40557 | 2.35076 |
+| small | lightgbm_hist | 4 | 0.535526 | 0.273212 | 1.96011 |
+| small | sklearn_hgb | 4 | 0.714097 | 0.500803 | 1.4259 |
+| small | sklearn_hgb_fixed | 4 | 0.725436 | 0.516174 | 1.40541 |
+| small | xgboost_hist | 4 | 0.833126 | 0.476301 | 1.74916 |
 
 ### Oversubscription regime summary (`cores=4`, `2x`)
 
 | dataset | model | fit_s_cores | fit_s_2x_cores | fit_ratio_2x_vs_cores |
 | --- | --- | --- | --- | --- |
-| medium | lightgbm_hist | 0.586246 | 1.58657 | 2.70631 |
-| medium | sklearn_hgb | 0.886299 | 3.58878 | 4.04918 |
-| medium | sklearn_hgb_fixed | 0.897577 | 0.866556 | 0.96544 |
-| medium | xgboost_hist | 1.37013 | 1.43022 | 1.04385 |
-| small | lightgbm_hist | 0.273734 | 1.05513 | 3.85459 |
-| small | sklearn_hgb | 0.508529 | 2.9769 | 5.85396 |
-| small | sklearn_hgb_fixed | 0.586718 | 0.521165 | 0.888272 |
-| small | xgboost_hist | 0.485822 | 0.479749 | 0.9875 |
+| medium | lightgbm_hist | 0.589642 | 1.95626 | 3.31771 |
+| medium | sklearn_hgb | 0.886135 | 3.5641 | 4.02208 |
+| medium | sklearn_hgb_fixed | 0.873789 | 0.867043 | 0.992279 |
+| medium | xgboost_hist | 1.40557 | 1.40619 | 1.00044 |
+| small | lightgbm_hist | 0.273212 | 1.07764 | 3.94433 |
+| small | sklearn_hgb | 0.500803 | 2.96104 | 5.91259 |
+| small | sklearn_hgb_fixed | 0.516174 | 0.485463 | 0.940503 |
+| small | xgboost_hist | 0.476301 | 0.471942 | 0.990848 |
 
 ### Underperformance findings and root cause analysis
 
 - Root cause signal: Native hotspots indicate synchronization/runtime overhead (OpenMP/pthread wait-heavy stacks).
-- Issue (single_thread, dataset `medium`): Best sklearn total is 1.151x slower than best alternative at thread=1.
+- Issue (single_thread, dataset `medium`): Best sklearn total is 1.172x slower than best alternative at thread=1.
   - Implementation plan:
     - Introduce adaptive thread gating based on node sample count and feature count.
     - Batch multiple frontier nodes per parallel region to increase task granularity.
     - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
-- Issue (single_thread, dataset `small`): Best sklearn total is 1.318x slower than best alternative at thread=1.
+- Issue (single_thread, dataset `small`): Best sklearn total is 1.302x slower than best alternative at thread=1.
   - Implementation plan:
     - Introduce adaptive thread gating based on node sample count and feature count.
     - Batch multiple frontier nodes per parallel region to increase task granularity.
     - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
-- Issue (scalability, dataset `medium`): Best sklearn speedup trails best alternative by 0.697 (1->regular max threads).
+- Issue (scalability, dataset `medium`): Best sklearn speedup trails best alternative by 0.653 (1->regular max threads).
   - Implementation plan:
     - Introduce adaptive thread gating based on node sample count and feature count.
     - Batch multiple frontier nodes per parallel region to increase task granularity.
     - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
-- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.518 (1->regular max threads).
+- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.534 (1->regular max threads).
   - Implementation plan:
     - Introduce adaptive thread gating based on node sample count and feature count.
     - Batch multiple frontier nodes per parallel region to increase task granularity.

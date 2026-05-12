@@ -89,13 +89,13 @@ From `artifacts/platform_specific_summary.json`:
 - Winner split:
   - `lightgbm_hist`: 4/4 platforms
 - Slowest model:
-  - `xgboost_hist`: 2/4 platforms
-  - `sklearn_hgb`: 2/4 platforms
+  - `xgboost_hist`: 3/4 platforms
+  - `sklearn_hgb`: 1/4 platforms
 - Worst/best median runtime ratio by model:
-  - `lightgbm_hist`: `3.777x`
-  - `sklearn_hgb`: `3.526x`
-  - `sklearn_hgb_fixed`: `2.901x`
-  - `xgboost_hist`: `2.355x`
+  - `lightgbm_hist`: `1.431x`
+  - `sklearn_hgb`: `1.942x`
+  - `sklearn_hgb_fixed`: `1.899x`
+  - `xgboost_hist`: `1.435x`
 - Profiling coverage note:
   - Windows artifacts are generated without native py-spy (`native_profile_enabled=false`), while Linux/macOS include native profile snapshots.
 
@@ -105,30 +105,30 @@ Regime summaries below are computed from the latest consolidated CI artifacts ac
 
 #### 1) Mono-thread performance (`threads=1`, lower `total_seconds` is better)
 
-- Most frequent winner by platform: `lightgbm_hist` (4/4 platforms).
+- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb_fixed` leading on linux-amd64.
 - Global median `total_seconds` across all runs:
-  - `lightgbm_hist`: `0.7005s`
-  - `sklearn_hgb`: `0.8975s`
-  - `sklearn_hgb_fixed`: `0.9023s`
-  - `xgboost_hist`: `1.3359s`
+  - `lightgbm_hist`: `0.8296s`
+  - `sklearn_hgb_fixed`: `1.0727s`
+  - `sklearn_hgb`: `1.0797s`
+  - `xgboost_hist`: `1.5056s`
 
 #### 2) Regular-regime scalability (`1 -> cores`, higher `fit_speedup` is better)
 
-- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb_fixed` leading on macos-arm64.
+- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb` leading on macos-arm64.
 - Global median `fit_speedup(1->cores)`:
-  - `lightgbm_hist`: `1.9664x`
-  - `xgboost_hist`: `1.6197x`
-  - `sklearn_hgb`: `1.4144x`
-  - `sklearn_hgb_fixed`: `1.3712x`
+  - `lightgbm_hist`: `2.0246x`
+  - `xgboost_hist`: `1.5421x`
+  - `sklearn_hgb`: `1.4230x`
+  - `sklearn_hgb_fixed`: `1.3713x`
 
 #### 3) Oversubscription robustness (`2x cores / cores`, lower fit-time ratio is better)
 
-- Most frequent winner by platform: `sklearn_hgb_fixed` (3/4 platforms), with `xgboost_hist` leading on macos-arm64.
+- Most frequent winner by platform: `sklearn_hgb_fixed` (4/4 platforms).
 - Global median `fit_time_ratio(2x_vs_cores)`:
-  - `sklearn_hgb_fixed`: `1.0001x`
-  - `xgboost_hist`: `1.0293x`
-  - `lightgbm_hist`: `2.0125x`
-  - `sklearn_hgb`: `2.8139x`
+  - `sklearn_hgb_fixed`: `0.9988x`
+  - `xgboost_hist`: `1.0014x`
+  - `lightgbm_hist`: `2.4082x`
+  - `sklearn_hgb`: `3.4240x`
 
 Interpretation: `lightgbm_hist` is the consistent non-oversubscribed throughput leader, while `sklearn_hgb_fixed` and `xgboost_hist` remain substantially more resilient than `lightgbm_hist` and especially `sklearn_hgb` under `2x cores` oversubscription.
 

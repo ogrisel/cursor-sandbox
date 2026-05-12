@@ -24,10 +24,10 @@ _Vertical markers denote `cores=3` and `2x=6` thread regimes._
 
 | dataset | model | r2 | fitted_trees | expected_trees | trees_match | total_nodes | avg_nodes_per_tree |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| medium | lightgbm_hist | 0.693811 | 220 | 220 | True | 13420 | 61 |
-| medium | sklearn_hgb | 0.670338 | 220 | 220 | True | 13420 | 61 |
-| medium | sklearn_hgb_fixed | 0.670338 | 220 | 220 | True | 13420 | 61 |
-| medium | xgboost_hist | 0.699219 | 220 | 220 | True | 13420 | 61 |
+| medium | lightgbm_hist | 0.586641 | 220 | 220 | True | 11256 | 51.1636 |
+| medium | sklearn_hgb | 0.529888 | 220 | 220 | True | 12398 | 56.3545 |
+| medium | sklearn_hgb_fixed | 0.529888 | 220 | 220 | True | 12398 | 56.3545 |
+| medium | xgboost_hist | 0.585335 | 220 | 220 | True | 11618 | 52.8091 |
 | small | lightgbm_hist | 0.949369 | 220 | 220 | True | 13386 | 60.8455 |
 | small | sklearn_hgb | 0.942299 | 220 | 220 | True | 13414 | 60.9727 |
 | small | sklearn_hgb_fixed | 0.942299 | 220 | 220 | True | 13414 | 60.9727 |
@@ -37,47 +37,42 @@ _Vertical markers denote `cores=3` and `2x=6` thread regimes._
 
 | dataset | model | max_regular_threads | fit_s_1_thread | fit_s_regular_max_threads | speedup_1_to_regular_max |
 | --- | --- | --- | --- | --- | --- |
-| medium | lightgbm_hist | 3 | 2.12833 | 1.28662 | 1.6542 |
-| medium | sklearn_hgb | 3 | 2.68482 | 1.20101 | 2.23547 |
-| medium | sklearn_hgb_fixed | 3 | 2.66656 | 1.12352 | 2.3734 |
-| medium | xgboost_hist | 3 | 3.701 | 2.25094 | 1.6442 |
-| small | lightgbm_hist | 3 | 0.407695 | 0.64302 | 0.634032 |
-| small | sklearn_hgb | 3 | 0.682941 | 2.06556 | 0.330632 |
-| small | sklearn_hgb_fixed | 3 | 0.597006 | 1.3744 | 0.434374 |
-| small | xgboost_hist | 3 | 0.662189 | 0.825093 | 0.802564 |
+| medium | lightgbm_hist | 3 | 0.847115 | 0.66081 | 1.28193 |
+| medium | sklearn_hgb | 3 | 1.57084 | 0.918853 | 1.70956 |
+| medium | sklearn_hgb_fixed | 3 | 1.44706 | 1.21323 | 1.19273 |
+| medium | xgboost_hist | 3 | 1.79577 | 1.53197 | 1.1722 |
+| small | lightgbm_hist | 3 | 0.437733 | 0.893157 | 0.490097 |
+| small | sklearn_hgb | 3 | 0.848262 | 1.25844 | 0.674057 |
+| small | sklearn_hgb_fixed | 3 | 0.644883 | 0.926531 | 0.696018 |
+| small | xgboost_hist | 3 | 0.647777 | 1.28247 | 0.505102 |
 
 ### Oversubscription regime summary (`cores=3`, `2x`)
 
 | dataset | model | fit_s_cores | fit_s_2x_cores | fit_ratio_2x_vs_cores |
 | --- | --- | --- | --- | --- |
-| medium | lightgbm_hist | 1.28662 | 1.45728 | 1.13264 |
-| medium | sklearn_hgb | 1.20101 | 1.89594 | 1.57862 |
-| medium | sklearn_hgb_fixed | 1.12352 | 1.23013 | 1.09489 |
-| medium | xgboost_hist | 2.25094 | 2.38879 | 1.06124 |
-| small | lightgbm_hist | 0.64302 | 0.847959 | 1.31871 |
-| small | sklearn_hgb | 2.06556 | 2.84137 | 1.37559 |
-| small | sklearn_hgb_fixed | 1.3744 | 2.04545 | 1.48824 |
-| small | xgboost_hist | 0.825093 | 0.804786 | 0.975388 |
+| medium | lightgbm_hist | 0.66081 | 0.9614 | 1.45488 |
+| medium | sklearn_hgb | 0.918853 | 2.59652 | 2.82583 |
+| medium | sklearn_hgb_fixed | 1.21323 | 1.67129 | 1.37755 |
+| medium | xgboost_hist | 1.53197 | 1.75353 | 1.14463 |
+| small | lightgbm_hist | 0.893157 | 1.33852 | 1.49864 |
+| small | sklearn_hgb | 1.25844 | 2.84402 | 2.25995 |
+| small | sklearn_hgb_fixed | 0.926531 | 0.420936 | 0.454314 |
+| small | xgboost_hist | 1.28247 | 0.916323 | 0.7145 |
 
 ### Underperformance findings and root cause analysis
 
 - Root cause signal: Python-level dispatch/orchestration contributes meaningfully to sklearn runtime.
-- Issue (single_thread, dataset `medium`): Best sklearn total is 1.240x slower than best alternative at thread=1.
+- Issue (single_thread, dataset `medium`): Best sklearn total is 1.678x slower than best alternative at thread=1.
   - Implementation plan:
     - Move short-lived orchestration loops to Cython/C-level helpers.
     - Preallocate and reuse temporary buffers in split and histogram kernels.
     - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
-- Issue (single_thread, dataset `small`): Best sklearn total is 1.452x slower than best alternative at thread=1.
+- Issue (single_thread, dataset `small`): Best sklearn total is 1.377x slower than best alternative at thread=1.
   - Implementation plan:
     - Move short-lived orchestration loops to Cython/C-level helpers.
     - Preallocate and reuse temporary buffers in split and histogram kernels.
     - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
-- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.368 (1->regular max threads).
-  - Implementation plan:
-    - Move short-lived orchestration loops to Cython/C-level helpers.
-    - Preallocate and reuse temporary buffers in split and histogram kernels.
-    - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
-- Issue (oversubscription, dataset `small`): At 2x cores, sklearn fit-time ratio vs cores is 1.488 vs 1.252 for best alternative.
+- Issue (oversubscription, dataset `medium`): At 2x cores, sklearn fit-time ratio vs cores is 1.819 vs 1.455 for best alternative.
   - Implementation plan:
     - Move short-lived orchestration loops to Cython/C-level helpers.
     - Preallocate and reuse temporary buffers in split and histogram kernels.

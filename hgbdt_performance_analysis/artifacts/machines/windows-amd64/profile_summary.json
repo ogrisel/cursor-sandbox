@@ -5,85 +5,85 @@
         "function": "~:0:<built-in method builtins.exec>",
         "primitive_calls": 1,
         "total_calls": 1665,
-        "total_time_s": 0.042507800000000005,
-        "cumulative_time_s": 4.9563821
+        "total_time_s": 0.0416588,
+        "cumulative_time_s": 4.856559000000001
       },
       {
         "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.00010010000000000001,
-        "cumulative_time_s": 4.956335200000001
+        "total_time_s": 8.38e-05,
+        "cumulative_time_s": 4.8565452
       },
       {
         "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
         "primitive_calls": 11,
         "total_calls": 1659,
-        "total_time_s": 0.0126566,
-        "cumulative_time_s": 2.5137868
+        "total_time_s": 0.012894500000000001,
+        "cumulative_time_s": 2.5006437000000004
       },
       {
         "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
         "primitive_calls": 11,
         "total_calls": 1616,
-        "total_time_s": 0.0084772,
-        "cumulative_time_s": 2.5134282000000003
+        "total_time_s": 0.0086377,
+        "cumulative_time_s": 2.5003461000000002
       },
       {
         "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
         "primitive_calls": 11,
         "total_calls": 1567,
-        "total_time_s": 0.0064908000000000006,
-        "cumulative_time_s": 2.5088018
+        "total_time_s": 0.006819,
+        "cumulative_time_s": 2.4953339000000003
       },
       {
         "function": "<frozen importlib._bootstrap_external>:934:exec_module",
         "primitive_calls": 10,
         "total_calls": 1325,
-        "total_time_s": 0.0038957,
-        "cumulative_time_s": 2.5082609000000002
+        "total_time_s": 0.004106,
+        "cumulative_time_s": 2.4947691
       },
       {
         "function": "<frozen importlib._bootstrap>:233:_call_with_frames_removed",
         "primitive_calls": 22,
         "total_calls": 3790,
-        "total_time_s": 0.0024249000000000002,
-        "cumulative_time_s": 2.5052197
+        "total_time_s": 0.0026780000000000003,
+        "cumulative_time_s": 2.4917243
       },
       {
         "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:444:main",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 1.18e-05,
-        "cumulative_time_s": 2.4410059
+        "total_time_s": 1.0500000000000001e-05,
+        "cumulative_time_s": 2.3544285
       },
       {
         "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:402:_emit_single",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.00040570000000000005,
-        "cumulative_time_s": 2.4382564
+        "total_time_s": 0.0004887,
+        "cumulative_time_s": 2.3516801000000003
       },
       {
         "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:199:_single_run",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.0002768,
-        "cumulative_time_s": 2.4377624
+        "total_time_s": 0.0002412,
+        "cumulative_time_s": 2.3511112
       },
       {
         "function": "~:0:<built-in method builtins.__import__>",
         "primitive_calls": 67,
         "total_calls": 779,
-        "total_time_s": 0.0014404,
-        "cumulative_time_s": 2.2569438
+        "total_time_s": 0.0014479,
+        "cumulative_time_s": 2.235933
       },
       {
-        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\XVsamQM-j-UeMe9U\\Lib\\site-packages\\sklearn\\base.py:1319:wrapper",
+        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\qYI0tlrp7MNOHLnb\\Lib\\site-packages\\sklearn\\base.py:1319:wrapper",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.0005391,
-        "cumulative_time_s": 2.2551637
+        "total_time_s": 0.0004217,
+        "cumulative_time_s": 2.1753968
       }
     ]
   }
