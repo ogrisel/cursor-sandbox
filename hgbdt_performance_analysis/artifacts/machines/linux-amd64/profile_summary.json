@@ -5,85 +5,135 @@
         "function": "~:0:<built-in method builtins.exec>",
         "primitive_calls": 1,
         "total_calls": 1664,
-        "total_time_s": 0.038512672000000005,
-        "cumulative_time_s": 4.246308005
+        "total_time_s": 0.039769002000000005,
+        "cumulative_time_s": 4.1620735920000005
       },
       {
         "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 9.4586e-05,
-        "cumulative_time_s": 4.246276977
-      },
-      {
-        "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
-        "primitive_calls": 11,
-        "total_calls": 1666,
-        "total_time_s": 0.010987641000000001,
-        "cumulative_time_s": 2.216313271
-      },
-      {
-        "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
-        "primitive_calls": 11,
-        "total_calls": 1623,
-        "total_time_s": 0.0077350990000000005,
-        "cumulative_time_s": 2.216069892
-      },
-      {
-        "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
-        "primitive_calls": 11,
-        "total_calls": 1570,
-        "total_time_s": 0.006027709,
-        "cumulative_time_s": 2.214590978
-      },
-      {
-        "function": "<frozen importlib._bootstrap_external>:934:exec_module",
-        "primitive_calls": 10,
-        "total_calls": 1324,
-        "total_time_s": 0.0037869310000000003,
-        "cumulative_time_s": 2.214221925
-      },
-      {
-        "function": "<frozen importlib._bootstrap>:233:_call_with_frames_removed",
-        "primitive_calls": 22,
-        "total_calls": 3784,
-        "total_time_s": 0.002265308,
-        "cumulative_time_s": 2.212196166
+        "total_time_s": 7.793600000000001e-05,
+        "cumulative_time_s": 4.1620446630000005
       },
       {
         "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:450:main",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 9.417e-06,
-        "cumulative_time_s": 2.028697579
-      },
-      {
-        "function": "~:0:<built-in method builtins.__import__>",
-        "primitive_calls": 67,
-        "total_calls": 778,
-        "total_time_s": 0.001436954,
-        "cumulative_time_s": 2.0279933960000003
+        "total_time_s": 1.0861e-05,
+        "cumulative_time_s": 2.096573265
       },
       {
         "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:408:_emit_single",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.00014610600000000001,
-        "cumulative_time_s": 2.0256311140000003
+        "total_time_s": 0.000193339,
+        "cumulative_time_s": 2.0938735950000003
       },
       {
         "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:199:_single_run",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.000351506,
-        "cumulative_time_s": 2.025428293
+        "total_time_s": 0.000375765,
+        "cumulative_time_s": 2.093615459
       },
       {
-        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/u531Hn8hww0WHVJL/lib/python3.11/site-packages/lightgbm/__init__.py:1:<module>",
+        "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
+        "primitive_calls": 11,
+        "total_calls": 1666,
+        "total_time_s": 0.010685487,
+        "cumulative_time_s": 2.064282969
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
+        "primitive_calls": 11,
+        "total_calls": 1623,
+        "total_time_s": 0.007032178,
+        "cumulative_time_s": 2.0640648390000003
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
+        "primitive_calls": 11,
+        "total_calls": 1570,
+        "total_time_s": 0.005584367000000001,
+        "cumulative_time_s": 2.062695685
+      },
+      {
+        "function": "<frozen importlib._bootstrap_external>:934:exec_module",
+        "primitive_calls": 10,
+        "total_calls": 1324,
+        "total_time_s": 0.003317711,
+        "cumulative_time_s": 2.062320927
+      },
+      {
+        "function": "<frozen importlib._bootstrap>:233:_call_with_frames_removed",
+        "primitive_calls": 22,
+        "total_calls": 3784,
+        "total_time_s": 0.0020920780000000003,
+        "cumulative_time_s": 2.06034842
+      },
+      {
+        "function": "~:0:<built-in method builtins.__import__>",
+        "primitive_calls": 67,
+        "total_calls": 778,
+        "total_time_s": 0.0014884450000000001,
+        "cumulative_time_s": 1.8812260150000002
+      },
+      {
+        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/1S4rddcAenOC_BQa/lib/python3.11/site-packages/lightgbm/__init__.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 4.6326e-05,
-        "cumulative_time_s": 1.903046653
+        "total_time_s": 5.7617e-05,
+        "cumulative_time_s": 1.747135828
+      }
+    ],
+    "speedscope_top_leaf": [
+      {
+        "leaf_frame": "_compute_best_split_and_push",
+        "sample_weight": 0.7700000000000005
+      },
+      {
+        "leaf_frame": "predict",
+        "sample_weight": 0.6300000000000003
+      },
+      {
+        "leaf_frame": "split_next",
+        "sample_weight": 0.48000000000000026
+      },
+      {
+        "leaf_frame": "_initialize_root",
+        "sample_weight": 0.13999999999999999
+      },
+      {
+        "leaf_frame": "_call_with_frames_removed",
+        "sample_weight": 0.10999999999999999
+      },
+      {
+        "leaf_frame": "dedent",
+        "sample_weight": 0.09
+      },
+      {
+        "leaf_frame": "transform",
+        "sample_weight": 0.08
+      },
+      {
+        "leaf_frame": "cleandoc",
+        "sample_weight": 0.07
+      },
+      {
+        "leaf_frame": "_fill_predictor_arrays",
+        "sample_weight": 0.07
+      },
+      {
+        "leaf_frame": "_compile_bytecode",
+        "sample_weight": 0.060000000000000005
+      },
+      {
+        "leaf_frame": "get_data",
+        "sample_weight": 0.060000000000000005
+      },
+      {
+        "leaf_frame": "<module>",
+        "sample_weight": 0.060000000000000005
       }
     ]
   }
