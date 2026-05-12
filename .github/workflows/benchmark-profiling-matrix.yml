@@ -55,7 +55,7 @@ jobs:
             python run_ci_benchmarks_profiles.py \
             --machine-tag "${{ matrix.machine_tag }}" \
             --artifacts-root artifacts \
-            --timeout-s 5 \
+            --timeout-s 20 \
             --benchmark-min-n-samples 500 \
             --benchmark-reduction-factor 0.6 \
             --profile-n-samples 16000 \
@@ -73,7 +73,7 @@ jobs:
             python run_ci_benchmarks_profiles.py `
             --machine-tag "${{ matrix.machine_tag }}" `
             --artifacts-root artifacts `
-            --timeout-s 5 `
+            --timeout-s 20 `
             --benchmark-min-n-samples 500 `
             --benchmark-reduction-factor 0.6 `
             --profile-n-samples 16000 `
