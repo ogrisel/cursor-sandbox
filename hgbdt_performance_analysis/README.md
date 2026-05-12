@@ -47,7 +47,7 @@ The matrix uploads:
 - per-machine artifacts: `benchmark-profiles-<machine-tag>`
 - consolidated bundle: `benchmark-profiles-consolidated`
 
-CI matrix jobs use the `ci_balanced` benchmark profile only (datasets: `small`, `large`), run all benchmark scenarios in subprocesses, evaluate thread regimes `1/cores/2x-cores`, and keep the CI pass baseline-only (`--skip-alt-hparams`) to preserve informative diagnostics within runtime budget.
+CI matrix jobs use the `ci_balanced` benchmark profile only (datasets: `small`, `medium`), run all benchmark scenarios in subprocesses, evaluate thread regimes `1`, `cores/2`, `cores`, and `2x-cores`, and keep the CI pass baseline-only (`--skip-alt-hparams`) to preserve informative diagnostics within runtime budget.
 
 ## Collecting CI outputs into the repo
 
@@ -65,9 +65,9 @@ Generate detailed reports:
 
 ## Main conclusions
 
-1. No single model dominates every platform and every threading regime.
-2. `lightgbm_hist` leads most often for mono-thread runtime and regular `1 -> cores` scaling, while `sklearn_hgb_fixed` is strongest in oversubscribed `2x cores` robustness.
-3. Platform-specific diagnostics remain mandatory before declaring a global winner.
+1. `lightgbm_hist` is top-ranked by median total runtime on all current CI platforms for this benchmark profile.
+2. `lightgbm_hist` leads mono-thread runtime and most `1 -> cores` scaling cases, while `sklearn_hgb_fixed` is strongest in oversubscribed `2x cores` robustness.
+3. Despite stable top ranking, model sensitivity to platform remains high and is tracked via per-model worst/best ratios.
 
 ### Per-platform benchmark plots
 
@@ -75,7 +75,7 @@ These plots show median total runtime ranking (lower is better):
 
 - **linux-amd64** (winner: `lightgbm_hist`)
   - ![linux-amd64 ranking](artifacts/machines/linux-amd64/benchmark_ranked_models.png)
-- **linux-arm64** (winner: `sklearn_hgb_fixed`)
+- **linux-arm64** (winner: `lightgbm_hist`)
   - ![linux-arm64 ranking](artifacts/machines/linux-arm64/benchmark_ranked_models.png)
 - **macos-arm64** (winner: `lightgbm_hist`)
   - ![macos-arm64 ranking](artifacts/machines/macos-arm64/benchmark_ranked_models.png)
@@ -87,52 +87,50 @@ These plots show median total runtime ranking (lower is better):
 From `artifacts/platform_specific_summary.json`:
 
 - Winner split:
-  - `lightgbm_hist`: 3/4 platforms
-  - `sklearn_hgb_fixed`: 1/4 platforms
+  - `lightgbm_hist`: 4/4 platforms
 - Slowest model:
   - `xgboost_hist`: 2/4 platforms
-  - `sklearn_hgb`: 1/4 platforms
-  - `sklearn_hgb_fixed`: 1/4 platforms
+  - `sklearn_hgb`: 2/4 platforms
 - Worst/best median runtime ratio by model:
-  - `lightgbm_hist`: `2.311x`
-  - `sklearn_hgb`: `1.917x`
-  - `sklearn_hgb_fixed`: `3.416x`
-  - `xgboost_hist`: `2.050x`
+  - `lightgbm_hist`: `3.777x`
+  - `sklearn_hgb`: `3.526x`
+  - `sklearn_hgb_fixed`: `2.901x`
+  - `xgboost_hist`: `2.355x`
 - Profiling coverage note:
   - Windows artifacts are generated without native py-spy (`native_profile_enabled=false`), while Linux/macOS include native profile snapshots.
 
 ### Cross-platform comparison by performance regime
 
-Regime summaries below are computed from the latest consolidated CI artifacts across datasets (`small`, `large`) using the CI baseline setting (`baseline_default`).
+Regime summaries below are computed from the latest consolidated CI artifacts across datasets (`small`, `medium`) using the CI baseline setting (`baseline_default`).
 
 #### 1) Mono-thread performance (`threads=1`, lower `total_seconds` is better)
 
 - Most frequent winner by platform: `lightgbm_hist` (4/4 platforms).
 - Global median `total_seconds` across all runs:
-  - `lightgbm_hist`: `0.6922s`
-  - `sklearn_hgb`: `0.8960s`
-  - `sklearn_hgb_fixed`: `0.8963s`
-  - `xgboost_hist`: `1.3122s`
+  - `lightgbm_hist`: `0.7005s`
+  - `sklearn_hgb`: `0.8975s`
+  - `sklearn_hgb_fixed`: `0.9023s`
+  - `xgboost_hist`: `1.3359s`
 
 #### 2) Regular-regime scalability (`1 -> cores`, higher `fit_speedup` is better)
 
-- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `xgboost_hist` leading on macos-arm64.
+- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb_fixed` leading on macos-arm64.
 - Global median `fit_speedup(1->cores)`:
-  - `lightgbm_hist`: `2.0087x`
-  - `xgboost_hist`: `1.5201x`
-  - `sklearn_hgb_fixed`: `1.3359x`
-  - `sklearn_hgb`: `1.2895x`
+  - `lightgbm_hist`: `1.9664x`
+  - `xgboost_hist`: `1.6197x`
+  - `sklearn_hgb`: `1.4144x`
+  - `sklearn_hgb_fixed`: `1.3712x`
 
 #### 3) Oversubscription robustness (`2x cores / cores`, lower fit-time ratio is better)
 
-- Most frequent winner by platform: `sklearn_hgb_fixed` (3/4 platforms), with `xgboost_hist` leading on windows-amd64.
+- Most frequent winner by platform: `sklearn_hgb_fixed` (3/4 platforms), with `xgboost_hist` leading on macos-arm64.
 - Global median `fit_time_ratio(2x_vs_cores)`:
-  - `sklearn_hgb_fixed`: `1.0221x`
-  - `xgboost_hist`: `1.0636x`
-  - `lightgbm_hist`: `2.0889x`
-  - `sklearn_hgb`: `2.8931x`
+  - `sklearn_hgb_fixed`: `1.0001x`
+  - `xgboost_hist`: `1.0293x`
+  - `lightgbm_hist`: `2.0125x`
+  - `sklearn_hgb`: `2.8139x`
 
-Interpretation: `lightgbm_hist` usually wins in non-oversubscribed throughput, while `sklearn_hgb_fixed` and `xgboost_hist` remain substantially more resilient than `lightgbm_hist` and especially `sklearn_hgb` under `2x cores` oversubscription.
+Interpretation: `lightgbm_hist` is the consistent non-oversubscribed throughput leader, while `sklearn_hgb_fixed` and `xgboost_hist` remain substantially more resilient than `lightgbm_hist` and especially `sklearn_hgb` under `2x cores` oversubscription.
 
 ## Per-platform detailed analysis (root causes + implementation plans)
 
@@ -150,7 +148,7 @@ Each detailed report includes:
 - Absolute fit-time plots for available settings:
   - `baseline_default` (`fit_time_threads.png`)
   - optional `deep_few_trees` (`fit_time_threads_deep_few_trees.png`) when present in artifacts
-  - Vertical markers annotate `cores` and `2x cores` regimes.
+  - Vertical markers annotate `cores=<n>` and `2x=<2n>` regimes.
 - Oversubscription regime tables at `cores` and `2x cores`.
 - Measured per-model `r2` parity tables.
 - Effective tree-count and node-per-tree parity checks (`fitted_trees`, `expected_trees`, `total_nodes`, `avg_nodes_per_tree`).

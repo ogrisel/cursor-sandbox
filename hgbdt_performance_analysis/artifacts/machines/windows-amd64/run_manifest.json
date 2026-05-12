@@ -16,7 +16,7 @@
     },
     "cfs_quota": null,
     "cpuset": null,
-    "model_name": "AMD EPYC 7763 64-Core Processor",
+    "model_name": "AMD EPYC 9V74 80-Core Processor",
     "data_sources": [
       "joblib",
       "powershell-cim"
@@ -24,6 +24,7 @@
   },
   "thread_grid": [
     1,
+    2,
     4,
     8
   ],

@@ -5,11 +5,11 @@
 - CPU count (logical): `4`
 - CPU count (physical): `2`
 - Hyper-threading enabled: `True`
-- CPU model: `AMD EPYC 7763 64-Core Processor`
+- CPU model: `AMD EPYC 9V74 80-Core Processor`
 - Core type counts: `{'performance': None, 'efficiency': None, 'low_power': None}`
 - CFS/CPU quota: `n/a`
 - CPU set: `n/a`
-- Thread grid: `[1, 4, 8]`
+- Thread grid: `[1, 2, 4, 8]`
 - Native profile enabled: `False`
 
 ## Setting: `baseline_default`
@@ -24,10 +24,10 @@ _Vertical markers denote `cores=4` and `2x=8` thread regimes._
 
 | dataset | model | r2 | fitted_trees | expected_trees | trees_match | total_nodes | avg_nodes_per_tree |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 0.586641 | 220 | 220 | True | 11256 | 51.1636 |
-| large | sklearn_hgb | 0.529888 | 220 | 220 | True | 12398 | 56.3545 |
-| large | sklearn_hgb_fixed | 0.529888 | 220 | 220 | True | 12398 | 56.3545 |
-| large | xgboost_hist | 0.593432 | 220 | 220 | True | 11426 | 51.9364 |
+| medium | lightgbm_hist | 0.586641 | 220 | 220 | True | 11256 | 51.1636 |
+| medium | sklearn_hgb | 0.529888 | 220 | 220 | True | 12398 | 56.3545 |
+| medium | sklearn_hgb_fixed | 0.529888 | 220 | 220 | True | 12398 | 56.3545 |
+| medium | xgboost_hist | 0.593432 | 220 | 220 | True | 11426 | 51.9364 |
 | small | lightgbm_hist | 0.949369 | 220 | 220 | True | 13386 | 60.8455 |
 | small | sklearn_hgb | 0.942299 | 220 | 220 | True | 13414 | 60.9727 |
 | small | sklearn_hgb_fixed | 0.942299 | 220 | 220 | True | 13414 | 60.9727 |
@@ -37,47 +37,47 @@ _Vertical markers denote `cores=4` and `2x=8` thread regimes._
 
 | dataset | model | max_regular_threads | fit_s_1_thread | fit_s_regular_max_threads | speedup_1_to_regular_max |
 | --- | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 4 | 1.61168 | 0.67387 | 2.39168 |
-| large | sklearn_hgb | 4 | 2.22457 | 1.46896 | 1.51439 |
-| large | sklearn_hgb_fixed | 4 | 2.19479 | 1.45767 | 1.50568 |
-| large | xgboost_hist | 4 | 2.83257 | 1.85957 | 1.52324 |
-| small | lightgbm_hist | 4 | 0.747212 | 0.379384 | 1.96954 |
-| small | sklearn_hgb | 4 | 0.922864 | 0.784839 | 1.17586 |
-| small | sklearn_hgb_fixed | 4 | 0.931075 | 0.724826 | 1.28455 |
-| small | xgboost_hist | 4 | 1.17401 | 0.773893 | 1.51702 |
+| medium | lightgbm_hist | 4 | 1.72212 | 0.738196 | 2.33288 |
+| medium | sklearn_hgb | 4 | 2.17184 | 1.46555 | 1.48192 |
+| medium | sklearn_hgb_fixed | 4 | 2.21131 | 1.45656 | 1.51818 |
+| medium | xgboost_hist | 4 | 2.98523 | 1.7706 | 1.686 |
+| small | lightgbm_hist | 4 | 0.777204 | 0.390539 | 1.99008 |
+| small | sklearn_hgb | 4 | 0.911878 | 0.686209 | 1.32886 |
+| small | sklearn_hgb_fixed | 4 | 0.916144 | 0.681589 | 1.34413 |
+| small | xgboost_hist | 4 | 1.20563 | 0.769329 | 1.56712 |
 
 ### Oversubscription regime summary (`cores=4`, `2x`)
 
 | dataset | model | fit_s_cores | fit_s_2x_cores | fit_ratio_2x_vs_cores |
 | --- | --- | --- | --- | --- |
-| large | lightgbm_hist | 0.67387 | 0.758074 | 1.12496 |
-| large | sklearn_hgb | 1.46896 | 1.71576 | 1.16801 |
-| large | sklearn_hgb_fixed | 1.45767 | 1.52966 | 1.04938 |
-| large | xgboost_hist | 1.85957 | 1.88659 | 1.01453 |
-| small | lightgbm_hist | 0.379384 | 0.458337 | 1.20811 |
-| small | sklearn_hgb | 0.784839 | 0.993093 | 1.26535 |
-| small | sklearn_hgb_fixed | 0.724826 | 0.731951 | 1.00983 |
-| small | xgboost_hist | 0.773893 | 0.781645 | 1.01002 |
+| medium | lightgbm_hist | 0.738196 | 0.805214 | 1.09079 |
+| medium | sklearn_hgb | 1.46555 | 1.732 | 1.18181 |
+| medium | sklearn_hgb_fixed | 1.45656 | 1.4519 | 0.996805 |
+| medium | xgboost_hist | 1.7706 | 1.7836 | 1.00735 |
+| small | lightgbm_hist | 0.390539 | 0.470369 | 1.20441 |
+| small | sklearn_hgb | 0.686209 | 0.960863 | 1.40025 |
+| small | sklearn_hgb_fixed | 0.681589 | 0.693439 | 1.01739 |
+| small | xgboost_hist | 0.769329 | 0.78074 | 1.01483 |
 
 ### Underperformance findings and root cause analysis
 
 - Root cause signal: Python-level dispatch/orchestration contributes meaningfully to sklearn runtime.
-- Issue (single_thread, dataset `large`): Best sklearn total is 1.359x slower than best alternative at thread=1.
+- Issue (single_thread, dataset `medium`): Best sklearn total is 1.260x slower than best alternative at thread=1.
   - Implementation plan:
     - Move short-lived orchestration loops to Cython/C-level helpers.
     - Preallocate and reuse temporary buffers in split and histogram kernels.
     - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
-- Issue (single_thread, dataset `small`): Best sklearn total is 1.261x slower than best alternative at thread=1.
+- Issue (single_thread, dataset `small`): Best sklearn total is 1.203x slower than best alternative at thread=1.
   - Implementation plan:
     - Move short-lived orchestration loops to Cython/C-level helpers.
     - Preallocate and reuse temporary buffers in split and histogram kernels.
     - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
-- Issue (scalability, dataset `large`): Best sklearn speedup trails best alternative by 0.877 (1->regular max threads).
+- Issue (scalability, dataset `medium`): Best sklearn speedup trails best alternative by 0.815 (1->regular max threads).
   - Implementation plan:
     - Move short-lived orchestration loops to Cython/C-level helpers.
     - Preallocate and reuse temporary buffers in split and histogram kernels.
     - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
-- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.685 (1->regular max threads).
+- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.646 (1->regular max threads).
   - Implementation plan:
     - Move short-lived orchestration loops to Cython/C-level helpers.
     - Preallocate and reuse temporary buffers in split and histogram kernels.
