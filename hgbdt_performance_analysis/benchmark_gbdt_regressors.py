@@ -229,10 +229,16 @@ def _single_run(
     monitor_thread.start()
     start = time.perf_counter()
     fit_start = time.perf_counter()
+    n_fits = 0
+    n_preds = 0
     with threadpool_limits(limits=effective_threads):
-        model.fit(X_train, y_train)
+        while n_fits == 0 or (time.perf_counter() - fit_start) < 2.0:
+            model.fit(X_train, y_train)
+            n_fits += 1
         fit_end = time.perf_counter()
-        y_pred = model.predict(X_test)
+        while n_preds == 0 or (time.perf_counter() - fit_end) < 2.0:
+            y_pred = model.predict(X_test)
+            n_preds += 1
         pred_end = time.perf_counter()
     stop_event.set()
     monitor_thread.join(timeout=1.0)
@@ -256,8 +262,8 @@ def _single_run(
         "effective_threads": effective_threads,
         "n_samples": n_samples,
         "n_features": n_features,
-        "fit_seconds": fit_end - fit_start,
-        "predict_seconds": pred_end - fit_end,
+        "fit_seconds": (fit_end - fit_start) / n_fits,
+        "predict_seconds": (pred_end - fit_end) / n_preds,
         "total_seconds": total_end - start,
         "peak_rss_mb": peak_holder["peak_mb"],
         "rmse": rmse,
