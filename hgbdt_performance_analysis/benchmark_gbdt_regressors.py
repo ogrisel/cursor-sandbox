@@ -52,15 +52,16 @@ class RunMetrics:
 def _common_hyperparameters(overrides: dict[str, Any] | None = None) -> dict[str, Any]:
     params = {
         "loss": "squared_error",
-        "n_estimators": 220,
+        "n_estimators": 120,
         "learning_rate": 0.05,
-        "max_depth": 6,
+        "max_depth": 4,
         "num_leaves": 31,
         "max_bin": 255,
-        "subsample": 0.8,
-        "l2_regularization": 1.0,
-        "min_samples_leaf": 20,
-        "min_child_weight": 20.0,
+        "subsample": 1.0,
+        "feature_subsample": 1.0,
+        "l2_regularization": 3.0,
+        "min_samples_leaf": 30,
+        "min_child_weight": 30.0,
         "min_split_gain": 0.0,
         "random_state": 42,
     }
@@ -81,10 +82,12 @@ def _build_model(model_name: str, threads: int, common: dict[str, Any]):
             min_samples_leaf=common["min_samples_leaf"],
             l2_regularization=common["l2_regularization"],
             random_state=common["random_state"],
+            # Keep boosting length fixed to match explicit n_estimators across libraries.
             early_stopping=False,
         )
     if model_name == "xgboost_hist":
         return XGBRegressor(
+            # Match sklearn/lightgbm squared-loss regression objective.
             objective="reg:squarederror",
             n_estimators=common["n_estimators"],
             learning_rate=common["learning_rate"],
@@ -92,19 +95,25 @@ def _build_model(model_name: str, threads: int, common: dict[str, Any]):
             max_leaves=common["num_leaves"],
             max_bin=common["max_bin"],
             subsample=common["subsample"],
-            colsample_bytree=1.0,
+            # Use all features per tree to align with sklearn HGB behavior.
+            colsample_bytree=common["feature_subsample"],
             reg_lambda=common["l2_regularization"],
             min_child_weight=common["min_child_weight"],
             gamma=common["min_split_gain"],
+            # Enforce histogram training across all libraries.
             tree_method="hist",
+            # Use leaf-wise growth constrained by max_leaves, closest to sklearn HGB.
             grow_policy="lossguide",
             random_state=common["random_state"],
             n_jobs=threads,
+            # Disable implicit early stopping so fitted tree counts remain comparable.
             early_stopping_rounds=None,
+            # Silence logs; no effect on model quality.
             verbosity=0,
         )
     if model_name == "lightgbm_hist":
         return LGBMRegressor(
+            # Match squared-loss regression objective used by other libraries.
             objective="regression",
             n_estimators=common["n_estimators"],
             learning_rate=common["learning_rate"],
@@ -112,13 +121,18 @@ def _build_model(model_name: str, threads: int, common: dict[str, Any]):
             num_leaves=common["num_leaves"],
             max_bin=common["max_bin"],
             subsample=common["subsample"],
-            subsample_freq=1,
+            # Disable stochastic row bagging when subsample==1.0 for parity with sklearn.
+            subsample_freq=0,
+            # Use all features per tree to align with sklearn HGB behavior.
+            colsample_bytree=common["feature_subsample"],
             reg_lambda=common["l2_regularization"],
             min_child_samples=common["min_samples_leaf"],
             min_split_gain=common["min_split_gain"],
+            # Match xgboost's min_child_weight semantics via LightGBM's hessian threshold.
             min_child_weight=common["min_child_weight"],
             random_state=common["random_state"],
             n_jobs=threads,
+            # Silence logs; no effect on model quality.
             verbosity=-1,
         )
     raise ValueError(f"Unknown model: {model_name}")
