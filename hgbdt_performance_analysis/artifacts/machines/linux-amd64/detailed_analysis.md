@@ -5,7 +5,7 @@
 - CPU count (logical): `4`
 - CPU count (physical): `2`
 - Hyper-threading enabled: `True`
-- CPU model: `AMD EPYC 9V74 80-Core Processor`
+- CPU model: `AMD EPYC 7763 64-Core Processor`
 - Core type counts: `{'performance': 4, 'efficiency': None, 'low_power': None}`
 - CFS/CPU quota: `n/a`
 - CPU set: `0-3`
@@ -37,47 +37,42 @@ _Vertical markers denote `cores=4` and `2x=8` thread regimes._
 
 | dataset | model | max_regular_threads | fit_s_1_thread | fit_s_regular_max_threads | speedup_1_to_regular_max |
 | --- | --- | --- | --- | --- | --- |
-| medium | lightgbm_hist | 4 | 0.625528 | 0.263978 | 2.36962 |
-| medium | sklearn_hgb | 4 | 0.835542 | 0.569582 | 1.46694 |
-| medium | sklearn_hgb_fixed | 4 | 0.842009 | 0.564389 | 1.49189 |
-| medium | xgboost_hist | 4 | 1.48416 | 0.906957 | 1.63641 |
-| small | lightgbm_hist | 4 | 0.278044 | 0.151139 | 1.83966 |
-| small | sklearn_hgb | 4 | 0.337063 | 0.318102 | 1.05961 |
-| small | sklearn_hgb_fixed | 4 | 0.337427 | 0.318626 | 1.05901 |
-| small | xgboost_hist | 4 | 0.459612 | 0.341609 | 1.34543 |
+| medium | lightgbm_hist | 4 | 0.549469 | 0.214867 | 2.55725 |
+| medium | sklearn_hgb | 4 | 0.767379 | 0.555417 | 1.38163 |
+| medium | sklearn_hgb_fixed | 4 | 0.774354 | 0.553657 | 1.39862 |
+| medium | xgboost_hist | 4 | 1.38104 | 0.851856 | 1.62122 |
+| small | lightgbm_hist | 4 | 0.237123 | 0.118473 | 2.00149 |
+| small | sklearn_hgb | 4 | 0.317431 | 0.313828 | 1.01148 |
+| small | sklearn_hgb_fixed | 4 | 0.32018 | 0.314647 | 1.01758 |
+| small | xgboost_hist | 4 | 0.421539 | 0.301237 | 1.39936 |
 
 ### Oversubscription regime summary (`cores=4`, `2x`)
 
 | dataset | model | fit_s_cores | fit_s_2x_cores | fit_ratio_2x_vs_cores |
 | --- | --- | --- | --- | --- |
-| medium | lightgbm_hist | 0.263978 | 1.04925 | 3.97477 |
-| medium | sklearn_hgb | 0.569582 | 2.71647 | 4.76924 |
-| medium | sklearn_hgb_fixed | 0.564389 | 0.566096 | 1.00303 |
-| medium | xgboost_hist | 0.906957 | 0.994837 | 1.0969 |
-| small | lightgbm_hist | 0.151139 | 1.11312 | 7.36486 |
-| small | sklearn_hgb | 0.318102 | 3.08024 | 9.68317 |
-| small | sklearn_hgb_fixed | 0.318626 | 0.318119 | 0.998411 |
-| small | xgboost_hist | 0.341609 | 0.451395 | 1.32138 |
+| medium | lightgbm_hist | 0.214867 | 0.902898 | 4.20212 |
+| medium | sklearn_hgb | 0.555417 | 2.54598 | 4.58391 |
+| medium | sklearn_hgb_fixed | 0.553657 | 0.558282 | 1.00835 |
+| medium | xgboost_hist | 0.851856 | 0.909197 | 1.06731 |
+| small | lightgbm_hist | 0.118473 | 1.00992 | 8.52448 |
+| small | sklearn_hgb | 0.313828 | 2.84028 | 9.05045 |
+| small | sklearn_hgb_fixed | 0.314647 | 0.317556 | 1.00924 |
+| small | xgboost_hist | 0.301237 | 0.341558 | 1.13385 |
 
 ### Underperformance findings and root cause analysis
 
 - Root cause signal: Python-level dispatch/orchestration contributes meaningfully to sklearn runtime.
-- Issue (single_thread, dataset `medium`): Best sklearn total is 1.340x slower than best alternative at thread=1.
+- Issue (single_thread, dataset `medium`): Best sklearn total is 1.268x slower than best alternative at thread=1.
   - Implementation plan:
     - Move short-lived orchestration loops to Cython/C-level helpers.
     - Preallocate and reuse temporary buffers in split and histogram kernels.
     - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
-- Issue (single_thread, dataset `small`): Best sklearn total is 1.221x slower than best alternative at thread=1.
+- Issue (scalability, dataset `medium`): Best sklearn speedup trails best alternative by 1.159 (1->regular max threads).
   - Implementation plan:
     - Move short-lived orchestration loops to Cython/C-level helpers.
     - Preallocate and reuse temporary buffers in split and histogram kernels.
     - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
-- Issue (scalability, dataset `medium`): Best sklearn speedup trails best alternative by 0.878 (1->regular max threads).
-  - Implementation plan:
-    - Move short-lived orchestration loops to Cython/C-level helpers.
-    - Preallocate and reuse temporary buffers in split and histogram kernels.
-    - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
-- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.780 (1->regular max threads).
+- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.984 (1->regular max threads).
   - Implementation plan:
     - Move short-lived orchestration loops to Cython/C-level helpers.
     - Preallocate and reuse temporary buffers in split and histogram kernels.
