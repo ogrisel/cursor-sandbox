@@ -63,6 +63,18 @@ Generate detailed reports:
 
 - `uv run --python 3.11 --exclude-newer P7D python generate_platform_detailed_analysis.py --artifacts-root artifacts`
 
+## Pre-calibrated comparable-large benchmark
+
+`aligned_large_comparison.py` now reuses a checked-in calibration by default:
+
+- `precalibrated/comparable_large_balanced.json`
+
+To refresh that calibration locally on a VM, run once with recalibration enabled:
+
+- `uv run --python 3.11 --exclude-newer P7D --with numpy --with pandas --with psutil --with scikit-learn --with xgboost --with lightgbm --with matplotlib --with threadpoolctl python aligned_large_comparison.py --calibration-mode recalibrate --candidate-preset balanced --timeout-s 20 --repeats 1 --calibration-json precalibrated/comparable_large_balanced.json`
+
+CI runs `aligned_large_comparison.py` in `--calibration-mode reuse` so calibration search is not repeated on each machine.
+
 ## Main conclusions
 
 1. Cross-platform absolute fit-time ranking at `threads==cores` (averaged over datasets and platforms) is: `lightgbm_hist`, `sklearn_hgb_fixed`, `sklearn_hgb`, `xgboost_hist`.

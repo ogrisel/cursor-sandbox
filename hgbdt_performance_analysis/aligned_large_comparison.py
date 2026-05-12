@@ -11,6 +11,7 @@ from artifact_layout import machine_artifacts_dir
 
 MODELS = ("sklearn_hgb", "xgboost_hist", "lightgbm_hist")
 BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_CALIBRATION_JSON = BASE_DIR / "precalibrated" / "comparable_large_balanced.json"
 
 
 def _run_single(
@@ -421,6 +422,99 @@ def _final_benchmark(
     return rows
 
 
+def _summarize_calibration_row(row: dict) -> dict:
+    return {
+        "candidate": row["candidate"],
+        "n_estimators": row["n_estimators"],
+        "num_leaves": row["num_leaves"],
+        "n_samples": row["n_samples"],
+        "n_features": row["n_features"],
+        "r2_spread": row["r2_spread"],
+        "r2_mean": row["r2_mean"],
+        "fitted_trees_min": row["fitted_trees_min"],
+        "fitted_trees_max": row["fitted_trees_max"],
+        "fitted_trees_spread": row["fitted_trees_spread"],
+        "max_total_s": row["max_total_s"],
+    }
+
+
+def _write_precalibrated_config(
+    path: Path,
+    best: dict,
+    calibration_rows: list[dict],
+    candidate_preset: str,
+    start_n_samples: int,
+    n_features: int,
+    timeout_s: float,
+    reduction_factor: float,
+    min_n_samples: int,
+) -> None:
+    payload = {
+        "schema_version": 1,
+        "candidate_preset": candidate_preset,
+        "calibrated_constraints": {
+            "start_n_samples": start_n_samples,
+            "n_features": n_features,
+            "timeout_s": timeout_s,
+            "reduction_factor": reduction_factor,
+            "min_n_samples": min_n_samples,
+            "min_n_estimators": 10,
+            "min_num_leaves": 31,
+        },
+        "best": {
+            "candidate": best["candidate"],
+            "params": best["params"],
+            "n_samples": best["n_samples"],
+            "n_features": best["n_features"],
+            "r2_spread": best["r2_spread"],
+            "r2_mean": best["r2_mean"],
+            "max_total_s": best["max_total_s"],
+        },
+        "calibration_rows": [_summarize_calibration_row(row) for row in calibration_rows],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _load_precalibrated_config(path: Path, candidate_preset: str) -> tuple[dict, list[dict]]:
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Precalibrated config not found at {path}. "
+            "Run once with --calibration-mode recalibrate to create it."
+        )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    preset = payload.get("candidate_preset")
+    if preset != candidate_preset:
+        raise RuntimeError(
+            f"Precalibrated config preset mismatch: file preset={preset!r}, "
+            f"requested preset={candidate_preset!r}."
+        )
+    best = payload.get("best")
+    if not isinstance(best, dict):
+        raise RuntimeError(f"Invalid precalibrated config at {path}: missing 'best' object")
+    params = best.get("params")
+    if not isinstance(params, dict):
+        raise RuntimeError(f"Invalid precalibrated config at {path}: missing best.params")
+    for key in ("candidate", "n_samples", "n_features"):
+        if key not in best:
+            raise RuntimeError(f"Invalid precalibrated config at {path}: missing best.{key}")
+    _validate_constraints({**params, "name": str(best["candidate"])})
+
+    calibration_rows = payload.get("calibration_rows", [])
+    if not isinstance(calibration_rows, list):
+        raise RuntimeError(f"Invalid precalibrated config at {path}: calibration_rows must be a list")
+    best_row = {
+        "candidate": str(best["candidate"]),
+        "params": params,
+        "n_samples": int(best["n_samples"]),
+        "n_features": int(best["n_features"]),
+        "r2_spread": float(best.get("r2_spread", 0.0)),
+        "r2_mean": float(best.get("r2_mean", 0.0)),
+        "max_total_s": float(best.get("max_total_s", 0.0)),
+    }
+    return best_row, calibration_rows
+
+
 def _write_report_md(
     path: Path,
     best: dict,
@@ -429,6 +523,8 @@ def _write_report_md(
     repeats: int,
     timeout_s: float,
     candidate_preset: str,
+    calibration_mode: str,
+    calibration_json: Path,
 ) -> None:
     by_model = {r["model"]: r for r in final_rows if r["threads"] == 1}
     r2_spread_final = max(r["r2_mean"] for r in by_model.values()) - min(r["r2_mean"] for r in by_model.values())
@@ -441,16 +537,21 @@ def _write_report_md(
         "- num_leaves/max_leaf_nodes >= 31",
         f"- timeout per single run: {timeout_s:.1f}s",
         f"- candidate preset: `{candidate_preset}`",
+        f"- calibration mode: `{calibration_mode}`",
+        f"- calibration config: `{calibration_json}`",
         "",
         "## Calibration candidates (thread=1)",
         "| candidate | n_estimators | num_leaves | n_samples | r2_spread | r2_mean | max_total_s |",
         "| --- | --- | --- | --- | --- | --- | --- |",
     ]
-    for row in calibration_rows:
-        lines.append(
-            f"| {row['candidate']} | {row['n_estimators']} | {row['num_leaves']} | {row['n_samples']} | "
-            f"{row['r2_spread']:.6f} | {row['r2_mean']:.6f} | {row['max_total_s']:.4f} |"
-        )
+    if calibration_rows:
+        for row in calibration_rows:
+            lines.append(
+                f"| {row['candidate']} | {row['n_estimators']} | {row['num_leaves']} | {row['n_samples']} | "
+                f"{row['r2_spread']:.6f} | {row['r2_mean']:.6f} | {row['max_total_s']:.4f} |"
+            )
+    else:
+        lines.append("| n/a | n/a | n/a | n/a | n/a | n/a | n/a |")
     lines.extend(
         [
             "",
@@ -503,6 +604,8 @@ def main() -> None:
     parser.add_argument("--min-n-samples", type=int, default=40_000)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--candidate-preset", choices=("balanced", "deep_few_trees"), default="balanced")
+    parser.add_argument("--calibration-mode", choices=("reuse", "recalibrate"), default="reuse")
+    parser.add_argument("--calibration-json", type=str, default=str(DEFAULT_CALIBRATION_JSON))
     args = parser.parse_args()
     artifacts_dir = machine_artifacts_dir(
         base_dir=BASE_DIR,
@@ -517,15 +620,33 @@ def main() -> None:
     if args.output_md is None:
         args.output_md = str(artifacts_dir / "comparable_large_report.md")
 
-    candidates = _candidate_grid(preset=args.candidate_preset)
-    best, calibration_rows = _calibrate(
-        candidates=candidates,
-        start_n_samples=args.start_n_samples,
-        n_features=args.n_features,
-        timeout_s=args.timeout_s,
-        reduction_factor=args.reduction_factor,
-        min_n_samples=args.min_n_samples,
-    )
+    calibration_json = Path(args.calibration_json)
+    if args.calibration_mode == "recalibrate":
+        candidates = _candidate_grid(preset=args.candidate_preset)
+        best, calibration_rows = _calibrate(
+            candidates=candidates,
+            start_n_samples=args.start_n_samples,
+            n_features=args.n_features,
+            timeout_s=args.timeout_s,
+            reduction_factor=args.reduction_factor,
+            min_n_samples=args.min_n_samples,
+        )
+        _write_precalibrated_config(
+            path=calibration_json,
+            best=best,
+            calibration_rows=calibration_rows,
+            candidate_preset=args.candidate_preset,
+            start_n_samples=args.start_n_samples,
+            n_features=args.n_features,
+            timeout_s=args.timeout_s,
+            reduction_factor=args.reduction_factor,
+            min_n_samples=args.min_n_samples,
+        )
+    else:
+        best, calibration_rows = _load_precalibrated_config(
+            path=calibration_json,
+            candidate_preset=args.candidate_preset,
+        )
     final_rows = _final_benchmark(
         params=best["params"],
         n_samples=best["n_samples"],
@@ -547,6 +668,8 @@ def main() -> None:
                 "best_candidate": best["candidate"],
                 "best_candidate_n_samples": best["n_samples"],
                 "best_candidate_n_features": best["n_features"],
+                "calibration_mode": args.calibration_mode,
+                "calibration_json": str(calibration_json),
                 "calibration_rows": calibration_rows,
                 "final_rows": final_rows,
             },
@@ -562,6 +685,8 @@ def main() -> None:
         repeats=args.repeats,
         timeout_s=args.timeout_s,
         candidate_preset=args.candidate_preset,
+        calibration_mode=args.calibration_mode,
+        calibration_json=calibration_json,
     )
     print(
         json.dumps(
@@ -572,6 +697,8 @@ def main() -> None:
                 "best_candidate": best["candidate"],
                 "n_samples": best["n_samples"],
                 "candidate_preset": args.candidate_preset,
+                "calibration_mode": args.calibration_mode,
+                "calibration_json": str(calibration_json),
             }
         )
     )
