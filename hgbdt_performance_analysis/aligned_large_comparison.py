@@ -466,7 +466,6 @@ def _write_precalibrated_config(
         },
         "best": {
             "candidate": best["candidate"],
-            "params": best["params"],
             "n_samples": best["n_samples"],
             "n_features": best["n_features"],
             "r2_spread": best["r2_spread"],
@@ -495,9 +494,7 @@ def _load_precalibrated_config(path: Path, candidate_preset: str) -> tuple[dict,
     best = payload.get("best")
     if not isinstance(best, dict):
         raise RuntimeError(f"Invalid precalibrated config at {path}: missing 'best' object")
-    params = best.get("params")
-    if not isinstance(params, dict):
-        raise RuntimeError(f"Invalid precalibrated config at {path}: missing best.params")
+    params = _common_hyperparameters()
     for key in ("candidate", "n_samples", "n_features"):
         if key not in best:
             raise RuntimeError(f"Invalid precalibrated config at {path}: missing best.{key}")

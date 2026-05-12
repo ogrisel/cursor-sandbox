@@ -13,26 +13,11 @@
   },
   "best": {
     "candidate": "common_hyperparameters",
-    "params": {
-      "loss": "squared_error",
-      "n_estimators": 120,
-      "learning_rate": 0.05,
-      "max_depth": 4,
-      "num_leaves": 31,
-      "max_bin": 255,
-      "subsample": 1.0,
-      "feature_subsample": 1.0,
-      "l2_regularization": 3.0,
-      "min_samples_leaf": 30,
-      "min_child_weight": 30.0,
-      "min_split_gain": 0.0,
-      "random_state": 42
-    },
     "n_samples": 220000,
     "n_features": 120,
     "r2_spread": 0.0002990831068145905,
     "r2_mean": 0.43269195787205944,
-    "max_total_s": 9.120044675073586
+    "max_total_s": 9.170046627987176
   },
   "calibration_rows": [
     {
@@ -46,7 +31,7 @@
       "fitted_trees_min": 120,
       "fitted_trees_max": 120,
       "fitted_trees_spread": 0,
-      "max_total_s": 9.120044675073586,
+      "max_total_s": 9.170046627987176,
       "r2_by_model": {
         "sklearn_hgb": 0.4327326475341502,
         "xgboost_hist": 0.4328211545944214,
