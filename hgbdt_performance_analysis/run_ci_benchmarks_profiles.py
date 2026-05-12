@@ -43,7 +43,8 @@ def _resolve_thread_grid(requested_grid: list[int] | None) -> list[int]:
     if requested_grid:
         return sorted({max(1, int(t)) for t in requested_grid})
     cpu_count = max(1, os.cpu_count() or 1)
-    return sorted({1, cpu_count, 2 * cpu_count})
+    half_cores = max(1, cpu_count // 2)
+    return sorted({1, half_cores, cpu_count, 2 * cpu_count})
 
 
 def _run_capture(cmd: list[str], timeout_s: float = 5.0) -> str | None:
@@ -265,7 +266,7 @@ def _write_ranked_models_plot(benchmark_summary_json: Path, output_png: Path, ti
     plt.close(fig)
 
 
-def _write_scalability_plot(benchmark_results_json: Path, output_png: Path, title: str) -> None:
+def _write_scalability_plot(benchmark_results_json: Path, output_png: Path, title: str, core_threads: int) -> None:
     payload = json.loads(benchmark_results_json.read_text(encoding="utf-8"))
     runs = payload.get("runs", [])
     by_dataset: dict[str, list[dict[str, Any]]] = {}
@@ -291,6 +292,9 @@ def _write_scalability_plot(benchmark_results_json: Path, output_png: Path, titl
             baseline = float(per_thread[1]["fit_seconds"])
             speedup = [baseline / float(per_thread[t]["fit_seconds"]) for t in threads]
             ax.plot(threads, speedup, marker="o", label=model)
+        for thread_value, label in [(core_threads, f"cores={core_threads}"), (2 * core_threads, f"2x={2 * core_threads}")]:
+            ax.axvline(thread_value, color="#777777", linestyle="--", linewidth=0.8, alpha=0.5)
+            ax.text(thread_value, ax.get_ylim()[1], label, rotation=90, va="top", ha="center", fontsize=8, color="#666666")
         ax.set_title(dataset)
         ax.set_xlabel("Threads")
         ax.set_ylabel("Fit speedup vs 1-thread")
@@ -327,7 +331,7 @@ def _write_fit_time_plot(benchmark_results_json: Path, output_png: Path, title: 
             threads = sorted(per_thread)
             fit_values = [float(per_thread[t]["fit_seconds"]) for t in threads]
             ax.plot(threads, fit_values, marker="o", label=model)
-        for thread_value, label in [(core_threads, "cores"), (2 * core_threads, "2x")]:
+        for thread_value, label in [(core_threads, f"cores={core_threads}"), (2 * core_threads, f"2x={2 * core_threads}")]:
             ax.axvline(thread_value, color="#777777", linestyle="--", linewidth=0.8, alpha=0.5)
             ax.text(thread_value, ax.get_ylim()[1], label, rotation=90, va="top", ha="center", fontsize=8, color="#666666")
         ax.set_title(dataset)
@@ -389,7 +393,12 @@ def _run_benchmark_setting(
         ]
     )
     _write_ranked_models_plot(benchmark_summary_json=benchmark_summary_json, output_png=benchmark_rank_png, title=f"Per-machine model ranking ({setting_name})")
-    _write_scalability_plot(benchmark_results_json=benchmark_json, output_png=scalability_png, title=f"Scalability by dataset ({setting_name})")
+    _write_scalability_plot(
+        benchmark_results_json=benchmark_json,
+        output_png=scalability_png,
+        title=f"Scalability by dataset ({setting_name})",
+        core_threads=core_threads,
+    )
     _write_fit_time_plot(
         benchmark_results_json=benchmark_json,
         output_png=fit_time_png,

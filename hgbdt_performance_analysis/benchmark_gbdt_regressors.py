@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
 DATASET_GRID_CI_BALANCED: list[dict[str, int | str]] = [
     {"name": "small", "start_n_samples": 12_000, "n_features": 24},
-    {"name": "large", "start_n_samples": 180_000, "n_features": 120},
+    {"name": "medium", "start_n_samples": 180_000, "n_features": 120},
 ]
 
 
@@ -319,11 +319,8 @@ def _run_in_subprocess(
 
 def _default_thread_grid() -> list[int]:
     cpu_count = os.cpu_count() or 1
-    candidate = [1, 2, 4, 8]
-    grid = sorted({t for t in candidate if t <= cpu_count})
-    if cpu_count not in grid:
-        grid.append(cpu_count)
-    return sorted(set(grid))
+    half_cores = max(1, cpu_count // 2)
+    return sorted({1, half_cores, cpu_count, 2 * cpu_count})
 
 
 def _benchmark(args: argparse.Namespace) -> None:
