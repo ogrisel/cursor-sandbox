@@ -37,14 +37,14 @@ def _collect_setting_payloads(machine_dir: Path) -> dict[str, dict[str, Any]]:
                 summary_path_raw = outputs.get("benchmark_summary_json")
                 if not isinstance(results_path_raw, str) or not results_path_raw.strip():
                     continue
-                results_path = Path(results_path_raw)
+                results_path = Path(results_path_raw.replace("\\", "/"))
                 if not results_path.is_absolute():
                     results_path = BASE_DIR / results_path
                 if not results_path.exists():
                     continue
                 summary_path: Path | None = None
                 if isinstance(summary_path_raw, str) and summary_path_raw.strip():
-                    summary_path = Path(summary_path_raw)
+                    summary_path = Path(summary_path_raw.replace("\\", "/"))
                     if not summary_path.is_absolute():
                         summary_path = BASE_DIR / summary_path
                 payloads[str(setting_name)] = {
