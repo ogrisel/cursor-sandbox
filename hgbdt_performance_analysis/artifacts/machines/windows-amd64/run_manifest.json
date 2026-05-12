@@ -8,7 +8,7 @@
     "architecture": "AMD64",
     "logical_cpu_count": 4,
     "physical_cpu_count": 2,
-    "hyperthreading_enabled": true,
+    "hyperthreading_enabled": false,
     "core_type_counts": {
       "performance": null,
       "efficiency": null,
@@ -16,7 +16,7 @@
     },
     "cfs_quota": null,
     "cpuset": null,
-    "model_name": "AMD EPYC 7763 64-Core Processor",
+    "model_name": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
     "data_sources": [
       "joblib",
       "powershell-cim"

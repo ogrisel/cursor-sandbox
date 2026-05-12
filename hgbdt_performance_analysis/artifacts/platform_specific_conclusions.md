@@ -14,10 +14,10 @@
 ## Cross-platform model runtime variation
 | model | machines_seen | mean_median_total_s | best_median_total_s | worst_median_total_s | worst_to_best_ratio |
 | --- | --- | --- | --- | --- | --- |
-| lightgbm_hist | 4 | 0.709619 | 0.290214 | 1.1158 | 3.845x |
-| sklearn_hgb | 4 | 1.06239 | 0.597897 | 1.41754 | 2.371x |
-| sklearn_hgb_fixed | 4 | 0.935663 | 0.460821 | 1.2494 | 2.711x |
-| xgboost_hist | 4 | 1.19059 | 0.686316 | 1.52589 | 2.223x |
+| lightgbm_hist | 4 | 0.657714 | 0.319515 | 0.870259 | 2.724x |
+| sklearn_hgb | 4 | 1.08641 | 0.582393 | 1.39908 | 2.402x |
+| sklearn_hgb_fixed | 4 | 0.858205 | 0.457919 | 1.11476 | 2.434x |
+| xgboost_hist | 4 | 1.19889 | 0.69058 | 1.53307 | 2.220x |
 
 ## Conclusion
 - Current consolidated runs show a stable top-ranked model across platforms, but per-model runtime ratios still vary and should be tracked per machine.
