@@ -419,6 +419,28 @@ def _run_benchmark_setting(
     }
 
 
+def _clear_machine_outputs(out_dir: Path) -> None:
+    generated_patterns = (
+        "benchmark_results*.json",
+        "benchmark_summary*.json",
+        "benchmark_report*.md",
+        "benchmark_ranked_models*.png",
+        "scalability*.png",
+        "fit_time_threads*.png",
+        "profile_spec.json",
+        "profile_summary.json",
+        "profile_summary.md",
+        "run_manifest.json",
+    )
+    for pattern in generated_patterns:
+        for path in out_dir.glob(pattern):
+            if path.is_file():
+                path.unlink()
+    profiles_dir = out_dir / "profiles"
+    if profiles_dir.exists():
+        shutil.rmtree(profiles_dir)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--artifacts-root", default=str(BASE_DIR / "artifacts"))
@@ -440,6 +462,7 @@ def main() -> None:
 
     out_dir = machine_artifacts_dir(base_dir=BASE_DIR, artifacts_root=args.artifacts_root, machine_tag=args.machine_tag)
     out_dir.mkdir(parents=True, exist_ok=True)
+    _clear_machine_outputs(out_dir)
 
     settings: list[tuple[str, dict[str, Any] | None]] = [("baseline_default", None)]
     if not args.skip_alt_hparams:

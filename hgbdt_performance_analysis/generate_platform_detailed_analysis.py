@@ -25,6 +25,37 @@ def _setting_name_from_file(path: Path) -> str:
 
 def _collect_setting_payloads(machine_dir: Path) -> dict[str, dict[str, Any]]:
     payloads: dict[str, dict[str, Any]] = {}
+    manifest_path = machine_dir / "run_manifest.json"
+    if manifest_path.exists():
+        manifest = _load_json(manifest_path)
+        settings = manifest.get("settings", {})
+        if isinstance(settings, dict):
+            for setting_name, outputs in sorted(settings.items()):
+                if not isinstance(outputs, dict):
+                    continue
+                results_path_raw = outputs.get("benchmark_json")
+                summary_path_raw = outputs.get("benchmark_summary_json")
+                if not isinstance(results_path_raw, str) or not results_path_raw.strip():
+                    continue
+                results_path = Path(results_path_raw)
+                if not results_path.is_absolute():
+                    results_path = BASE_DIR / results_path
+                if not results_path.exists():
+                    continue
+                summary_path: Path | None = None
+                if isinstance(summary_path_raw, str) and summary_path_raw.strip():
+                    summary_path = Path(summary_path_raw)
+                    if not summary_path.is_absolute():
+                        summary_path = BASE_DIR / summary_path
+                payloads[str(setting_name)] = {
+                    "results_path": results_path,
+                    "summary_path": summary_path,
+                    "results": _load_json(results_path),
+                    "summary": _load_json(summary_path) if summary_path and summary_path.exists() else {},
+                }
+            if payloads:
+                return payloads
+
     for results_path in sorted(machine_dir.glob("benchmark_results*.json")):
         setting = _setting_name_from_file(results_path)
         summary_suffix = "" if setting == "baseline_default" else f"_{setting}"
