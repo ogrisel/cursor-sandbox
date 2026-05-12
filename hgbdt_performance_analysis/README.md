@@ -47,6 +47,8 @@ The matrix uploads:
 - per-machine artifacts: `benchmark-profiles-<machine-tag>`
 - consolidated bundle: `benchmark-profiles-consolidated`
 
+CI matrix jobs use the `ci_balanced` benchmark profile only (datasets: `small`, `medium`), run all benchmark scenarios in subprocesses, evaluate thread regimes `1`, `cores/2`, `cores`, and `2x-cores`, and keep the CI pass baseline-only (`--skip-alt-hparams`) to preserve informative diagnostics within runtime budget.
+
 ## Collecting CI outputs into the repo
 
 Download artifacts from a run:
@@ -61,19 +63,31 @@ Generate detailed reports:
 
 - `uv run --python 3.11 --exclude-newer P7D python generate_platform_detailed_analysis.py --artifacts-root artifacts`
 
+## Pre-calibrated comparable-large benchmark
+
+`aligned_large_comparison.py` now reuses a checked-in calibration by default:
+
+- `precalibrated/comparable_large_balanced.json`
+
+To refresh that calibration locally on a VM, run once with recalibration enabled:
+
+- `uv run --python 3.11 --exclude-newer P7D --with numpy --with pandas --with psutil --with scikit-learn --with xgboost --with lightgbm --with matplotlib --with threadpoolctl python aligned_large_comparison.py --calibration-mode recalibrate --candidate-preset balanced --timeout-s 20 --repeats 1 --calibration-json precalibrated/comparable_large_balanced.json`
+
+CI runs `aligned_large_comparison.py` in `--calibration-mode reuse` so calibration search is not repeated on each machine.
+
 ## Main conclusions
 
-1. No single model dominates every platform and every threading regime.
-2. `lightgbm_hist` leads most often for mono-thread runtime and regular `1 -> cores` scaling, while `sklearn_hgb_fixed` is strongest in oversubscribed `4x cores` robustness.
-3. Platform-specific diagnostics remain mandatory before declaring a global winner.
+1. Cross-platform absolute fit-time ranking at `threads==cores` (averaged over datasets and platforms) is: `lightgbm_hist`, `sklearn_hgb`, `sklearn_hgb_fixed`, `xgboost_hist`.
+2. `lightgbm_hist` leads regular-regime scaling and overall throughput, while `xgboost_hist` and `sklearn_hgb_fixed` are strongest in oversubscribed `2x cores` robustness.
+3. Despite stable top ranking, model sensitivity to platform remains high and is tracked via per-model worst/best ratios.
 
 ### Per-platform benchmark plots
 
 These plots show median total runtime ranking (lower is better):
 
-- **linux-amd64** (winner: `sklearn_hgb_fixed`)
+- **linux-amd64** (winner: `lightgbm_hist`)
   - ![linux-amd64 ranking](artifacts/machines/linux-amd64/benchmark_ranked_models.png)
-- **linux-arm64** (winner: `sklearn_hgb_fixed`)
+- **linux-arm64** (winner: `lightgbm_hist`)
   - ![linux-arm64 ranking](artifacts/machines/linux-arm64/benchmark_ranked_models.png)
 - **macos-arm64** (winner: `sklearn_hgb_fixed`)
   - ![macos-arm64 ranking](artifacts/machines/macos-arm64/benchmark_ranked_models.png)
@@ -84,52 +98,58 @@ These plots show median total runtime ranking (lower is better):
 
 From `artifacts/platform_specific_summary.json`:
 
+- Cross-platform absolute fit-time ranking at `threads==cores` (mean `fit_seconds`, lower is better):
+  - `lightgbm_hist`: `2.6394s`
+  - `sklearn_hgb`: `2.9158s`
+  - `sklearn_hgb_fixed`: `3.0488s`
+  - `xgboost_hist`: `3.8743s`
+
 - Winner split:
-  - `sklearn_hgb_fixed`: 3/4 platforms
-  - `lightgbm_hist`: 1/4 platforms
+  - `lightgbm_hist`: 3/4 platforms
+  - `sklearn_hgb_fixed`: 1/4 platforms
 - Slowest model:
   - `xgboost_hist`: 2/4 platforms
   - `sklearn_hgb`: 2/4 platforms
 - Worst/best median runtime ratio by model:
-  - `lightgbm_hist`: `1.911x`
-  - `sklearn_hgb`: `1.144x`
-  - `sklearn_hgb_fixed`: `1.866x`
-  - `xgboost_hist`: `2.021x`
+  - `lightgbm_hist`: `1.866x`
+  - `sklearn_hgb`: `1.912x`
+  - `sklearn_hgb_fixed`: `1.641x`
+  - `xgboost_hist`: `1.698x`
 - Profiling coverage note:
   - Windows artifacts are generated without native py-spy (`native_profile_enabled=false`), while Linux/macOS include native profile snapshots.
 
 ### Cross-platform comparison by performance regime
 
-Regime summaries below are computed from all datasets (`small`, `medium`, `large`) and both hyperparameter settings (`baseline_default`, `deep_few_trees`) in the consolidated machine artifacts.
+Regime summaries below are computed from the latest consolidated CI artifacts across datasets (`small`, `medium`) using the CI baseline setting (`baseline_default`).
 
 #### 1) Mono-thread performance (`threads=1`, lower `total_seconds` is better)
 
-- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb` leading on linux-amd64.
+- Most frequent winner by platform: tie between `lightgbm_hist` and `sklearn_hgb_fixed` (2/4 platforms each).
 - Global median `total_seconds` across all runs:
-  - `lightgbm_hist`: `5.3195s`
-  - `sklearn_hgb`: `5.4498s`
-  - `sklearn_hgb_fixed`: `5.4821s`
-  - `xgboost_hist`: `7.0055s`
+  - `lightgbm_hist`: `6.4050s`
+  - `sklearn_hgb_fixed`: `6.5258s`
+  - `sklearn_hgb`: `6.6063s`
+  - `xgboost_hist`: `7.9080s`
 
 #### 2) Regular-regime scalability (`1 -> cores`, higher `fit_speedup` is better)
 
-- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb_fixed` leading on macos-arm64.
+- Most frequent winner by platform: `lightgbm_hist` (3/4 platforms), with `sklearn_hgb` leading on macos-arm64.
 - Global median `fit_speedup(1->cores)`:
   - `lightgbm_hist`: `2.2608x`
-  - `sklearn_hgb_fixed`: `1.9872x`
-  - `sklearn_hgb`: `1.9519x`
-  - `xgboost_hist`: `1.6619x`
+  - `sklearn_hgb`: `1.9631x`
+  - `xgboost_hist`: `1.7322x`
+  - `sklearn_hgb_fixed`: `1.7086x`
 
-#### 3) Oversubscription robustness (`4x cores / cores`, lower fit-time ratio is better)
+#### 3) Oversubscription robustness (`2x cores / cores`, lower fit-time ratio is better)
 
-- Most frequent winner by platform: `sklearn_hgb_fixed` (3/4 platforms), with `xgboost_hist` leading on windows-amd64.
-- Global median `fit_time_ratio(4x_vs_cores)`:
-  - `xgboost_hist`: `1.0150x`
-  - `sklearn_hgb_fixed`: `1.0163x`
-  - `lightgbm_hist`: `1.6208x`
-  - `sklearn_hgb`: `3.1016x`
+- Most frequent winner by platform: tie between `xgboost_hist` and `sklearn_hgb_fixed` (2/4 platforms each).
+- Global median `fit_time_ratio(2x_vs_cores)`:
+  - `sklearn_hgb_fixed`: `0.9827x`
+  - `xgboost_hist`: `1.0035x`
+  - `lightgbm_hist`: `1.3410x`
+  - `sklearn_hgb`: `1.8725x`
 
-Interpretation: `lightgbm_hist` usually wins in non-oversubscribed throughput, while `sklearn_hgb_fixed` and `xgboost_hist` are substantially more resilient than `lightgbm_hist` and especially `sklearn_hgb` under heavy oversubscription.
+Interpretation: `lightgbm_hist` remains the non-oversubscribed throughput leader, while `sklearn_hgb_fixed` and `xgboost_hist` remain more resilient under `2x cores` oversubscription.
 
 ## Per-platform detailed analysis (root causes + implementation plans)
 
@@ -141,14 +161,14 @@ Interpretation: `lightgbm_hist` usually wins in non-oversubscribed throughput, w
 
 Each detailed report includes:
 
-- Scalability plots for both settings:
+- Scalability plots for available settings:
   - `baseline_default` (`scalability.png`)
-  - `deep_few_trees` (`scalability_deep_few_trees.png`)
-- Absolute fit-time plots for both settings:
+  - optional `deep_few_trees` (`scalability_deep_few_trees.png`) when present in artifacts
+- Absolute fit-time plots for available settings:
   - `baseline_default` (`fit_time_threads.png`)
-  - `deep_few_trees` (`fit_time_threads_deep_few_trees.png`)
-  - Vertical markers annotate `cores`, `2x cores`, and `4x cores` regimes.
-- Oversubscription regime tables at `cores`, `2x cores`, and `4x cores`.
+  - optional `deep_few_trees` (`fit_time_threads_deep_few_trees.png`) when present in artifacts
+  - Vertical markers annotate `cores=<n>` and `2x=<2n>` regimes.
+- Oversubscription regime tables at `cores` and `2x cores`.
 - Measured per-model `r2` parity tables.
 - Effective tree-count and node-per-tree parity checks (`fitted_trees`, `expected_trees`, `total_nodes`, `avg_nodes_per_tree`).
 - Machine metadata (`logical/physical` CPU counts, core-type breakdown, hyper-threading flag, CFS quota, and cpuset when available).

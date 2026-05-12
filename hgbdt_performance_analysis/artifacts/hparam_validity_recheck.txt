@@ -1,5 +1,0 @@
-sklearn_valid=True
-xgboost_valid=True
-lightgbm_valid=True
-n_estimators=160
-num_leaves=31

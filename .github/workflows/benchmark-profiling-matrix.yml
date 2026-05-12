@@ -59,10 +59,29 @@ jobs:
             python run_ci_benchmarks_profiles.py \
             --machine-tag "${{ matrix.machine_tag }}" \
             --artifacts-root artifacts \
-            --timeout-s 12 \
+            --timeout-s 20 \
             --benchmark-min-n-samples 500 \
-            --benchmark-reduction-factor 0.5 \
-            --profile-threads 2
+            --benchmark-reduction-factor 0.6 \
+            --profile-n-samples 16000 \
+            --profile-n-features 48 \
+            --profile-threads 1 \
+            --profile-models sklearn_hgb \
+            --skip-alt-hparams
+
+      - name: Run comparable-large benchmark with pre-calibrated params (non-Windows)
+        if: runner.os != 'Windows'
+        run: |
+          uv run --python 3.11 --exclude-newer P7D \
+            --with numpy --with pandas --with psutil --with scikit-learn --with xgboost --with lightgbm \
+            --with matplotlib --with threadpoolctl --with py-spy \
+            python aligned_large_comparison.py \
+            --machine-tag "${{ matrix.machine_tag }}" \
+            --artifacts-root artifacts \
+            --timeout-s 20 \
+            --repeats 1 \
+            --candidate-preset balanced \
+            --calibration-mode reuse \
+            --calibration-json precalibrated/comparable_large_balanced.json
 
       - name: Run benchmark + profiling pipeline (Windows)
         if: runner.os == 'Windows'
@@ -73,10 +92,29 @@ jobs:
             python run_ci_benchmarks_profiles.py `
             --machine-tag "${{ matrix.machine_tag }}" `
             --artifacts-root artifacts `
-            --timeout-s 12 `
+            --timeout-s 20 `
             --benchmark-min-n-samples 500 `
-            --benchmark-reduction-factor 0.5 `
-            --profile-threads 2
+            --benchmark-reduction-factor 0.6 `
+            --profile-n-samples 16000 `
+            --profile-n-features 48 `
+            --profile-threads 1 `
+            --profile-models sklearn_hgb `
+            --skip-alt-hparams
+
+      - name: Run comparable-large benchmark with pre-calibrated params (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          uv run --python 3.11 --exclude-newer P7D `
+            --with numpy --with pandas --with psutil --with scikit-learn --with xgboost --with lightgbm `
+            --with matplotlib --with threadpoolctl `
+            python aligned_large_comparison.py `
+            --machine-tag "${{ matrix.machine_tag }}" `
+            --artifacts-root artifacts `
+            --timeout-s 20 `
+            --repeats 1 `
+            --candidate-preset balanced `
+            --calibration-mode reuse `
+            --calibration-json precalibrated/comparable_large_balanced.json
 
       - name: Upload machine-scoped artifacts
         uses: actions/upload-artifact@v4

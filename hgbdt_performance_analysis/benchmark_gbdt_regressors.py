@@ -25,6 +25,10 @@ from xgboost import XGBRegressor
 MODEL_NAMES = ("sklearn_hgb", "sklearn_hgb_fixed", "xgboost_hist", "lightgbm_hist")
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_ARTIFACTS_DIR = BASE_DIR / "artifacts"
+DATASET_GRID_CI_BALANCED: list[dict[str, int | str]] = [
+    {"name": "small", "start_n_samples": 12_000, "n_features": 24},
+    {"name": "medium", "start_n_samples": 180_000, "n_features": 120},
+]
 
 
 @dataclass
@@ -48,15 +52,16 @@ class RunMetrics:
 def _common_hyperparameters(overrides: dict[str, Any] | None = None) -> dict[str, Any]:
     params = {
         "loss": "squared_error",
-        "n_estimators": 220,
+        "n_estimators": 120,
         "learning_rate": 0.05,
-        "max_depth": 6,
+        "max_depth": 4,
         "num_leaves": 31,
         "max_bin": 255,
-        "subsample": 0.8,
-        "l2_regularization": 1.0,
-        "min_samples_leaf": 20,
-        "min_child_weight": 20.0,
+        "subsample": 1.0,
+        "feature_subsample": 1.0,
+        "l2_regularization": 3.0,
+        "min_samples_leaf": 30,
+        "min_child_weight": 30.0,
         "min_split_gain": 0.0,
         "random_state": 42,
     }
@@ -77,10 +82,12 @@ def _build_model(model_name: str, threads: int, common: dict[str, Any]):
             min_samples_leaf=common["min_samples_leaf"],
             l2_regularization=common["l2_regularization"],
             random_state=common["random_state"],
+            # Keep boosting length fixed to match explicit n_estimators across libraries.
             early_stopping=False,
         )
     if model_name == "xgboost_hist":
         return XGBRegressor(
+            # Match sklearn/lightgbm squared-loss regression objective.
             objective="reg:squarederror",
             n_estimators=common["n_estimators"],
             learning_rate=common["learning_rate"],
@@ -88,19 +95,25 @@ def _build_model(model_name: str, threads: int, common: dict[str, Any]):
             max_leaves=common["num_leaves"],
             max_bin=common["max_bin"],
             subsample=common["subsample"],
-            colsample_bytree=1.0,
+            # Use all features per tree to align with sklearn HGB behavior.
+            colsample_bytree=common["feature_subsample"],
             reg_lambda=common["l2_regularization"],
             min_child_weight=common["min_child_weight"],
             gamma=common["min_split_gain"],
+            # Enforce histogram training across all libraries.
             tree_method="hist",
+            # Use leaf-wise growth constrained by max_leaves, closest to sklearn HGB.
             grow_policy="lossguide",
             random_state=common["random_state"],
             n_jobs=threads,
+            # Disable implicit early stopping so fitted tree counts remain comparable.
             early_stopping_rounds=None,
+            # Silence logs; no effect on model quality.
             verbosity=0,
         )
     if model_name == "lightgbm_hist":
         return LGBMRegressor(
+            # Match squared-loss regression objective used by other libraries.
             objective="regression",
             n_estimators=common["n_estimators"],
             learning_rate=common["learning_rate"],
@@ -108,13 +121,18 @@ def _build_model(model_name: str, threads: int, common: dict[str, Any]):
             num_leaves=common["num_leaves"],
             max_bin=common["max_bin"],
             subsample=common["subsample"],
-            subsample_freq=1,
+            # Disable stochastic row bagging when subsample==1.0 for parity with sklearn.
+            subsample_freq=0,
+            # Use all features per tree to align with sklearn HGB behavior.
+            colsample_bytree=common["feature_subsample"],
             reg_lambda=common["l2_regularization"],
             min_child_samples=common["min_samples_leaf"],
             min_split_gain=common["min_split_gain"],
+            # Match xgboost's min_child_weight semantics via LightGBM's hessian threshold.
             min_child_weight=common["min_child_weight"],
             random_state=common["random_state"],
             n_jobs=threads,
+            # Silence logs; no effect on model quality.
             verbosity=-1,
         )
     raise ValueError(f"Unknown model: {model_name}")
@@ -225,10 +243,16 @@ def _single_run(
     monitor_thread.start()
     start = time.perf_counter()
     fit_start = time.perf_counter()
+    n_fits = 0
+    n_preds = 0
     with threadpool_limits(limits=effective_threads):
-        model.fit(X_train, y_train)
+        while n_fits == 0 or (time.perf_counter() - fit_start) < 1.0:
+            model.fit(X_train, y_train)
+            n_fits += 1
         fit_end = time.perf_counter()
-        y_pred = model.predict(X_test)
+        while n_preds == 0 or (time.perf_counter() - fit_end) < 0.5:
+            y_pred = model.predict(X_test)
+            n_preds += 1
         pred_end = time.perf_counter()
     stop_event.set()
     monitor_thread.join(timeout=1.0)
@@ -252,8 +276,8 @@ def _single_run(
         "effective_threads": effective_threads,
         "n_samples": n_samples,
         "n_features": n_features,
-        "fit_seconds": fit_end - fit_start,
-        "predict_seconds": pred_end - fit_end,
+        "fit_seconds": (fit_end - fit_start) / n_fits,
+        "predict_seconds": (pred_end - fit_end) / n_preds,
         "total_seconds": total_end - start,
         "peak_rss_mb": peak_holder["peak_mb"],
         "rmse": rmse,
@@ -315,24 +339,16 @@ def _run_in_subprocess(
 
 def _default_thread_grid() -> list[int]:
     cpu_count = os.cpu_count() or 1
-    candidate = [1, 2, 4, 8]
-    grid = sorted({t for t in candidate if t <= cpu_count})
-    if cpu_count not in grid:
-        grid.append(cpu_count)
-    return sorted(set(grid))
+    half_cores = max(1, (cpu_count + 1) // 2)
+    return sorted({1, half_cores, cpu_count, 2 * cpu_count})
 
 
 def _benchmark(args: argparse.Namespace) -> None:
     out_path = Path(args.output_json)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     thread_grid = _default_thread_grid() if args.thread_grid is None else sorted(set(args.thread_grid))
-    dataset_grid = [
-        {"name": "small", "start_n_samples": 50_000, "n_features": 40},
-        {"name": "medium", "start_n_samples": 140_000, "n_features": 80},
-        {"name": "large", "start_n_samples": 320_000, "n_features": 120},
-    ]
+    dataset_grid = [dict(row) for row in DATASET_GRID_CI_BALANCED]
     all_runs: list[dict[str, Any]] = []
-
     for dataset in dataset_grid:
         current_n_samples = dataset["start_n_samples"]
         reduction_round = 0
@@ -388,6 +404,7 @@ def _benchmark(args: argparse.Namespace) -> None:
                 "metadata": {
                     "timeout_s": args.timeout_s,
                     "thread_grid": thread_grid,
+                    "dataset_profile": "ci_balanced",
                     "dataset_grid": dataset_grid,
                     "reduction_factor": args.reduction_factor,
                     "min_n_samples": args.min_n_samples,

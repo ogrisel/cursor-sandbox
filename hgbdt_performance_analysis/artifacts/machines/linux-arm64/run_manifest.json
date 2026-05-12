@@ -7,8 +7,8 @@
     "system": "Linux",
     "architecture": "aarch64",
     "logical_cpu_count": 4,
-    "physical_cpu_count": null,
-    "hyperthreading_enabled": null,
+    "physical_cpu_count": 4,
+    "hyperthreading_enabled": false,
     "core_type_counts": {
       "performance": 4,
       "efficiency": null,
@@ -18,6 +18,7 @@
     "cpuset": "0-3",
     "model_name": "Neoverse-N2",
     "data_sources": [
+      "joblib",
       "lscpu"
     ]
   },
@@ -25,13 +26,11 @@
     1,
     2,
     4,
-    8,
-    16
+    8
   ],
   "oversubscription_targets": {
     "cores": 4,
-    "x2_cores": 8,
-    "x4_cores": 16
+    "x2_cores": 8
   },
   "native_profile_enabled": true,
   "settings": {
@@ -42,14 +41,6 @@
       "benchmark_ranked_models_png": "artifacts/machines/linux-arm64/benchmark_ranked_models.png",
       "scalability_png": "artifacts/machines/linux-arm64/scalability.png",
       "fit_time_threads_png": "artifacts/machines/linux-arm64/fit_time_threads.png"
-    },
-    "deep_few_trees": {
-      "benchmark_json": "artifacts/machines/linux-arm64/benchmark_results_deep_few_trees.json",
-      "benchmark_summary_json": "artifacts/machines/linux-arm64/benchmark_summary_deep_few_trees.json",
-      "benchmark_summary_md": "artifacts/machines/linux-arm64/benchmark_report_deep_few_trees.md",
-      "benchmark_ranked_models_png": "artifacts/machines/linux-arm64/benchmark_ranked_models_deep_few_trees.png",
-      "scalability_png": "artifacts/machines/linux-arm64/scalability_deep_few_trees.png",
-      "fit_time_threads_png": "artifacts/machines/linux-arm64/fit_time_threads_deep_few_trees.png"
     }
   },
   "outputs": {

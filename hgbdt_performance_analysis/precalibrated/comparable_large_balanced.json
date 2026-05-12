@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "candidate_preset": "balanced",
+  "calibrated_constraints": {
+    "start_n_samples": 220000,
+    "n_features": 120,
+    "timeout_s": 20.0,
+    "reduction_factor": 0.8,
+    "min_n_samples": 40000,
+    "max_r2_spread": 0.003,
+    "min_n_estimators": 10,
+    "min_num_leaves": 31
+  },
+  "best": {
+    "candidate": "common_hyperparameters",
+    "n_samples": 220000,
+    "n_features": 120,
+    "r2_spread": 0.0002990831068145905,
+    "r2_mean": 0.43269195787205944,
+    "max_total_s": 9.170046627987176
+  },
+  "calibration_rows": [
+    {
+      "candidate": "common_hyperparameters",
+      "n_estimators": 120,
+      "num_leaves": 31,
+      "n_samples": 220000,
+      "n_features": 120,
+      "r2_spread": 0.0002990831068145905,
+      "r2_mean": 0.43269195787205944,
+      "fitted_trees_min": 120,
+      "fitted_trees_max": 120,
+      "fitted_trees_spread": 0,
+      "max_total_s": 9.170046627987176,
+      "r2_by_model": {
+        "sklearn_hgb": 0.4327326475341502,
+        "xgboost_hist": 0.4328211545944214,
+        "lightgbm_hist": 0.4325220714876068
+      },
+      "r2_spread_tolerance": 0.003,
+      "r2_spread_within_tolerance": true
+    }
+  ]
+}

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import matplotlib
+from joblib import cpu_count as joblib_cpu_count
 
 from artifact_layout import machine_artifacts_dir, resolve_machine_tag
 
@@ -42,7 +43,8 @@ def _resolve_thread_grid(requested_grid: list[int] | None) -> list[int]:
     if requested_grid:
         return sorted({max(1, int(t)) for t in requested_grid})
     cpu_count = max(1, os.cpu_count() or 1)
-    return sorted({1, 2, cpu_count, 2 * cpu_count, 4 * cpu_count})
+    half_cores = max(1, (cpu_count + 1) // 2)
+    return sorted({1, half_cores, cpu_count, 2 * cpu_count})
 
 
 def _run_capture(cmd: list[str], timeout_s: float = 5.0) -> str | None:
@@ -104,49 +106,29 @@ def _linux_cgroup_quota() -> dict[str, Any] | None:
 
 def _collect_cpu_info() -> dict[str, Any]:
     system = platform.system().strip().lower()
-    logical = max(1, os.cpu_count() or 1)
+    logical = max(1, int(joblib_cpu_count()))
+    physical = joblib_cpu_count(only_physical_cores=True)
     info: dict[str, Any] = {
         "system": platform.system(),
         "architecture": platform.machine(),
         "logical_cpu_count": logical,
-        "physical_cpu_count": None,
+        "physical_cpu_count": None if physical is None else int(physical),
         "hyperthreading_enabled": None,
         "core_type_counts": {"performance": None, "efficiency": None, "low_power": None},
         "cfs_quota": None,
         "cpuset": None,
         "model_name": None,
-        "data_sources": [],
+        "data_sources": ["joblib"],
     }
 
     if system == "linux":
         lscpu_out = _run_capture(["lscpu"])
-        cores_per_socket = None
-        sockets = None
         if lscpu_out:
             info["data_sources"].append("lscpu")
             for line in lscpu_out.splitlines():
                 lower = line.lower()
                 if lower.startswith("model name:"):
                     info["model_name"] = line.split(":", 1)[1].strip()
-                elif lower.startswith("core(s) per socket:"):
-                    value = line.split(":", 1)[1].strip()
-                    if value.isdigit():
-                        cores_per_socket = int(value)
-                elif lower.startswith("socket(s):"):
-                    value = line.split(":", 1)[1].strip()
-                    if value.isdigit():
-                        sockets = int(value)
-        phys_pairs = _run_capture(["lscpu", "-p=core,socket"])
-        if phys_pairs:
-            unique_pairs = {
-                line.strip()
-                for line in phys_pairs.splitlines()
-                if line.strip() and not line.strip().startswith("#")
-            }
-            if unique_pairs:
-                info["physical_cpu_count"] = len(unique_pairs)
-        if info["physical_cpu_count"] is None and cores_per_socket and sockets:
-            info["physical_cpu_count"] = cores_per_socket * sockets
         if info["physical_cpu_count"]:
             info["hyperthreading_enabled"] = logical > int(info["physical_cpu_count"])
         info["core_type_counts"] = _linux_core_type_counts(logical_cpu_count=logical)
@@ -160,13 +142,7 @@ def _collect_cpu_info() -> dict[str, Any]:
 
     if system == "darwin":
         info["data_sources"].append("sysctl")
-        logical_out = _run_capture(["sysctl", "-n", "hw.logicalcpu"])
-        physical_out = _run_capture(["sysctl", "-n", "hw.physicalcpu"])
         model_out = _run_capture(["sysctl", "-n", "machdep.cpu.brand_string"])
-        if logical_out and logical_out.isdigit():
-            info["logical_cpu_count"] = int(logical_out)
-        if physical_out and physical_out.isdigit():
-            info["physical_cpu_count"] = int(physical_out)
         if model_out:
             info["model_name"] = model_out
         p_cores = _run_capture(["sysctl", "-n", "hw.perflevel0.physicalcpu"])
@@ -197,13 +173,7 @@ def _collect_cpu_info() -> dict[str, Any]:
             if isinstance(payload, dict):
                 payload = [payload]
             if isinstance(payload, list) and payload:
-                cores = [int(row.get("NumberOfCores", 0)) for row in payload if row.get("NumberOfCores")]
-                logicals = [int(row.get("NumberOfLogicalProcessors", 0)) for row in payload if row.get("NumberOfLogicalProcessors")]
                 threads = [int(row.get("ThreadCount", 0)) for row in payload if row.get("ThreadCount")]
-                if cores:
-                    info["physical_cpu_count"] = sum(cores)
-                if logicals:
-                    info["logical_cpu_count"] = sum(logicals)
                 if payload[0].get("Name"):
                     info["model_name"] = str(payload[0]["Name"]).strip()
                 thread_count = sum(threads) if threads else int(info["logical_cpu_count"])
@@ -296,7 +266,7 @@ def _write_ranked_models_plot(benchmark_summary_json: Path, output_png: Path, ti
     plt.close(fig)
 
 
-def _write_scalability_plot(benchmark_results_json: Path, output_png: Path, title: str) -> None:
+def _write_scalability_plot(benchmark_results_json: Path, output_png: Path, title: str, core_threads: int) -> None:
     payload = json.loads(benchmark_results_json.read_text(encoding="utf-8"))
     runs = payload.get("runs", [])
     by_dataset: dict[str, list[dict[str, Any]]] = {}
@@ -322,7 +292,12 @@ def _write_scalability_plot(benchmark_results_json: Path, output_png: Path, titl
             baseline = float(per_thread[1]["fit_seconds"])
             speedup = [baseline / float(per_thread[t]["fit_seconds"]) for t in threads]
             ax.plot(threads, speedup, marker="o", label=model)
-        ax.set_title(dataset)
+        for thread_value, label in [(core_threads, f"cores={core_threads}"), (2 * core_threads, f"2x={2 * core_threads}")]:
+            ax.axvline(thread_value, color="#777777", linestyle="--", linewidth=0.8, alpha=0.5)
+            ax.text(thread_value, ax.get_ylim()[1], label, rotation=90, va="top", ha="center", fontsize=8, color="#666666")
+        sample_count = max(int(row["n_samples"]) for row in rows)
+        feature_count = max(int(row["n_features"]) for row in rows)
+        ax.set_title(f"{dataset} (n={sample_count:,}, p={feature_count})")
         ax.set_xlabel("Threads")
         ax.set_ylabel("Fit speedup vs 1-thread")
         ax.grid(alpha=0.3)
@@ -358,10 +333,12 @@ def _write_fit_time_plot(benchmark_results_json: Path, output_png: Path, title: 
             threads = sorted(per_thread)
             fit_values = [float(per_thread[t]["fit_seconds"]) for t in threads]
             ax.plot(threads, fit_values, marker="o", label=model)
-        for thread_value, label in [(core_threads, "cores"), (2 * core_threads, "2x"), (4 * core_threads, "4x")]:
+        for thread_value, label in [(core_threads, f"cores={core_threads}"), (2 * core_threads, f"2x={2 * core_threads}")]:
             ax.axvline(thread_value, color="#777777", linestyle="--", linewidth=0.8, alpha=0.5)
             ax.text(thread_value, ax.get_ylim()[1], label, rotation=90, va="top", ha="center", fontsize=8, color="#666666")
-        ax.set_title(dataset)
+        sample_count = max(int(row["n_samples"]) for row in rows)
+        feature_count = max(int(row["n_features"]) for row in rows)
+        ax.set_title(f"{dataset} (n={sample_count:,}, p={feature_count})")
         ax.set_xlabel("Threads")
         ax.set_ylabel("Fit time (s)")
         ax.grid(alpha=0.3)
@@ -420,7 +397,12 @@ def _run_benchmark_setting(
         ]
     )
     _write_ranked_models_plot(benchmark_summary_json=benchmark_summary_json, output_png=benchmark_rank_png, title=f"Per-machine model ranking ({setting_name})")
-    _write_scalability_plot(benchmark_results_json=benchmark_json, output_png=scalability_png, title=f"Scalability by dataset ({setting_name})")
+    _write_scalability_plot(
+        benchmark_results_json=benchmark_json,
+        output_png=scalability_png,
+        title=f"Scalability by dataset ({setting_name})",
+        core_threads=core_threads,
+    )
     _write_fit_time_plot(
         benchmark_results_json=benchmark_json,
         output_png=fit_time_png,
@@ -437,6 +419,28 @@ def _run_benchmark_setting(
     }
 
 
+def _clear_machine_outputs(out_dir: Path) -> None:
+    generated_patterns = (
+        "benchmark_results*.json",
+        "benchmark_summary*.json",
+        "benchmark_report*.md",
+        "benchmark_ranked_models*.png",
+        "scalability*.png",
+        "fit_time_threads*.png",
+        "profile_spec.json",
+        "profile_summary.json",
+        "profile_summary.md",
+        "run_manifest.json",
+    )
+    for pattern in generated_patterns:
+        for path in out_dir.glob(pattern):
+            if path.is_file():
+                path.unlink()
+    profiles_dir = out_dir / "profiles"
+    if profiles_dir.exists():
+        shutil.rmtree(profiles_dir)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--artifacts-root", default=str(BASE_DIR / "artifacts"))
@@ -445,10 +449,10 @@ def main() -> None:
     parser.add_argument("--thread-grid", nargs="+", type=int, default=None)
     parser.add_argument("--benchmark-min-n-samples", type=int, default=5_000)
     parser.add_argument("--benchmark-reduction-factor", type=float, default=0.6)
-    parser.add_argument("--profile-n-samples", type=int, default=40_000)
-    parser.add_argument("--profile-n-features", type=int, default=80)
+    parser.add_argument("--profile-n-samples", type=int, default=16_000)
+    parser.add_argument("--profile-n-features", type=int, default=48)
     parser.add_argument("--profile-threads", type=int, default=4)
-    parser.add_argument("--profile-models", nargs="+", default=["sklearn_hgb", "lightgbm_hist"])
+    parser.add_argument("--profile-models", nargs="+", default=["sklearn_hgb"])
     parser.add_argument("--skip-alt-hparams", action="store_true")
     args = parser.parse_args()
     cpu_info = _collect_cpu_info()
@@ -458,6 +462,7 @@ def main() -> None:
 
     out_dir = machine_artifacts_dir(base_dir=BASE_DIR, artifacts_root=args.artifacts_root, machine_tag=args.machine_tag)
     out_dir.mkdir(parents=True, exist_ok=True)
+    _clear_machine_outputs(out_dir)
 
     settings: list[tuple[str, dict[str, Any] | None]] = [("baseline_default", None)]
     if not args.skip_alt_hparams:
@@ -513,7 +518,6 @@ def main() -> None:
         "oversubscription_targets": {
             "cores": core_threads,
             "x2_cores": 2 * core_threads,
-            "x4_cores": 4 * core_threads,
         },
         "native_profile_enabled": native_enabled,
         "settings": setting_outputs,
