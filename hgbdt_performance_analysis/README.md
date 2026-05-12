@@ -65,7 +65,7 @@ Generate detailed reports:
 
 ## Main conclusions
 
-1. `lightgbm_hist` is top-ranked by median total runtime on all current CI platforms for this benchmark profile.
+1. Cross-platform absolute fit-time ranking at `threads==cores` (averaged over datasets and platforms) is: `lightgbm_hist`, `sklearn_hgb`, `sklearn_hgb_fixed`, `xgboost_hist`.
 2. `lightgbm_hist` leads mono-thread runtime and most `1 -> cores` scaling cases, while `sklearn_hgb_fixed` is strongest in oversubscribed `2x cores` robustness.
 3. Despite stable top ranking, model sensitivity to platform remains high and is tracked via per-model worst/best ratios.
 
@@ -85,6 +85,12 @@ These plots show median total runtime ranking (lower is better):
 ### Cross-platform contrast and platform-specific variations
 
 From `artifacts/platform_specific_summary.json`:
+
+- Cross-platform absolute fit-time ranking at `threads==cores` (mean `fit_seconds`, lower is better):
+  - `lightgbm_hist`: `0.5200s`
+  - `sklearn_hgb`: `0.8917s`
+  - `sklearn_hgb_fixed`: `0.9306s`
+  - `xgboost_hist`: `1.1504s`
 
 - Winner split:
   - `lightgbm_hist`: 4/4 platforms

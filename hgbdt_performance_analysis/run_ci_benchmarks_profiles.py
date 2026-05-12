@@ -43,7 +43,7 @@ def _resolve_thread_grid(requested_grid: list[int] | None) -> list[int]:
     if requested_grid:
         return sorted({max(1, int(t)) for t in requested_grid})
     cpu_count = max(1, os.cpu_count() or 1)
-    half_cores = max(1, cpu_count // 2)
+    half_cores = max(1, (cpu_count + 1) // 2)
     return sorted({1, half_cores, cpu_count, 2 * cpu_count})
 
 
@@ -295,7 +295,9 @@ def _write_scalability_plot(benchmark_results_json: Path, output_png: Path, titl
         for thread_value, label in [(core_threads, f"cores={core_threads}"), (2 * core_threads, f"2x={2 * core_threads}")]:
             ax.axvline(thread_value, color="#777777", linestyle="--", linewidth=0.8, alpha=0.5)
             ax.text(thread_value, ax.get_ylim()[1], label, rotation=90, va="top", ha="center", fontsize=8, color="#666666")
-        ax.set_title(dataset)
+        sample_count = max(int(row["n_samples"]) for row in rows)
+        feature_count = max(int(row["n_features"]) for row in rows)
+        ax.set_title(f"{dataset} (n={sample_count:,}, p={feature_count})")
         ax.set_xlabel("Threads")
         ax.set_ylabel("Fit speedup vs 1-thread")
         ax.grid(alpha=0.3)
@@ -334,7 +336,9 @@ def _write_fit_time_plot(benchmark_results_json: Path, output_png: Path, title: 
         for thread_value, label in [(core_threads, f"cores={core_threads}"), (2 * core_threads, f"2x={2 * core_threads}")]:
             ax.axvline(thread_value, color="#777777", linestyle="--", linewidth=0.8, alpha=0.5)
             ax.text(thread_value, ax.get_ylim()[1], label, rotation=90, va="top", ha="center", fontsize=8, color="#666666")
-        ax.set_title(dataset)
+        sample_count = max(int(row["n_samples"]) for row in rows)
+        feature_count = max(int(row["n_features"]) for row in rows)
+        ax.set_title(f"{dataset} (n={sample_count:,}, p={feature_count})")
         ax.set_xlabel("Threads")
         ax.set_ylabel("Fit time (s)")
         ax.grid(alpha=0.3)

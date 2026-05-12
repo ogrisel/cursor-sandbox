@@ -319,7 +319,7 @@ def _run_in_subprocess(
 
 def _default_thread_grid() -> list[int]:
     cpu_count = os.cpu_count() or 1
-    half_cores = max(1, cpu_count // 2)
+    half_cores = max(1, (cpu_count + 1) // 2)
     return sorted({1, half_cores, cpu_count, 2 * cpu_count})
 
 
