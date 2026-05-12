@@ -5,85 +5,85 @@
         "function": "~:0:<built-in method builtins.exec>",
         "primitive_calls": 1,
         "total_calls": 1664,
-        "total_time_s": 0.039485937000000006,
-        "cumulative_time_s": 3.855931346
+        "total_time_s": 0.040640602000000005,
+        "cumulative_time_s": 4.119758792
       },
       {
         "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 9.952000000000001e-05,
-        "cumulative_time_s": 3.855896915
+        "total_time_s": 0.000122971,
+        "cumulative_time_s": 4.119729898
       },
       {
         "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
         "primitive_calls": 11,
         "total_calls": 1666,
-        "total_time_s": 0.011446232,
-        "cumulative_time_s": 2.191788592
+        "total_time_s": 0.029155692,
+        "cumulative_time_s": 2.436072938
       },
       {
         "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
         "primitive_calls": 11,
         "total_calls": 1623,
-        "total_time_s": 0.007007823000000001,
-        "cumulative_time_s": 2.191548552
+        "total_time_s": 0.008315424,
+        "cumulative_time_s": 2.435823533
       },
       {
         "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
         "primitive_calls": 11,
         "total_calls": 1570,
-        "total_time_s": 0.005836209,
-        "cumulative_time_s": 2.190048539
+        "total_time_s": 0.006739806,
+        "cumulative_time_s": 2.434159636
       },
       {
         "function": "<frozen importlib._bootstrap_external>:934:exec_module",
         "primitive_calls": 10,
         "total_calls": 1324,
-        "total_time_s": 0.0035912020000000004,
-        "cumulative_time_s": 2.189684724
+        "total_time_s": 0.004224307,
+        "cumulative_time_s": 2.4337092030000003
       },
       {
         "function": "<frozen importlib._bootstrap>:233:_call_with_frames_removed",
         "primitive_calls": 22,
         "total_calls": 3784,
-        "total_time_s": 0.001986715,
-        "cumulative_time_s": 2.1875701380000003
+        "total_time_s": 0.002563619,
+        "cumulative_time_s": 2.4312873720000003
       },
       {
         "function": "~:0:<built-in method builtins.__import__>",
         "primitive_calls": 67,
         "total_calls": 778,
-        "total_time_s": 0.0015998560000000002,
-        "cumulative_time_s": 2.0031037570000003
+        "total_time_s": 0.001595934,
+        "cumulative_time_s": 2.219670523
       },
       {
-        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/oOoapjdDSA3N7RiM/lib/python3.11/site-packages/lightgbm/__init__.py:1:<module>",
+        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/9ejP7QONfwesAijg/lib/python3.11/site-packages/lightgbm/__init__.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 5.4573e-05,
-        "cumulative_time_s": 1.8797876560000002
+        "total_time_s": 7.0282e-05,
+        "cumulative_time_s": 2.063932903
       },
       {
-        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/oOoapjdDSA3N7RiM/lib/python3.11/site-packages/lightgbm/basic.py:1:<module>",
+        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/9ejP7QONfwesAijg/lib/python3.11/site-packages/lightgbm/basic.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.00028591200000000004,
-        "cumulative_time_s": 1.8656092210000002
+        "total_time_s": 0.000363159,
+        "cumulative_time_s": 2.0478739040000002
       },
       {
-        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/oOoapjdDSA3N7RiM/lib/python3.11/site-packages/lightgbm/compat.py:1:<module>",
+        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/9ejP7QONfwesAijg/lib/python3.11/site-packages/lightgbm/compat.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 6.6344e-05,
-        "cumulative_time_s": 1.688643193
+        "total_time_s": 8.4647e-05,
+        "cumulative_time_s": 1.860628444
       },
       {
-        "function": "/home/runner/work/cursor-sandbox/cursor-sandbox/hgbdt_performance_analysis/benchmark_gbdt_regressors.py:444:main",
+        "function": "/home/runner/work/_temp/setup-uv-cache/archive-v0/9ejP7QONfwesAijg/lib/python3.11/site-packages/sklearn/__init__.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 1.1017000000000001e-05,
-        "cumulative_time_s": 1.662845625
+        "total_time_s": 2.8304000000000002e-05,
+        "cumulative_time_s": 1.685125667
       }
     ]
   }

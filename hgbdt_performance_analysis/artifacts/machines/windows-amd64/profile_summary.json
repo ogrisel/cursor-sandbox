@@ -5,85 +5,85 @@
         "function": "~:0:<built-in method builtins.exec>",
         "primitive_calls": 1,
         "total_calls": 1665,
-        "total_time_s": 0.0413646,
-        "cumulative_time_s": 4.9248585
+        "total_time_s": 0.0421725,
+        "cumulative_time_s": 4.937418500000001
       },
       {
         "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:1:<module>",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 7.61e-05,
-        "cumulative_time_s": 4.924826400000001
+        "total_time_s": 8.520000000000001e-05,
+        "cumulative_time_s": 4.9373892
       },
       {
         "function": "<frozen importlib._bootstrap>:1165:_find_and_load",
         "primitive_calls": 11,
         "total_calls": 1659,
-        "total_time_s": 0.013219300000000002,
-        "cumulative_time_s": 2.4889428000000002
+        "total_time_s": 0.013388800000000001,
+        "cumulative_time_s": 2.5527737000000004
       },
       {
         "function": "<frozen importlib._bootstrap>:1120:_find_and_load_unlocked",
         "primitive_calls": 11,
         "total_calls": 1616,
-        "total_time_s": 0.0083657,
-        "cumulative_time_s": 2.4886544
+        "total_time_s": 0.008689,
+        "cumulative_time_s": 2.5524734000000002
       },
       {
         "function": "<frozen importlib._bootstrap>:666:_load_unlocked",
         "primitive_calls": 11,
         "total_calls": 1567,
-        "total_time_s": 0.006437600000000001,
-        "cumulative_time_s": 2.4840237000000003
+        "total_time_s": 0.0070074000000000004,
+        "cumulative_time_s": 2.5474439
       },
       {
         "function": "<frozen importlib._bootstrap_external>:934:exec_module",
         "primitive_calls": 10,
         "total_calls": 1325,
-        "total_time_s": 0.0037211,
-        "cumulative_time_s": 2.483506
+        "total_time_s": 0.0040677000000000005,
+        "cumulative_time_s": 2.5468978
       },
       {
         "function": "<frozen importlib._bootstrap>:233:_call_with_frames_removed",
         "primitive_calls": 22,
         "total_calls": 3790,
-        "total_time_s": 0.0027132000000000002,
-        "cumulative_time_s": 2.4805702000000003
+        "total_time_s": 0.0027299000000000004,
+        "cumulative_time_s": 2.5437895000000004
       },
       {
         "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:444:main",
         "primitive_calls": 1,
         "total_calls": 1,
         "total_time_s": 1.04e-05,
-        "cumulative_time_s": 2.4345132
+        "cumulative_time_s": 2.3831835000000003
       },
       {
         "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:402:_emit_single",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.0005061,
-        "cumulative_time_s": 2.4319239
+        "total_time_s": 0.0005078,
+        "cumulative_time_s": 2.3803766
       },
       {
         "function": "D:\\a\\cursor-sandbox\\cursor-sandbox\\hgbdt_performance_analysis\\benchmark_gbdt_regressors.py:199:_single_run",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.0003008,
-        "cumulative_time_s": 2.4313275
+        "total_time_s": 0.0002567,
+        "cumulative_time_s": 2.3797856
       },
       {
-        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\SypOPbL1BIi3nX8Q\\Lib\\site-packages\\sklearn\\base.py:1319:wrapper",
-        "primitive_calls": 1,
-        "total_calls": 1,
-        "total_time_s": 0.000585,
-        "cumulative_time_s": 2.2704952
+        "function": "~:0:<built-in method builtins.__import__>",
+        "primitive_calls": 67,
+        "total_calls": 779,
+        "total_time_s": 0.0014397000000000001,
+        "cumulative_time_s": 2.2858498000000003
       },
       {
-        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\SypOPbL1BIi3nX8Q\\Lib\\site-packages\\sklearn\\ensemble\\_hist_gradient_boosting\\gradient_boosting.py:512:fit",
+        "function": "D:\\a\\_temp\\setup-uv-cache\\archive-v0\\ihy8LU9nqlKIBdNq\\Lib\\site-packages\\sklearn\\base.py:1319:wrapper",
         "primitive_calls": 1,
         "total_calls": 1,
-        "total_time_s": 0.0764282,
-        "cumulative_time_s": 2.2692357000000003
+        "total_time_s": 0.0004359,
+        "cumulative_time_s": 2.2048664000000002
       }
     ]
   }
