@@ -16,7 +16,7 @@
     },
     "cfs_quota": null,
     "cpuset": null,
-    "model_name": "AMD EPYC 7763 64-Core Processor",
+    "model_name": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
     "data_sources": [
       "joblib",
       "powershell-cim"

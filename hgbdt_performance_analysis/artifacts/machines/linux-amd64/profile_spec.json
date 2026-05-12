@@ -1,6 +1,5 @@
 {
   "sklearn_hgb": {
-    "cprofile": "artifacts/machines/linux-amd64/profiles/sklearn_hgb.pstats",
-    "speedscope": "artifacts/machines/linux-amd64/profiles/sklearn_hgb.speedscope.json"
+    "cprofile": "artifacts/machines/linux-amd64/profiles/sklearn_hgb.pstats"
   }
 }

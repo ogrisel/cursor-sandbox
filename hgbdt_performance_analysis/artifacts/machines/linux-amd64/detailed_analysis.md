@@ -24,54 +24,64 @@ _Vertical markers denote `cores=4` and `2x=8` thread regimes._
 
 | dataset | model | r2 | fitted_trees | expected_trees | trees_match | total_nodes | avg_nodes_per_tree |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| medium | lightgbm_hist | 0.586641 | 220 | 220 | True | 11256 | 51.1636 |
-| medium | sklearn_hgb | 0.529888 | 220 | 220 | True | 12398 | 56.3545 |
-| medium | sklearn_hgb_fixed | 0.529888 | 220 | 220 | True | 12398 | 56.3545 |
-| medium | xgboost_hist | 0.585335 | 220 | 220 | True | 11618 | 52.8091 |
-| small | lightgbm_hist | 0.949369 | 220 | 220 | True | 13386 | 60.8455 |
-| small | sklearn_hgb | 0.942299 | 220 | 220 | True | 13414 | 60.9727 |
-| small | sklearn_hgb_fixed | 0.942299 | 220 | 220 | True | 13414 | 60.9727 |
-| small | xgboost_hist | 0.949753 | 220 | 220 | True | 13390 | 60.8636 |
+| medium | lightgbm_hist | 0.508565 | 220 | 220 | True | 6114 | 27.7909 |
+| medium | sklearn_hgb | 0.434502 | 220 | 220 | True | 7040 | 32 |
+| medium | sklearn_hgb_fixed | 0.434502 | 220 | 220 | True | 7040 | 32 |
+| medium | xgboost_hist | 0.47647 | 220 | 220 | True | 6168 | 28.0364 |
+| small | lightgbm_hist | 0.866811 | 220 | 220 | True | 8348 | 37.9455 |
+| small | sklearn_hgb | 0.838229 | 220 | 220 | True | 9210 | 41.8636 |
+| small | sklearn_hgb_fixed | 0.838229 | 220 | 220 | True | 9210 | 41.8636 |
+| small | xgboost_hist | 0.879536 | 220 | 220 | True | 8248 | 37.4909 |
 
 ### Scalability summary (`1 -> cores=4`)
 
 | dataset | model | max_regular_threads | fit_s_1_thread | fit_s_regular_max_threads | speedup_1_to_regular_max |
 | --- | --- | --- | --- | --- | --- |
-| medium | lightgbm_hist | 4 | 1.21781 | 0.494025 | 2.46508 |
-| medium | sklearn_hgb | 4 | 1.12134 | 0.767625 | 1.46079 |
-| medium | sklearn_hgb_fixed | 4 | 1.12445 | 0.69902 | 1.60861 |
-| medium | xgboost_hist | 4 | 2.16768 | 1.28401 | 1.68821 |
-| small | lightgbm_hist | 4 | 0.571655 | 0.273629 | 2.08916 |
-| small | sklearn_hgb | 4 | 0.609867 | 0.445726 | 1.36826 |
-| small | sklearn_hgb_fixed | 4 | 0.589467 | 0.44082 | 1.3372 |
-| small | xgboost_hist | 4 | 0.824292 | 0.53415 | 1.54318 |
+| medium | lightgbm_hist | 4 | 0.624825 | 0.267012 | 2.34006 |
+| medium | sklearn_hgb | 4 | 0.842367 | 0.566851 | 1.48605 |
+| medium | sklearn_hgb_fixed | 4 | 0.84884 | 0.555668 | 1.5276 |
+| medium | xgboost_hist | 4 | 1.49388 | 0.883308 | 1.69123 |
+| small | lightgbm_hist | 4 | 0.278534 | 0.151824 | 1.83459 |
+| small | sklearn_hgb | 4 | 0.335843 | 0.319036 | 1.05268 |
+| small | sklearn_hgb_fixed | 4 | 0.338279 | 0.319323 | 1.05936 |
+| small | xgboost_hist | 4 | 0.460707 | 0.360558 | 1.27776 |
 
 ### Oversubscription regime summary (`cores=4`, `2x`)
 
 | dataset | model | fit_s_cores | fit_s_2x_cores | fit_ratio_2x_vs_cores |
 | --- | --- | --- | --- | --- |
-| medium | lightgbm_hist | 0.494025 | 1.78413 | 3.61141 |
-| medium | sklearn_hgb | 0.767625 | 3.68722 | 4.80341 |
-| medium | sklearn_hgb_fixed | 0.69902 | 0.746785 | 1.06833 |
-| medium | xgboost_hist | 1.28401 | 1.42194 | 1.10742 |
-| small | lightgbm_hist | 0.273629 | 1.76078 | 6.4349 |
-| small | sklearn_hgb | 0.445726 | 3.83703 | 8.6085 |
-| small | sklearn_hgb_fixed | 0.44082 | 0.445014 | 1.00951 |
-| small | xgboost_hist | 0.53415 | 0.638909 | 1.19612 |
+| medium | lightgbm_hist | 0.267012 | 1.03176 | 3.86408 |
+| medium | sklearn_hgb | 0.566851 | 2.69961 | 4.76247 |
+| medium | sklearn_hgb_fixed | 0.555668 | 0.567147 | 1.02066 |
+| medium | xgboost_hist | 0.883308 | 0.994838 | 1.12626 |
+| small | lightgbm_hist | 0.151824 | 1.10956 | 7.30819 |
+| small | sklearn_hgb | 0.319036 | 3.1021 | 9.72336 |
+| small | sklearn_hgb_fixed | 0.319323 | 0.317314 | 0.993708 |
+| small | xgboost_hist | 0.360558 | 0.449968 | 1.24798 |
 
 ### Underperformance findings and root cause analysis
 
-- Root cause signal: Native hotspots indicate synchronization/runtime overhead (OpenMP/pthread wait-heavy stacks).
-- Issue (scalability, dataset `medium`): Best sklearn speedup trails best alternative by 0.856 (1->regular max threads).
+- Root cause signal: Python-level dispatch/orchestration contributes meaningfully to sklearn runtime.
+- Issue (single_thread, dataset `medium`): Best sklearn total is 1.357x slower than best alternative at thread=1.
   - Implementation plan:
-    - Introduce adaptive thread gating based on node sample count and feature count.
-    - Batch multiple frontier nodes per parallel region to increase task granularity.
-    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
-- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.721 (1->regular max threads).
+    - Move short-lived orchestration loops to Cython/C-level helpers.
+    - Preallocate and reuse temporary buffers in split and histogram kernels.
+    - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
+- Issue (single_thread, dataset `small`): Best sklearn total is 1.219x slower than best alternative at thread=1.
   - Implementation plan:
-    - Introduce adaptive thread gating based on node sample count and feature count.
-    - Batch multiple frontier nodes per parallel region to increase task granularity.
-    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
+    - Move short-lived orchestration loops to Cython/C-level helpers.
+    - Preallocate and reuse temporary buffers in split and histogram kernels.
+    - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
+- Issue (scalability, dataset `medium`): Best sklearn speedup trails best alternative by 0.812 (1->regular max threads).
+  - Implementation plan:
+    - Move short-lived orchestration loops to Cython/C-level helpers.
+    - Preallocate and reuse temporary buffers in split and histogram kernels.
+    - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
+- Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.775 (1->regular max threads).
+  - Implementation plan:
+    - Move short-lived orchestration loops to Cython/C-level helpers.
+    - Preallocate and reuse temporary buffers in split and histogram kernels.
+    - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
 
 ## Setting: `deep_few_trees`
 
@@ -134,25 +144,25 @@ _Vertical markers denote `cores=4` and `2x=8` thread regimes._
 
 ### Underperformance findings and root cause analysis
 
-- Root cause signal: Native hotspots indicate synchronization/runtime overhead (OpenMP/pthread wait-heavy stacks).
+- Root cause signal: Python-level dispatch/orchestration contributes meaningfully to sklearn runtime.
 - Issue (single_thread, dataset `small`): Best sklearn total is 1.088x slower than best alternative at thread=1.
   - Implementation plan:
-    - Introduce adaptive thread gating based on node sample count and feature count.
-    - Batch multiple frontier nodes per parallel region to increase task granularity.
-    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
+    - Move short-lived orchestration loops to Cython/C-level helpers.
+    - Preallocate and reuse temporary buffers in split and histogram kernels.
+    - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
 - Issue (scalability, dataset `large`): Best sklearn speedup trails best alternative by 0.240 (1->regular max threads).
   - Implementation plan:
-    - Introduce adaptive thread gating based on node sample count and feature count.
-    - Batch multiple frontier nodes per parallel region to increase task granularity.
-    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
+    - Move short-lived orchestration loops to Cython/C-level helpers.
+    - Preallocate and reuse temporary buffers in split and histogram kernels.
+    - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
 - Issue (scalability, dataset `medium`): Best sklearn speedup trails best alternative by 0.239 (1->regular max threads).
   - Implementation plan:
-    - Introduce adaptive thread gating based on node sample count and feature count.
-    - Batch multiple frontier nodes per parallel region to increase task granularity.
-    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
+    - Move short-lived orchestration loops to Cython/C-level helpers.
+    - Preallocate and reuse temporary buffers in split and histogram kernels.
+    - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
 - Issue (scalability, dataset `small`): Best sklearn speedup trails best alternative by 0.404 (1->regular max threads).
   - Implementation plan:
-    - Introduce adaptive thread gating based on node sample count and feature count.
-    - Batch multiple frontier nodes per parallel region to increase task granularity.
-    - Reduce barrier frequency by fusing short OpenMP regions in split/histogram paths.
+    - Move short-lived orchestration loops to Cython/C-level helpers.
+    - Preallocate and reuse temporary buffers in split and histogram kernels.
+    - Add lightweight fast paths for small-node splits to bypass heavy orchestration.
 
