@@ -232,11 +232,11 @@ def _single_run(
     n_fits = 0
     n_preds = 0
     with threadpool_limits(limits=effective_threads):
-        while n_fits == 0 or (time.perf_counter() - fit_start) < 2.0:
+        while n_fits == 0 or (time.perf_counter() - fit_start) < 1.0:
             model.fit(X_train, y_train)
             n_fits += 1
         fit_end = time.perf_counter()
-        while n_preds == 0 or (time.perf_counter() - fit_end) < 2.0:
+        while n_preds == 0 or (time.perf_counter() - fit_end) < 0.5:
             y_pred = model.predict(X_test)
             n_preds += 1
         pred_end = time.perf_counter()
