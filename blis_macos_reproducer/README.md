@@ -41,12 +41,14 @@ Pure C reproducer (links against BLIS built from the latest release tag):
 ./blis_macos_reproducer/build_and_run_c_blis_reproducer.sh
 ```
 
-Sklearn-level reproducers (closest to real CI failures):
+Definitive reproducer (matches scikit-learn macOS CI):
 
 ```bash
 ./blis_macos_reproducer/run_sklearn_blas_reproducer.sh blis pytest
-./blis_macos_reproducer/run_sklearn_blas_reproducer.sh blis pairwise
+./blis_macos_reproducer/run_sklearn_blas_reproducer.sh openblas pytest   # should pass
 ```
+
+Optional diagnostic (`sklearn_pairwise_blis_reproducer.py`): compares `nan_euclidean` implementations to a scalar reference.
 
 ## CI
 
