@@ -324,8 +324,10 @@ def run_numpy_trace() -> int:
     divergence between BLAS and a non-BLAS reference (einsum / factor residual).
     """
     print("=== level=numpy-trace ===", flush=True)
+    print("(iterating the FULL grid in order, like numpy-eigsh/pytest, so any "
+          "order/state-dependent corruption is reproduced)", flush=True)
     rc = 0
-    for n, rank in ((100, 10), (100, 80)):
+    for n, rank in PARAM_GRID:
         print(f"--- trace n={n} rank={rank} ---", flush=True)
         A, rng = _make_low_rank_psd(n, rank)
         size = rank + 10
@@ -360,6 +362,21 @@ def run_numpy_trace() -> int:
         print(f"    singular values: max={float(np.max(s)):.3e} min={float(np.min(s)):.3e}", flush=True)
         Uf = Qf @ Uhat
         _trace_gemm("Qf@Uhat", Uf, Qf, Uhat, flags)
+
+        # Final reconstruction (the quantity the upstream test asserts on).
+        V = Uf[:, :rank]
+        S = s[:rank]
+        recon = (V @ np.diag(S)) @ V.T
+        recon_ref = _einsum_matmul(_einsum_matmul(V, np.diag(S)), V.T)
+        _trace_gemm("V@S@V.T", recon, V @ np.diag(S), V.T, flags)
+        rec_err = float(np.max(np.abs(recon - A)))
+        rec_err_ref = float(np.max(np.abs(recon_ref - A)))
+        print(
+            f"    reconst_err(BLAS)={rec_err:.3e}  reconst_err(einsum-ref)={rec_err_ref:.3e}",
+            flush=True,
+        )
+        if rec_err > 1e-6:
+            flags.append(("reconst", rec_err))
 
         if flags:
             print(f"  -> FAIL: first/total mismatches={len(flags)}: {flags[:3]}", flush=True)
