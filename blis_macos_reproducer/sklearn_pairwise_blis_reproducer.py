@@ -56,11 +56,80 @@ def _check_distances(name: str, x: np.ndarray, missing_values: float) -> list[st
     return failures
 
 
+def _check_chunked_vs_full(name: str, x: np.ndarray, missing_values: float) -> list[str]:
+    """KNNImputer uses chunked distances; the test uses full pairwise_distances."""
+    failures: list[str] = []
+    dist_full = pairwise_distances(
+        x,
+        metric="nan_euclidean",
+        squared=False,
+        missing_values=missing_values,
+    )
+    chunks: list[np.ndarray] = []
+    with config_context(working_memory=0):
+        for chunk in pairwise_distances_chunked(
+            x,
+            metric="nan_euclidean",
+            squared=False,
+            missing_values=missing_values,
+        ):
+            chunks.append(np.asarray(chunk))
+    dist_chunked = np.vstack(chunks)
+    if not np.allclose(dist_full, dist_chunked, rtol=0, atol=0, equal_nan=True):
+        err = float(np.nanmax(np.abs(dist_full - dist_chunked)))
+        n_bad = int(
+            np.sum(~np.isclose(dist_full, dist_chunked, rtol=0, atol=0, equal_nan=True))
+        )
+        failures.append(f"{name}/chunked_vs_full: max_abs_err={err:.6g} n_bad={n_bad}")
+    return failures
+
+
 def _check_knn_imputer(name: str, x: np.ndarray, missing_values: float) -> list[str]:
     failures: list[str] = []
     x = np.array(x, dtype=np.float64, copy=True)
     if not np.isnan(missing_values):
         x = np.where(np.isnan(x), missing_values, x)
+
+    if name == "knn_weight_8x4" and np.isnan(missing_values):
+        failures.extend(_check_chunked_vs_full(name, x, missing_values))
+        dist = pairwise_distances(
+            x,
+            metric="nan_euclidean",
+            squared=False,
+            missing_values=missing_values,
+        )
+        r0c3_w = 1.0 / dist[0, 2:-1]
+        r1c3_w = 1.0 / dist[1, 2:-1]
+        r2c2_w = 1.0 / dist[2, (0, 1, 3, 4, 5)]
+        r7c0_w = 1.0 / dist[7, 2:7]
+        r0c3 = np.average(x[2:-1, -1], weights=r0c3_w)
+        r1c3 = np.average(x[2:-1, -1], weights=r1c3_w)
+        r2c2 = np.average(x[(0, 1, 3, 4, 5), 2], weights=r2c2_w)
+        r7c0 = np.average(x[2:7, 0], weights=r7c0_w)
+        expected = np.array(
+            [
+                [0, 0, 0, r0c3],
+                [1, 1, 1, r1c3],
+                [2, 2, r2c2, 2],
+                [3, 3, 3, 3],
+                [4, 4, 4, 4],
+                [5, 5, 5, 5],
+                [6, 6, 6, 6],
+                [r7c0, 7, 7, 7],
+            ],
+            dtype=np.float64,
+        )
+        with config_context(working_memory=0):
+            imputed = KNNImputer(
+                missing_values=missing_values, weights="distance"
+            ).fit_transform(x)
+        if not np.allclose(imputed, expected, rtol=0, atol=0, equal_nan=True):
+            err = float(np.max(np.abs(imputed - expected)))
+            failures.append(f"{name}/KNNImputer_distance: max_abs_err={err:.6g}")
+            failures.append(
+                f"  imputed[2,2]={imputed[2, 2]} expected[2,2]={expected[2, 2]}"
+            )
+        return failures
 
     if name == "knn_simple" and np.isnan(missing_values):
         r0c1 = np.mean(x[1:6, 1])
@@ -103,6 +172,21 @@ def main() -> int:
         failures.extend(_check_distances(f"knn_simple[{mv}]", x_simple, missing_values))
         failures.extend(_check_distances(f"knn_weight[{mv}]", x_weight, missing_values))
         failures.extend(_check_knn_imputer("knn_simple", x_simple, missing_values))
+
+        x_weight_8x4 = np.array(
+            [
+                [0, np.nan, 0, np.nan],
+                [1, 1, 1, np.nan],
+                [2, 2, np.nan, 2],
+                [3, 3, 3, 3],
+                [4, 4, 4, 4],
+                [5, 5, 5, 5],
+                [6, 6, 6, 6],
+                [np.nan, 7, 7, 7],
+            ],
+            dtype=np.float64,
+        )
+        failures.extend(_check_knn_imputer("knn_weight_8x4", x_weight_8x4, missing_values))
 
     print(f"conda_libblas_build={_conda_libblas_build() or 'unknown'}")
     print(f"BLIS_NUM_THREADS={os.getenv('BLIS_NUM_THREADS')}")

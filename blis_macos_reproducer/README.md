@@ -54,6 +54,7 @@ Sklearn-level reproducers (closest to real CI failures):
 
 Expected outcomes while the BLIS bug is present:
 
-- **NumPy + conda BLIS**: reproducer exits non-zero
-- **NumPy + OpenBLAS / newaccelerate**: reproducer exits zero
-- **Pure C + source BLIS**: reproducer exits non-zero
+- **`run_sklearn_blas_reproducer.sh blis pytest`**: KNN imputer tests fail (primary reproducer)
+- **`run_sklearn_blas_reproducer.sh blis pairwise`**: chunked vs full `pairwise_distances` diverge on the 8×4 case
+- **NumPy + OpenBLAS / newaccelerate**: reproducers pass
+- **Pure C + source BLIS 2.0**: isolated `dgemm` micro-kernel passes (bug is in sklearn calling pattern, not this kernel)

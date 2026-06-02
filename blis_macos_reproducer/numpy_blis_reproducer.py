@@ -9,7 +9,7 @@ import json
 import os
 import subprocess
 import sys
-import multiprocessing as mp
+import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -148,25 +148,38 @@ def _fork_stress(
     atol: float,
     rtol: float,
 ) -> list[str]:
-    """Fork workers to stress BLIS after exec (macOS sklearn CI pattern)."""
-
-    def _worker(_: int) -> str:
-        return _digest(_nan_euclidean_via_gemm(x, missing_values=missing_values))
-
+    """Fork workers to stress BLIS (macOS sklearn CI uses fork + threaded BLAS)."""
     failures: list[str] = []
-    ctx = mp.get_context("fork")
-    with ctx.Pool(processes=processes) as pool:
-        digests = pool.map(_worker, range(iterations))
+    digests: list[str] = []
+    x_c = np.ascontiguousarray(x)
+    mv = float("nan") if np.isnan(missing_values) else float(missing_values)
+
+    for _ in range(iterations):
+        kids: list[int] = []
+        for _p in range(processes):
+            pid = os.fork()
+            if pid == 0:
+                _nan_euclidean_via_gemm(
+                    np.array(x_c, copy=True), missing_values=mv
+                )
+                os._exit(0)
+            kids.append(pid)
+        for pid in kids:
+            os.waitpid(pid, 0)
+        digests.append(_digest(_nan_euclidean_via_gemm(x, missing_values=mv)))
 
     if len(set(digests)) != 1:
         failures.append(
             f"fork_stress: non-deterministic digests "
             f"({len(set(digests))}/{len(digests)} unique)"
         )
-        return failures
-
-    dist = _nan_euclidean_via_gemm(x, missing_values=missing_values)
-    if not np.allclose(dist, ref, atol=atol, rtol=rtol, equal_nan=True):
+    if not np.allclose(
+        _nan_euclidean_via_gemm(x, missing_values=missing_values),
+        ref,
+        atol=atol,
+        rtol=rtol,
+        equal_nan=True,
+    ):
         failures.append("fork_stress: final matrix mismatches reference")
     return failures
 
