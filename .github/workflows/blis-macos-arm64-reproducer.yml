@@ -1,0 +1,64 @@
+name: BLIS macOS arm64 reproducer
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "blis_macos_reproducer/**"
+      - ".github/workflows/blis-macos-arm64-reproducer.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "blis_macos_reproducer/**"
+      - ".github/workflows/blis-macos-arm64-reproducer.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  numpy-reproducer:
+    name: numpy-${{ matrix.blas_impl }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        blas_impl: [blis, openblas, newaccelerate]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: latest
+          init-shell: bash
+
+      - name: Verify NumPy reproducer (${{ matrix.blas_impl }})
+        shell: bash -el {0}
+        run: |
+          chmod +x blis_macos_reproducer/*.sh
+          ./blis_macos_reproducer/ci_verify_numpy_reproducer.sh "${{ matrix.blas_impl }}"
+
+  c-reproducer:
+    name: pure-c-blis
+    runs-on: macos-15
+    needs: [numpy-reproducer]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build BLIS from source and run C reproducer
+        run: |
+          chmod +x blis_macos_reproducer/build_and_run_c_blis_reproducer.sh
+          set +e
+          ./blis_macos_reproducer/build_and_run_c_blis_reproducer.sh
+          rc=$?
+          set -e
+          if [[ "$rc" -eq 0 ]]; then
+            echo "Expected C reproducer to detect BLIS GEMM bug (got exit 0)" >&2
+            exit 1
+          fi
+          echo "OK: C reproducer failed as expected (exit ${rc})"
