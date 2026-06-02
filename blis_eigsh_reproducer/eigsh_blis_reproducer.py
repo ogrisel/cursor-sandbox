@@ -45,7 +45,14 @@ PARAM_GRID = (
     (500, 400),
 )
 
-LEVELS = ("numpy-eigsh", "numpy-kernels", "numpy-trace", "sklearn-eigsh", "pytest")
+LEVELS = (
+    "numpy-eigsh",
+    "numpy-kernels",
+    "numpy-trace",
+    "numpy-gemm-min",
+    "sklearn-eigsh",
+    "pytest",
+)
 
 # ``assert_array_almost_equal(..., decimal=6)`` passes iff
 # ``abs(desired - actual) < 1.5 * 10**(-6)``.
@@ -294,6 +301,39 @@ def run_numpy_kernels() -> int:
     return rc
 
 
+def run_numpy_gemm_min() -> int:
+    """Most aggressive simplification: a pure-NumPy sequence of small-inner-dim
+    GEMMs shaped like the failing reconstruction ``(n,rank) @ (rank,n)``.
+
+    The localized failure is the reconstruction GEMM ``(V @ diag(S)) @ V.T``
+    (output ``n x n``, contraction dim = ``rank``), and it only triggers for the
+    ``n=100`` case *after* the ``(10,7)`` case ran first (order/state-dependent).
+    This level checks whether a bare GEMM sequence -- with no SciPy, no SVD --
+    is already enough to make BLIS disagree with a non-BLAS einsum reference.
+    """
+    print("=== level=numpy-gemm-min (pure numpy, no scipy) ===", flush=True)
+    rc = 0
+    rng = np.random.RandomState(0)
+    for n, rank in PARAM_GRID:
+        L = rng.standard_normal((n, rank))
+        R = rng.standard_normal((rank, n))
+        C_blas = L @ R
+        C_ref = _einsum_matmul(L, R)
+        err = float(np.max(np.abs(C_blas - C_ref)))
+        scale = float(np.max(np.abs(C_ref))) or 1.0
+        rel = err / scale
+        bad = rel > 1e-9 or not np.isfinite(C_blas).all()
+        print(
+            f"  GEMM ({n}x{rank})@({rank}x{n}): max_abs={err:.3e} rel={rel:.3e}"
+            + ("   <<< MISMATCH" if bad else ""),
+            flush=True,
+        )
+        if bad:
+            rc = 1
+    print(("PASS" if rc == 0 else "FAIL") + " [numpy-gemm-min]", flush=True)
+    return rc
+
+
 def _trace_gemm(name, R_blas, A, B, flags):
     """Compare a BLAS matmul against the non-BLAS einsum reference."""
     R_ref = _einsum_matmul(A, B)
@@ -417,6 +457,7 @@ _RUNNERS = {
     "numpy-eigsh": run_numpy_eigsh,
     "numpy-kernels": run_numpy_kernels,
     "numpy-trace": run_numpy_trace,
+    "numpy-gemm-min": run_numpy_gemm_min,
     "sklearn-eigsh": run_sklearn_eigsh,
     "pytest": run_pytest,
 }
@@ -425,6 +466,7 @@ _DESCRIPTIONS = {
     "numpy-eigsh": "NumPy+SciPy port of _randomized_eigsh (no sklearn)",
     "numpy-kernels": "Localize broken primitive: GEMM vs LU/QR/SVD residuals",
     "numpy-trace": "Step-by-step pipeline trace to find first BLAS divergence",
+    "numpy-gemm-min": "Pure-numpy small-inner-dim GEMM sequence (no scipy)",
     "sklearn-eigsh": "sklearn.utils.extmath._randomized_eigsh directly",
     "pytest": "upstream test_randomized_eigsh_reconst_low_rank",
 }
