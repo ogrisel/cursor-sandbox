@@ -87,6 +87,31 @@ jobs:
           chmod +x blis_eigsh_reproducer/*.sh
           ./blis_eigsh_reproducer/run_eigsh_blas_reproducer.sh "${{ matrix.blas_impl }}" numpy-trace || true
 
+  # Minimal fixed-data reproducer of the V@diag(S)@V.T corruption: load captured
+  # operands and run the target GEMM with various tiny "prequels" (each in its
+  # own process) to find how little state is needed to trigger the bug.
+  minimal-gemm:
+    name: minimal-gemm-${{ matrix.blas_impl }}
+    runs-on: macos-15
+    needs: [numpy-eigsh]
+    if: ${{ always() && !cancelled() }}
+    strategy:
+      fail-fast: false
+      matrix:
+        blas_impl: [blis, openblas]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: latest
+          init-shell: bash
+      - name: Run minimal fixed-data GEMM variants (${{ matrix.blas_impl }})
+        shell: bash -el {0}
+        run: |
+          chmod +x blis_eigsh_reproducer/*.sh
+          ./blis_eigsh_reproducer/ci_minimal_gemm_variants.sh "${{ matrix.blas_impl }}"
+
   # Most aggressive simplification attempt: a pure-numpy small-inner-dim GEMM
   # sequence (no scipy / no SVD), to see if a bare GEMM already diverges.
   gemm-min:
