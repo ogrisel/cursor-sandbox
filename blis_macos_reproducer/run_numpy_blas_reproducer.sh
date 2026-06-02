@@ -19,8 +19,8 @@ else
     exit 1
 fi
 
-echo "Creating env '${env_name}' with libblas=*=*_${blas_impl} ..."
-"$mamba_bin" create -y -n "$env_name" numpy "libblas=*=*_${blas_impl}"
+echo "Creating env '${env_name}' with python=3.14 and libblas=*=*_${blas_impl} ..."
+"$mamba_bin" create -y -n "$env_name" python=3.14 numpy "libblas=*=*_${blas_impl}"
 
 export OMP_NUM_THREADS=1
 export VECLIB_MAXIMUM_THREADS=1

@@ -51,4 +51,5 @@ cc \
 
 export BLIS_NUM_THREADS=8
 export OMP_NUM_THREADS=1
+export DYLD_LIBRARY_PATH="${lib_dir}:${DYLD_LIBRARY_PATH:-}"
 "$workdir/blis_gemm_reproducer"

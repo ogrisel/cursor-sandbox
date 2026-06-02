@@ -54,12 +54,4 @@ jobs:
       - name: Build BLIS from source and run C reproducer
         run: |
           chmod +x blis_macos_reproducer/build_and_run_c_blis_reproducer.sh
-          set +e
           ./blis_macos_reproducer/build_and_run_c_blis_reproducer.sh
-          rc=$?
-          set -e
-          if [[ "$rc" -eq 0 ]]; then
-            echo "Expected C reproducer to detect BLIS GEMM bug (got exit 0)" >&2
-            exit 1
-          fi
-          echo "OK: C reproducer failed as expected (exit ${rc})"

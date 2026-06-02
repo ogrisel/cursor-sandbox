@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import numpy as np
@@ -136,11 +137,44 @@ def _backend_matches(expected: str, numpy_name: str, conda_build: str) -> bool:
     return fragment in numpy_name
 
 
+def _threaded_stress(
+    x: np.ndarray,
+    missing_values: float,
+    workers: int,
+    iterations: int,
+    ref: np.ndarray,
+    atol: float,
+    rtol: float,
+) -> list[str]:
+    """Hammer GEMM from multiple threads (catches threaded BLIS races)."""
+
+    def _once(_: int) -> str:
+        return _digest(_nan_euclidean_via_gemm(x, missing_values=missing_values))
+
+    failures: list[str] = []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        digests = list(pool.map(_once, range(iterations)))
+
+    if len(set(digests)) != 1:
+        failures.append(
+            f"threaded_stress: non-deterministic digests "
+            f"({len(set(digests))}/{len(digests)} unique)"
+        )
+        return failures
+
+    dist = _nan_euclidean_via_gemm(x, missing_values=missing_values)
+    if not np.allclose(dist, ref, atol=atol, rtol=rtol, equal_nan=True):
+        failures.append("threaded_stress: final matrix mismatches reference")
+    return failures
+
+
 def _check_case(
     name: str,
     x: np.ndarray,
     missing_values: float,
     repeats: int,
+    stress_workers: int,
+    stress_iterations: int,
     atol: float,
     rtol: float,
 ) -> list[str]:
@@ -161,10 +195,28 @@ def _check_case(
             )
 
     print(f"{name}: unique_digests={len(set(digests))}/{len(digests)}")
+    if stress_workers > 0 and stress_iterations > 0:
+        failures.extend(
+            _threaded_stress(
+                x,
+                missing_values,
+                stress_workers,
+                stress_iterations,
+                ref,
+                atol,
+                rtol,
+            )
+        )
     return failures
 
 
-def run(repeats: int, atol: float, rtol: float) -> int:
+def run(
+    repeats: int,
+    stress_workers: int,
+    stress_iterations: int,
+    atol: float,
+    rtol: float,
+) -> int:
     failures: list[str] = []
     for missing_values in (np.nan, -1.0):
         mv_label = "nan" if np.isnan(missing_values) else "minus1"
@@ -180,6 +232,8 @@ def run(repeats: int, atol: float, rtol: float) -> int:
                 x_simple,
                 missing_values,
                 repeats,
+                stress_workers,
+                stress_iterations,
                 atol,
                 rtol,
             )
@@ -190,6 +244,8 @@ def run(repeats: int, atol: float, rtol: float) -> int:
                 x_weight,
                 missing_values,
                 repeats,
+                stress_workers,
+                stress_iterations,
                 atol,
                 rtol,
             )
@@ -215,6 +271,18 @@ def run(repeats: int, atol: float, rtol: float) -> int:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repeats", type=int, default=20)
+    parser.add_argument(
+        "--stress-workers",
+        type=int,
+        default=8,
+        help="Thread pool size for threaded GEMM stress (0 disables)",
+    )
+    parser.add_argument(
+        "--stress-iterations",
+        type=int,
+        default=200,
+        help="Number of parallel GEMM calls in threaded stress",
+    )
     parser.add_argument("--atol", type=float, default=1e-12)
     parser.add_argument("--rtol", type=float, default=1e-12)
     parser.add_argument(
@@ -238,4 +306,12 @@ if __name__ == "__main__":
             f"conda_libblas='{conda_build or 'unknown'}'"
         )
         sys.exit(1)
-    sys.exit(run(repeats=args.repeats, atol=args.atol, rtol=args.rtol))
+    sys.exit(
+        run(
+            repeats=args.repeats,
+            stress_workers=args.stress_workers,
+            stress_iterations=args.stress_iterations,
+            atol=args.atol,
+            rtol=args.rtol,
+        )
+    )
