@@ -45,7 +45,7 @@ PARAM_GRID = (
     (500, 400),
 )
 
-LEVELS = ("numpy-eigsh", "numpy-kernels", "sklearn-eigsh", "pytest")
+LEVELS = ("numpy-eigsh", "numpy-kernels", "numpy-trace", "sklearn-eigsh", "pytest")
 
 # ``assert_array_almost_equal(..., decimal=6)`` passes iff
 # ``abs(desired - actual) < 1.5 * 10**(-6)``.
@@ -294,6 +294,82 @@ def run_numpy_kernels() -> int:
     return rc
 
 
+def _trace_gemm(name, R_blas, A, B, flags):
+    """Compare a BLAS matmul against the non-BLAS einsum reference."""
+    R_ref = _einsum_matmul(A, B)
+    err = float(np.max(np.abs(R_blas - R_ref)))
+    scale = float(np.max(np.abs(R_ref))) or 1.0
+    rel = err / scale
+    bad = rel > 1e-9 or not np.isfinite(R_blas).all()
+    print(
+        f"    GEMM {name:<11}: max_abs={err:.3e} rel={rel:.3e} "
+        f"max|out|={float(np.max(np.abs(R_blas))):.3e}"
+        + ("   <<< MISMATCH" if bad else ""),
+        flush=True,
+    )
+    if bad:
+        flags.append((name, rel))
+
+
+def _trace_residual(name, recon, ref, flags):
+    err = float(np.max(np.abs(recon - ref)))
+    bad = err > 1e-6 or not np.isfinite(recon).all()
+    print(f"    FACT {name:<11}: ||recon-ref||_max={err:.3e}" + ("   <<< BAD" if bad else ""), flush=True)
+    if bad:
+        flags.append((name, err))
+
+
+def run_numpy_trace() -> int:
+    """Instrument every step of the randomized-eigsh pipeline to find the first
+    divergence between BLAS and a non-BLAS reference (einsum / factor residual).
+    """
+    print("=== level=numpy-trace ===", flush=True)
+    rc = 0
+    for n, rank in ((100, 10), (100, 80)):
+        print(f"--- trace n={n} rank={rank} ---", flush=True)
+        A, rng = _make_low_rank_psd(n, rank)
+        size = rank + 10
+        n_iter = 7 if rank < 0.1 * min(A.shape) else 4
+        Q = np.asarray(rng.normal(size=(n, size)))
+        flags = []
+
+        def lu_norm(x):
+            return linalg.lu(x, permute_l=True, check_finite=False)
+
+        for it in range(n_iter):
+            M = A @ Q
+            _trace_gemm(f"it{it} A@Q", M, A, Q, flags)
+            PL, U = lu_norm(M)
+            _trace_residual(f"it{it} LU1", _einsum_matmul(PL, U), M, flags)
+            Q = PL
+            M = A.T @ Q
+            _trace_gemm(f"it{it} A.T@Q", M, A.T, Q, flags)
+            PL, U = lu_norm(M)
+            _trace_residual(f"it{it} LU2", _einsum_matmul(PL, U), M, flags)
+            Q = PL
+            print(f"    after it{it}: max|Q|={float(np.max(np.abs(Q))):.3e}", flush=True)
+
+        M = A @ Q
+        _trace_gemm("final A@Q", M, A, Q, flags)
+        Qf, R = linalg.qr(M, mode="economic", check_finite=False)
+        _trace_residual("final QR", _einsum_matmul(Qf, R), M, flags)
+        B = Qf.T @ A
+        _trace_gemm("Qf.T@A", B, Qf.T, A, flags)
+        Uhat, s, Vt = linalg.svd(B, full_matrices=False, lapack_driver="gesdd")
+        _trace_residual("SVD", _einsum_matmul(Uhat * s, Vt), B, flags)
+        print(f"    singular values: max={float(np.max(s)):.3e} min={float(np.min(s)):.3e}", flush=True)
+        Uf = Qf @ Uhat
+        _trace_gemm("Qf@Uhat", Uf, Qf, Uhat, flags)
+
+        if flags:
+            print(f"  -> FAIL: first/total mismatches={len(flags)}: {flags[:3]}", flush=True)
+            rc = 1
+        else:
+            print("  -> OK: no BLAS/reference divergence in the pipeline", flush=True)
+    print(("PASS" if rc == 0 else "FAIL") + " [numpy-trace]", flush=True)
+    return rc
+
+
 def run_sklearn_eigsh() -> int:
     from sklearn.utils.extmath import _randomized_eigsh
 
@@ -323,6 +399,7 @@ def run_pytest() -> int:
 _RUNNERS = {
     "numpy-eigsh": run_numpy_eigsh,
     "numpy-kernels": run_numpy_kernels,
+    "numpy-trace": run_numpy_trace,
     "sklearn-eigsh": run_sklearn_eigsh,
     "pytest": run_pytest,
 }
@@ -330,6 +407,7 @@ _RUNNERS = {
 _DESCRIPTIONS = {
     "numpy-eigsh": "NumPy+SciPy port of _randomized_eigsh (no sklearn)",
     "numpy-kernels": "Localize broken primitive: GEMM vs LU/QR/SVD residuals",
+    "numpy-trace": "Step-by-step pipeline trace to find first BLAS divergence",
     "sklearn-eigsh": "sklearn.utils.extmath._randomized_eigsh directly",
     "pytest": "upstream test_randomized_eigsh_reconst_low_rank",
 }
