@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
+import subprocess
 import sys
 from typing import Any
 
@@ -39,6 +41,31 @@ def _detected_blas_name() -> str:
         except TypeError:
             pass
     return ""
+
+
+def _conda_libblas_build() -> str:
+    """Return the conda-forge libblas build string (most reliable backend tag)."""
+    for exe in ("mamba", "micromamba", "conda"):
+        try:
+            out = subprocess.check_output(
+                [exe, "list", "--json", "libblas"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            continue
+        for pkg in json.loads(out):
+            return str(pkg.get("build_string", "")).lower()
+    return ""
+
+
+def _backend_matches(expected: str, numpy_name: str, conda_build: str) -> bool:
+    fragment = "newaccelerate" if expected == "newaccelerate" else expected
+    if fragment in conda_build:
+        return True
+    if expected == "newaccelerate" and "accelerate" in numpy_name:
+        return True
+    return fragment in numpy_name
 
 
 def run(
@@ -76,6 +103,7 @@ def run(
 
     print(f"numpy={np.__version__}")
     print(f"detected_blas={_detected_blas_name() or 'unknown'}")
+    print(f"conda_libblas_build={_conda_libblas_build() or 'unknown'}")
     print(f"BLIS_NUM_THREADS={os.getenv('BLIS_NUM_THREADS')}")
     print(f"OPENBLAS_NUM_THREADS={os.getenv('OPENBLAS_NUM_THREADS')}")
     print(f"VECLIB_MAXIMUM_THREADS={os.getenv('VECLIB_MAXIMUM_THREADS')}")
@@ -115,16 +143,15 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = parse_args()
     detected_blas = _detected_blas_name()
-    if args.expected_blas is not None:
-        expected_fragment = (
-            "accelerate" if args.expected_blas == "newaccelerate" else args.expected_blas
+    conda_build = _conda_libblas_build()
+    if args.expected_blas is not None and not _backend_matches(
+        args.expected_blas, detected_blas, conda_build
+    ):
+        print(
+            f"FAIL: requested BLAS '{args.expected_blas}' but environment reports "
+            f"numpy='{detected_blas or 'unknown'}', conda_libblas='{conda_build or 'unknown'}'"
         )
-        if expected_fragment not in detected_blas:
-            print(
-                f"FAIL: requested BLAS '{args.expected_blas}' but NumPy reports "
-                f"'{detected_blas or 'unknown'}'"
-            )
-            sys.exit(1)
+        sys.exit(1)
     sys.exit(
         run(
             seed=args.seed,
