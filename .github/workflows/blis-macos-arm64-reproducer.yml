@@ -43,8 +43,8 @@ jobs:
           chmod +x blis_macos_reproducer/*.sh
           ./blis_macos_reproducer/ci_verify_numpy_reproducer.sh "${{ matrix.blas_impl }}"
 
-  sklearn-reproducer:
-    name: sklearn-${{ matrix.blas_impl }}
+  minimal-reproducer:
+    name: minimal-${{ matrix.blas_impl }}
     runs-on: macos-15
     strategy:
       fail-fast: false
@@ -59,16 +59,36 @@ jobs:
           micromamba-version: latest
           init-shell: bash
 
-      - name: Verify sklearn KNN pytest (${{ matrix.blas_impl }})
+      - name: Verify minimal reproducer scalar-vs-imputer (${{ matrix.blas_impl }})
         shell: bash -el {0}
         run: |
           chmod +x blis_macos_reproducer/*.sh
-          ./blis_macos_reproducer/ci_verify_sklearn_reproducer.sh "${{ matrix.blas_impl }}" pytest
+          ./blis_macos_reproducer/ci_verify_minimal_reproducer.sh "${{ matrix.blas_impl }}" scalar-vs-imputer
+
+  minimal-level-probe:
+    name: minimal-level-probe-blis
+    runs-on: macos-15
+    needs: [minimal-reproducer]
+    if: ${{ always() && !cancelled() }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: latest
+          init-shell: bash
+
+      - name: Probe all minimal levels on BLIS
+        shell: bash -el {0}
+        run: |
+          chmod +x blis_macos_reproducer/*.sh
+          ./blis_macos_reproducer/ci_probe_minimal_levels.sh
 
   c-reproducer:
     name: pure-c-blis
     runs-on: macos-15
-    needs: [numpy-reproducer, sklearn-reproducer]
+    needs: [numpy-reproducer, minimal-reproducer]
     if: ${{ always() && !cancelled() }}
     steps:
       - uses: actions/checkout@v4
