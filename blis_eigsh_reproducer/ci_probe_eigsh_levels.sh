@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# Informational probe: run every level on BLIS in a single job so one CI run
-# reveals whether the bug reproduces at each level (pytest -> sklearn -> numpy)
-# and how large the reconstruction error gets per (n, rank) case.
-# Never fails the job; it only gathers evidence to drive simplification.
+# Informational probe on BLIS (single-threaded, deterministic): localize the
+# broken primitive, then show that every level reproduces the same failure.
+# Never fails the job; it only gathers evidence.
 set -uo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-for level in pytest sklearn-eigsh numpy-eigsh; do
+for level in numpy-kernels numpy-eigsh sklearn-eigsh pytest; do
     echo "==================================================================="
     echo "PROBE level=${level} backend=blis"
     echo "==================================================================="

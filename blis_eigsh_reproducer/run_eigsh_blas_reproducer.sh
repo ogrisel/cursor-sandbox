@@ -23,10 +23,10 @@ else
     exit 1
 fi
 
-# numpy-eigsh is fully self-contained (numpy + scipy only); the other levels
-# need scikit-learn (and pytest for the upstream-test level).
+# numpy-eigsh / numpy-kernels are self-contained (numpy + scipy only); the
+# sklearn levels need scikit-learn (and pytest for the upstream-test level).
 pkgs=(python=3.14 numpy scipy "libblas=*=*_${blas_impl}")
-if [[ "$level" != "numpy-eigsh" ]]; then
+if [[ "$level" == "sklearn-eigsh" || "$level" == "pytest" ]]; then
     pkgs+=(scikit-learn)
 fi
 if [[ "$level" == "pytest" ]]; then
@@ -46,15 +46,17 @@ if [[ -n "$build_string" && "$build_string" != *"_${blas_impl}" ]]; then
     exit 1
 fi
 
-# Threading: the BLIS bug only shows up with several BLIS threads. Do NOT pin
-# everything to a single thread (mirrors the KNNImputer reproducer findings).
+# Threading: the randomized-eigsh numerical corruption reproduces
+# *deterministically* with a single BLIS thread, so default to 1 thread for a
+# clean, reproducible gate. (With BLIS_NUM_THREADS>=4 macOS arm64 BLIS also
+# deadlocks on these matrices -- a separate bug -- see README / sweep script.)
 unset OMP_NUM_THREADS || true
 export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
 if [[ "$blas_impl" == "blis" ]]; then
-    export BLIS_NUM_THREADS="${BLIS_NUM_THREADS:-8}"
+    export BLIS_NUM_THREADS="${BLIS_NUM_THREADS:-1}"
     unset OPENBLAS_NUM_THREADS || true
 elif [[ "$blas_impl" == "openblas" ]]; then
-    export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-8}"
+    export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
     unset BLIS_NUM_THREADS || true
 else
     unset OPENBLAS_NUM_THREADS || true

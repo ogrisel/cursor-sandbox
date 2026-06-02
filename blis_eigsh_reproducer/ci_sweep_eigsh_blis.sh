@@ -23,7 +23,7 @@ else
 fi
 
 pkgs=(python=3.14 numpy scipy "libblas=*=*_blis")
-if [[ "$level" != "numpy-eigsh" ]]; then
+if [[ "$level" == "sklearn-eigsh" || "$level" == "pytest" ]]; then
     pkgs+=(scikit-learn)
 fi
 if [[ "$level" == "pytest" ]]; then

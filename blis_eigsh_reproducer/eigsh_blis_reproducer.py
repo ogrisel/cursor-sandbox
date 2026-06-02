@@ -45,7 +45,7 @@ PARAM_GRID = (
     (500, 400),
 )
 
-LEVELS = ("numpy-eigsh", "sklearn-eigsh", "pytest")
+LEVELS = ("numpy-eigsh", "numpy-kernels", "sklearn-eigsh", "pytest")
 
 # ``assert_array_almost_equal(..., decimal=6)`` passes iff
 # ``abs(desired - actual) < 1.5 * 10**(-6)``.
@@ -234,6 +234,66 @@ def run_numpy_eigsh() -> int:
     return _run_eigsh_grid("numpy-eigsh", fn)
 
 
+def _einsum_matmul(A, B):
+    """Non-BLAS reference matmul (NumPy nditer C loop, no GEMM dispatch)."""
+    return np.einsum("ik,kj->ij", A, B, optimize=False)
+
+
+def run_numpy_kernels() -> int:
+    """Localize the broken primitive on the failing (n, rank) cases.
+
+    Compares BLAS GEMM (``A @ Q``) against a non-BLAS einsum reference and checks
+    the internal consistency of the LU / QR / SVD factorizations used by the
+    randomized-eigsh pipeline. On a correct BLAS all residuals are ~1e-13; on
+    macOS arm64 BLIS the broken primitive(s) show a huge residual.
+    """
+    print(f"=== level=numpy-kernels | flag threshold=1e-6 ===", flush=True)
+    rc = 0
+    for n, rank in ((100, 10), (100, 80)):
+        print(f"--- localization n={n} rank={rank} ---", flush=True)
+        A, rng = _make_low_rank_psd(n, rank)
+        size = rank + 10
+        Q = np.asarray(rng.normal(size=(n, size)))
+
+        # (1) Bare GEMM correctness: BLAS A@Q vs non-BLAS einsum reference.
+        C_blas = A @ Q
+        C_ref = _einsum_matmul(A, Q)
+        gemm_abs = float(np.max(np.abs(C_blas - C_ref)))
+        scale = float(np.max(np.abs(C_ref))) or 1.0
+        gemm_rel = gemm_abs / scale
+        print(f"  [1] GEMM  A@Q : max_abs_err={gemm_abs:.3e}  rel_err={gemm_rel:.3e}", flush=True)
+
+        # (2) LU residual: M = PL @ U (scipy.linalg.lu, permute_l, getrf->BLAS).
+        M = A @ Q
+        PL, U = linalg.lu(M, permute_l=True, check_finite=False)
+        lu_err = float(np.max(np.abs(_einsum_matmul(PL, U) - M)))
+        print(f"  [2] LU   A@Q : ||PL@U - M||_max={lu_err:.3e}", flush=True)
+
+        # (3) QR residual + orthonormality (scipy.linalg.qr, geqrf->BLAS).
+        Qf, R = linalg.qr(M, mode="economic", check_finite=False)
+        qr_err = float(np.max(np.abs(_einsum_matmul(Qf, R) - M)))
+        orth_err = float(np.max(np.abs(_einsum_matmul(Qf.T, Qf) - np.eye(Qf.shape[1]))))
+        print(
+            f"  [3] QR   A@Q : ||Q@R - M||_max={qr_err:.3e}  "
+            f"||Q'Q - I||_max={orth_err:.3e}",
+            flush=True,
+        )
+
+        # (4) SVD residual on the projected matrix B = Qf.T @ A (gesdd->BLAS).
+        B = _einsum_matmul(Qf.T, A)
+        Uhat, s, Vt = linalg.svd(B, full_matrices=False, lapack_driver="gesdd")
+        svd_err = float(np.max(np.abs(_einsum_matmul(Uhat * s, Vt) - B)))
+        print(f"  [4] SVD  B   : ||U*s@Vt - B||_max={svd_err:.3e}", flush=True)
+
+        worst = max(gemm_rel, lu_err, qr_err, orth_err, svd_err)
+        verdict = "OK" if worst < 1e-6 else "FAIL"
+        print(f"  -> {verdict} (worst residual={worst:.3e})", flush=True)
+        if worst >= 1e-6:
+            rc = 1
+    print(("PASS" if rc == 0 else "FAIL") + " [numpy-kernels]", flush=True)
+    return rc
+
+
 def run_sklearn_eigsh() -> int:
     from sklearn.utils.extmath import _randomized_eigsh
 
@@ -262,12 +322,14 @@ def run_pytest() -> int:
 
 _RUNNERS = {
     "numpy-eigsh": run_numpy_eigsh,
+    "numpy-kernels": run_numpy_kernels,
     "sklearn-eigsh": run_sklearn_eigsh,
     "pytest": run_pytest,
 }
 
 _DESCRIPTIONS = {
     "numpy-eigsh": "NumPy+SciPy port of _randomized_eigsh (no sklearn)",
+    "numpy-kernels": "Localize broken primitive: GEMM vs LU/QR/SVD residuals",
     "sklearn-eigsh": "sklearn.utils.extmath._randomized_eigsh directly",
     "pytest": "upstream test_randomized_eigsh_reconst_low_rank",
 }
