@@ -198,6 +198,7 @@ def _run_eigsh_grid(level, eigsh_fn):
     )
     failures = []
     for n, rank in PARAM_GRID:
+        print(f"... running n={n} rank={rank}", flush=True)
         A, rng = _make_low_rank_psd(n, rank)
         S, V = eigsh_fn(A, rank, rng)
         norm_err, orth_err, reconstruct_err = _reconstruction_errors(A, S, V, rank)
@@ -274,6 +275,19 @@ _DESCRIPTIONS = {
 
 def _print_backend() -> None:
     """Best-effort report of the NumPy/SciPy BLAS backend in use."""
+    import os
+
+    thread_env = {
+        k: os.environ.get(k)
+        for k in (
+            "BLIS_NUM_THREADS",
+            "OPENBLAS_NUM_THREADS",
+            "OMP_NUM_THREADS",
+            "VECLIB_MAXIMUM_THREADS",
+        )
+        if os.environ.get(k) is not None
+    }
+    print(f"thread env: {thread_env}", flush=True)
     try:
         cfg = np.show_config(mode="dicts")  # NumPy >= 1.25
         blas = cfg.get("Build Dependencies", {}).get("blas", {})

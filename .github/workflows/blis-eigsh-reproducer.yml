@@ -21,48 +21,66 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Primary gate: the minimal NumPy+SciPy-only reproducer must FAIL on BLIS and
-  # PASS on OpenBLAS / Accelerate.
-  numpy-eigsh:
+  # Controls: the numpy-eigsh reproducer must PASS on non-buggy backends.
+  controls:
     name: numpy-eigsh-${{ matrix.blas_impl }}
     runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
-        blas_impl: [blis, openblas, newaccelerate]
+        blas_impl: [openblas, newaccelerate]
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup micromamba
         uses: mamba-org/setup-micromamba@v2
         with:
           micromamba-version: latest
           init-shell: bash
-
       - name: Verify numpy-eigsh reproducer (${{ matrix.blas_impl }})
         shell: bash -el {0}
         run: |
           chmod +x blis_eigsh_reproducer/*.sh
           ./blis_eigsh_reproducer/ci_verify_eigsh_reproducer.sh "${{ matrix.blas_impl }}" numpy-eigsh
 
-  # Informational: run pytest -> sklearn-eigsh -> numpy-eigsh on BLIS in one job
-  # to confirm the bug reproduces at every level and compare error magnitudes.
-  level-probe:
-    name: eigsh-level-probe-blis
+  # Diagnostic: numpy-eigsh on BLIS across thread counts (timeout-guarded), to
+  # learn whether BLIS reproduces the bug as a numerical mismatch or hangs, and
+  # at which thread count.
+  blis-sweep-numpy:
+    name: blis-sweep-numpy-eigsh
     runs-on: macos-15
-    needs: [numpy-eigsh]
-    if: ${{ always() && !cancelled() }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup micromamba
         uses: mamba-org/setup-micromamba@v2
         with:
           micromamba-version: latest
           init-shell: bash
-
-      - name: Probe all eigsh levels on BLIS
+      - name: Sweep BLIS thread counts (numpy-eigsh)
         shell: bash -el {0}
+        env:
+          LEVEL: numpy-eigsh
+          TIMEOUT_SECS: "120"
         run: |
           chmod +x blis_eigsh_reproducer/*.sh
-          ./blis_eigsh_reproducer/ci_probe_eigsh_levels.sh
+          ./blis_eigsh_reproducer/ci_sweep_eigsh_blis.sh
+
+  # Diagnostic: the actual upstream pytest on BLIS across thread counts, to
+  # confirm how the upstream test behaves on this runner (numerical vs hang).
+  blis-sweep-pytest:
+    name: blis-sweep-pytest
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: latest
+          init-shell: bash
+      - name: Sweep BLIS thread counts (upstream pytest)
+        shell: bash -el {0}
+        env:
+          LEVEL: pytest
+          TIMEOUT_SECS: "120"
+        run: |
+          chmod +x blis_eigsh_reproducer/*.sh
+          ./blis_eigsh_reproducer/ci_sweep_eigsh_blis.sh
