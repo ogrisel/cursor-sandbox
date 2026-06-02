@@ -13,6 +13,12 @@ The NumPy reproducer ports `sklearn.metrics.pairwise.nan_euclidean_distances` us
 | `run_numpy_blas_reproducer.sh` | Creates a mamba env and runs the Python reproducer |
 | `build_and_run_c_blis_reproducer.sh` | Builds upstream BLIS from source and runs the C reproducer |
 | `ci_verify_numpy_reproducer.sh` | CI helper: BLIS must fail, other backends must pass |
+| `sklearn_knn_blis_reproducer.py` | Runs failing `pytest` KNN imputer tests via conda sklearn |
+| `sklearn_pairwise_blis_reproducer.py` | sklearn `nan_euclidean` / chunked / `KNNImputer` vs scalar reference |
+| `run_sklearn_blas_reproducer.sh` | Mamba env with scikit-learn + chosen `libblas` |
+| `ci_verify_sklearn_reproducer.sh` | CI helper for sklearn reproducers |
+
+Threading note: for BLIS reproducers we **do not** set `OMP_NUM_THREADS=1` (that masked the bug). Use `BLIS_NUM_THREADS=8` like sklearn macOS CI.
 
 ## Local runs (macOS arm64)
 
@@ -33,6 +39,13 @@ Pure C reproducer (links against BLIS built from the latest release tag):
 
 ```bash
 ./blis_macos_reproducer/build_and_run_c_blis_reproducer.sh
+```
+
+Sklearn-level reproducers (closest to real CI failures):
+
+```bash
+./blis_macos_reproducer/run_sklearn_blas_reproducer.sh blis pytest
+./blis_macos_reproducer/run_sklearn_blas_reproducer.sh blis pairwise
 ```
 
 ## CI

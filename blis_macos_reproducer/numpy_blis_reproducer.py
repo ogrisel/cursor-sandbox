@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import sys
+import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -68,9 +69,10 @@ def _nan_euclidean_via_gemm(x: np.ndarray, missing_values: float = np.nan) -> np
     np.clip(distances, 0.0, None, out=distances)
     np.fill_diagonal(distances, 0.0)
 
-    present_x = (~missing_x).astype(np.float64)
-    present_y = present_x
-    present_count = present_x @ present_y.T
+    # Match sklearn.metrics.pairwise.nan_euclidean_distances exactly.
+    present_x = 1 - missing_x
+    present_y = present_x if missing_y is missing_x else ~missing_y
+    present_count = np.dot(present_x, present_y.T)
     distances[present_count == 0] = np.nan
     np.maximum(1.0, present_count, out=present_count)
     distances /= present_count
@@ -137,6 +139,38 @@ def _backend_matches(expected: str, numpy_name: str, conda_build: str) -> bool:
     return fragment in numpy_name
 
 
+def _fork_stress(
+    x: np.ndarray,
+    missing_values: float,
+    processes: int,
+    iterations: int,
+    ref: np.ndarray,
+    atol: float,
+    rtol: float,
+) -> list[str]:
+    """Fork workers to stress BLIS after exec (macOS sklearn CI pattern)."""
+
+    def _worker(_: int) -> str:
+        return _digest(_nan_euclidean_via_gemm(x, missing_values=missing_values))
+
+    failures: list[str] = []
+    ctx = mp.get_context("fork")
+    with ctx.Pool(processes=processes) as pool:
+        digests = pool.map(_worker, range(iterations))
+
+    if len(set(digests)) != 1:
+        failures.append(
+            f"fork_stress: non-deterministic digests "
+            f"({len(set(digests))}/{len(digests)} unique)"
+        )
+        return failures
+
+    dist = _nan_euclidean_via_gemm(x, missing_values=missing_values)
+    if not np.allclose(dist, ref, atol=atol, rtol=rtol, equal_nan=True):
+        failures.append("fork_stress: final matrix mismatches reference")
+    return failures
+
+
 def _threaded_stress(
     x: np.ndarray,
     missing_values: float,
@@ -175,6 +209,8 @@ def _check_case(
     repeats: int,
     stress_workers: int,
     stress_iterations: int,
+    fork_processes: int,
+    fork_iterations: int,
     atol: float,
     rtol: float,
 ) -> list[str]:
@@ -207,6 +243,18 @@ def _check_case(
                 rtol,
             )
         )
+    if fork_processes > 0 and fork_iterations > 0:
+        failures.extend(
+            _fork_stress(
+                x,
+                missing_values,
+                fork_processes,
+                fork_iterations,
+                ref,
+                atol,
+                rtol,
+            )
+        )
     return failures
 
 
@@ -214,6 +262,8 @@ def run(
     repeats: int,
     stress_workers: int,
     stress_iterations: int,
+    fork_processes: int,
+    fork_iterations: int,
     atol: float,
     rtol: float,
 ) -> int:
@@ -234,6 +284,8 @@ def run(
                 repeats,
                 stress_workers,
                 stress_iterations,
+                fork_processes,
+                fork_iterations,
                 atol,
                 rtol,
             )
@@ -246,6 +298,8 @@ def run(
                 repeats,
                 stress_workers,
                 stress_iterations,
+                fork_processes,
+                fork_iterations,
                 atol,
                 rtol,
             )
@@ -283,6 +337,18 @@ def parse_args() -> argparse.Namespace:
         default=200,
         help="Number of parallel GEMM calls in threaded stress",
     )
+    parser.add_argument(
+        "--fork-processes",
+        type=int,
+        default=4,
+        help="Process count for fork-based stress (0 disables)",
+    )
+    parser.add_argument(
+        "--fork-iterations",
+        type=int,
+        default=40,
+        help="Iterations per fork stress pool",
+    )
     parser.add_argument("--atol", type=float, default=1e-12)
     parser.add_argument("--rtol", type=float, default=1e-12)
     parser.add_argument(
@@ -311,6 +377,8 @@ if __name__ == "__main__":
             repeats=args.repeats,
             stress_workers=args.stress_workers,
             stress_iterations=args.stress_iterations,
+            fork_processes=args.fork_processes,
+            fork_iterations=args.fork_iterations,
             atol=args.atol,
             rtol=args.rtol,
         )
