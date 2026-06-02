@@ -2,7 +2,7 @@
 
 Minimal reproducers for macOS arm64 BLAS regressions seen when conda-forge switched the default `libblas` implementation to BLIS (see [scikit-learn#34162 discussion](https://github.com/scikit-learn/scikit-learn/pull/34162#discussion_r3332644920)).
 
-The NumPy reproducer exercises the same GEMM-based pairwise Euclidean distance path used by scikit-learn (`x @ x.T` in the expansion of squared distances). Failures show up as numeric drift or non-finite values compared to a pure NumPy reference loop.
+The NumPy reproducer ports `sklearn.metrics.pairwise.nan_euclidean_distances` using only NumPy (the code path behind failing `KNNImputer` tests on macOS arm64 with conda-forge BLIS). It compares GEMM-based distance matrices (`X @ X.T` and related products) against a scalar reference loop on fixed inputs from `sklearn/impute/tests/test_knn.py`.
 
 ## Contents
 

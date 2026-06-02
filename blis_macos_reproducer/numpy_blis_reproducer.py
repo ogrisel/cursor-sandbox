@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""NumPy-only reproducer for suspected BLIS DGEMM issues on macOS arm64."""
+"""NumPy-only reproducer for BLIS DGEMM issues seen in sklearn KNN imputer CI."""
 
 from __future__ import annotations
 
@@ -13,18 +13,87 @@ from typing import Any
 
 import numpy as np
 
+# Fixed inputs from sklearn/impute/tests/test_knn.py (macOS BLIS CI failures).
+_KNN_SIMPLE_EXAMPLE = np.array(
+    [
+        [0, np.nan, 0, np.nan],
+        [1, 1, 1, np.nan],
+        [2, 2, np.nan, 2],
+        [3, 3, 3, 3],
+        [4, 4, 4, 4],
+        [5, 5, 5, 5],
+        [6, 6, 6, 6],
+        [np.nan, 7, 7, 7],
+    ],
+    dtype=np.float64,
+)
 
-def _pairwise_via_gemm(x: np.ndarray) -> np.ndarray:
-    """Squared Euclidean distances via GEMM (sklearn pairwise_distances pattern)."""
-    x2 = np.einsum("ij,ij->i", x, x)
-    d2 = x2[:, None] - 2.0 * (x @ x.T) + x2[None, :]
-    np.maximum(d2, 0.0, out=d2)
-    return np.sqrt(d2, out=d2)
+_KNN_WEIGHT_DISTANCE = np.array(
+    [
+        [np.nan, 0, 0],
+        [2, 1, 2],
+        [3, 2, 3],
+        [4, 5, 5],
+    ],
+    dtype=np.float64,
+)
 
 
-def _pairwise_reference(x: np.ndarray) -> np.ndarray:
-    diff = x[:, None, :] - x[None, :, :]
-    return np.sqrt(np.sum(diff * diff, axis=2))
+def _missing_mask(x: np.ndarray, missing_values: float) -> np.ndarray:
+    if np.isnan(missing_values):
+        return np.isnan(x)
+    return x == missing_values
+
+
+def _nan_euclidean_via_gemm(x: np.ndarray, missing_values: float = np.nan) -> np.ndarray:
+    """Port of sklearn.metrics.pairwise.nan_euclidean_distances (uses X @ X.T GEMM)."""
+    x = np.array(x, dtype=np.float64, copy=True)
+    missing_x = _missing_mask(x, missing_values)
+    missing_y = missing_x
+    x[missing_x] = 0.0
+    y = x
+
+    # euclidean_distances(..., squared=True) core
+    distances = -2.0 * (x @ y.T)
+    row_sq = np.sum(x * x, axis=1, keepdims=True)
+    distances += row_sq
+    distances += row_sq.T
+    np.maximum(distances, 0.0, out=distances)
+
+    xx = x * x
+    yy = y * y
+    distances -= xx @ missing_y.T
+    distances -= missing_x @ yy.T
+    np.clip(distances, 0.0, None, out=distances)
+    np.fill_diagonal(distances, 0.0)
+
+    present_x = (~missing_x).astype(np.float64)
+    present_y = present_x
+    present_count = present_x @ present_y.T
+    distances[present_count == 0] = np.nan
+    np.maximum(1.0, present_count, out=present_count)
+    distances /= present_count
+    distances *= x.shape[1]
+    return np.sqrt(distances, out=distances)
+
+
+def _nan_euclidean_reference(x: np.ndarray, missing_values: float = np.nan) -> np.ndarray:
+    """Scalar reference without BLAS GEMM."""
+    n = x.shape[0]
+    out = np.empty((n, n), dtype=np.float64)
+    for i in range(n):
+        for j in range(n):
+            mask = ~(_missing_mask(x[i : i + 1], missing_values)[0] |
+                     _missing_mask(x[j : j + 1], missing_values)[0])
+            n_present = int(mask.sum())
+            if n_present == 0:
+                out[i, j] = np.nan
+                continue
+            diff = x[i, mask] - x[j, mask]
+            sq = float(np.dot(diff, diff))
+            weight = x.shape[1] / n_present
+            out[i, j] = np.sqrt(weight * sq)
+    return out
 
 
 def _digest(a: np.ndarray) -> str:
@@ -44,7 +113,6 @@ def _detected_blas_name() -> str:
 
 
 def _conda_libblas_build() -> str:
-    """Return the conda-forge libblas build string (most reliable backend tag)."""
     for exe in ("mamba", "micromamba", "conda"):
         try:
             out = subprocess.check_output(
@@ -68,38 +136,64 @@ def _backend_matches(expected: str, numpy_name: str, conda_build: str) -> bool:
     return fragment in numpy_name
 
 
-def run(
-    seed: int,
-    n_samples: int,
-    n_features: int,
+def _check_case(
+    name: str,
+    x: np.ndarray,
+    missing_values: float,
     repeats: int,
     atol: float,
     rtol: float,
-) -> int:
-    rng = np.random.default_rng(seed)
-    x = rng.standard_normal((n_samples, n_features), dtype=np.float64)
-    # Non-trivial memory layout to stress GEMM code paths.
-    x = np.asfortranarray(x[:, ::-1])
-
-    ref = _pairwise_reference(x)
-
+) -> list[str]:
+    ref = _nan_euclidean_reference(x, missing_values=missing_values)
     failures: list[str] = []
     digests: list[str] = []
+
     for i in range(repeats):
-        d = _pairwise_via_gemm(x)
-        digests.append(_digest(d))
+        dist = _nan_euclidean_via_gemm(x, missing_values=missing_values)
+        digests.append(_digest(dist))
 
-        if not np.isfinite(d).all():
-            failures.append(f"repeat={i}: non-finite values detected")
-            continue
-
-        if not np.allclose(d, ref, atol=atol, rtol=rtol):
-            abs_err = float(np.max(np.abs(d - ref)))
-            rel_err = float(np.max(np.abs(d - ref) / np.maximum(np.abs(ref), 1e-15)))
+        if not np.allclose(dist, ref, atol=atol, rtol=rtol, equal_nan=True):
+            bad = ~np.isclose(dist, ref, atol=atol, rtol=rtol, equal_nan=True)
+            abs_err = float(np.nanmax(np.abs(dist - ref)))
             failures.append(
-                f"repeat={i}: mismatch (max_abs_err={abs_err:.6g}, "
-                f"max_rel_err={rel_err:.6g})"
+                f"{name} repeat={i}: mismatch (max_abs_err={abs_err:.6g}, "
+                f"n_bad={int(bad.sum())})"
             )
+
+    print(f"{name}: unique_digests={len(set(digests))}/{len(digests)}")
+    return failures
+
+
+def run(repeats: int, atol: float, rtol: float) -> int:
+    failures: list[str] = []
+    for missing_values in (np.nan, -1.0):
+        mv_label = "nan" if np.isnan(missing_values) else "minus1"
+        x_simple = _KNN_SIMPLE_EXAMPLE.copy()
+        x_weight = _KNN_WEIGHT_DISTANCE.copy()
+        if not np.isnan(missing_values):
+            x_simple = np.where(np.isnan(_KNN_SIMPLE_EXAMPLE), missing_values, x_simple)
+            x_weight = np.where(np.isnan(_KNN_WEIGHT_DISTANCE), missing_values, x_weight)
+
+        failures.extend(
+            _check_case(
+                f"knn_simple[{mv_label}]",
+                x_simple,
+                missing_values,
+                repeats,
+                atol,
+                rtol,
+            )
+        )
+        failures.extend(
+            _check_case(
+                f"knn_weight_distance[{mv_label}]",
+                x_weight,
+                missing_values,
+                repeats,
+                atol,
+                rtol,
+            )
+        )
 
     print(f"numpy={np.__version__}")
     print(f"detected_blas={_detected_blas_name() or 'unknown'}")
@@ -107,17 +201,11 @@ def run(
     print(f"BLIS_NUM_THREADS={os.getenv('BLIS_NUM_THREADS')}")
     print(f"OPENBLAS_NUM_THREADS={os.getenv('OPENBLAS_NUM_THREADS')}")
     print(f"VECLIB_MAXIMUM_THREADS={os.getenv('VECLIB_MAXIMUM_THREADS')}")
-    print(f"unique_result_digests={len(set(digests))}/{len(digests)}")
 
     if failures:
         print("FAIL")
-        for failure in failures[:10]:
+        for failure in failures[:20]:
             print(f"  - {failure}")
-        return 1
-
-    if len(set(digests)) != 1:
-        print("FAIL")
-        print("  - output changed across repeats")
         return 1
 
     print("PASS")
@@ -126,12 +214,9 @@ def run(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", type=int, default=123)
-    parser.add_argument("--n-samples", type=int, default=384)
-    parser.add_argument("--n-features", type=int, default=192)
     parser.add_argument("--repeats", type=int, default=20)
-    parser.add_argument("--atol", type=float, default=1e-6)
-    parser.add_argument("--rtol", type=float, default=1e-6)
+    parser.add_argument("--atol", type=float, default=1e-12)
+    parser.add_argument("--rtol", type=float, default=1e-12)
     parser.add_argument(
         "--expected-blas",
         choices=["blis", "openblas", "newaccelerate"],
@@ -149,16 +234,8 @@ if __name__ == "__main__":
     ):
         print(
             f"FAIL: requested BLAS '{args.expected_blas}' but environment reports "
-            f"numpy='{detected_blas or 'unknown'}', conda_libblas='{conda_build or 'unknown'}'"
+            f"numpy='{detected_blas or 'unknown'}', "
+            f"conda_libblas='{conda_build or 'unknown'}'"
         )
         sys.exit(1)
-    sys.exit(
-        run(
-            seed=args.seed,
-            n_samples=args.n_samples,
-            n_features=args.n_features,
-            repeats=args.repeats,
-            atol=args.atol,
-            rtol=args.rtol,
-        )
-    )
+    sys.exit(run(repeats=args.repeats, atol=args.atol, rtol=args.rtol))

@@ -47,6 +47,7 @@ jobs:
     name: pure-c-blis
     runs-on: macos-15
     needs: [numpy-reproducer]
+    if: ${{ always() && !cancelled() }}
     steps:
       - uses: actions/checkout@v4
 
