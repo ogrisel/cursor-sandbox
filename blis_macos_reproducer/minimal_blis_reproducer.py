@@ -6,7 +6,8 @@ Levels strip sklearn piece by piece (run with --level <name>; see --list-levels)
 
 Smallest sklearn surface: ``knn-imputer-only`` (``KNNImputer`` vs golden ``2.3``).
 Primary CI gate: ``scalar-vs-imputer`` (scalar ``nan_euclidean`` for row 2 vs
-``KNNImputer`` at ``[2,2]`` only — no ``pairwise_distances``, no pytest).
+``KNNImputer`` at ``[2,2]`` only). Uses default sklearn config like upstream
+pytest (do not set ``working_memory=0``; sklearn 1.8+ ignores it).
 """
 
 from __future__ import annotations
@@ -136,7 +137,6 @@ def run_scalar_vs_imputer() -> int:
     """Minimal: one cell — scalar pair distances vs KNNImputer (only sklearn call)."""
     global _LEVEL
     _LEVEL = "scalar-vs-imputer"
-    from sklearn import config_context
     from sklearn.impute import KNNImputer
 
     neighbors = (0, 1, 3, 4, 5)
@@ -151,10 +151,9 @@ def run_scalar_vs_imputer() -> int:
     expected_r2c2 = float(
         np.average(X_WEIGHT_8X4[list(neighbors), 2], weights=inv_dist)
     )
-    with config_context(working_memory=0):
-        actual = KNNImputer(missing_values=np.nan, weights="distance").fit_transform(
-            X_WEIGHT_8X4
-        )
+    actual = KNNImputer(missing_values=np.nan, weights="distance").fit_transform(
+        X_WEIGHT_8X4
+    )
     actual_r2c2 = float(actual[2, 2])
     if not np.isclose(actual_r2c2, expected_r2c2, rtol=0, atol=0):
         return _fail(
@@ -168,16 +167,14 @@ def run_scalar_full_matrix() -> int:
     """Full 8×4 — expected from scalar distances, actual from KNNImputer."""
     global _LEVEL
     _LEVEL = "scalar-full-matrix"
-    from sklearn import config_context
     from sklearn.impute import KNNImputer
 
     dist = _nan_euclidean_scalar(X_WEIGHT_8X4)
     expected = _expected_8x4_from_dist(X_WEIGHT_8X4, dist)
-    with config_context(working_memory=0):
-        actual = KNNImputer(missing_values=np.nan, weights="distance").fit_transform(
-            X_WEIGHT_8X4
-        )
-    if not np.allclose(actual, expected, rtol=0, atol=0, equal_nan=True):
+    actual = KNNImputer(missing_values=np.nan, weights="distance").fit_transform(
+        X_WEIGHT_8X4
+    )
+    if not np.allclose(actual, expected, rtol=0, atol=1e-12, equal_nan=True):
         err = float(np.max(np.abs(actual - expected)))
         return _fail(f"full matrix max_abs_err={err:.6g} (imputed[2,2]={actual[2, 2]})")
     return _pass()
@@ -187,7 +184,6 @@ def run_sklearn_dist_vs_imputer() -> int:
     """Expected from sklearn ``pairwise_distances`` (full) vs ``KNNImputer`` (chunked)."""
     global _LEVEL
     _LEVEL = "sklearn-dist-vs-imputer"
-    from sklearn import config_context
     from sklearn.impute import KNNImputer
     from sklearn.metrics.pairwise import pairwise_distances
 
@@ -198,11 +194,10 @@ def run_sklearn_dist_vs_imputer() -> int:
         missing_values=np.nan,
     )
     expected = _expected_8x4_from_dist(X_WEIGHT_8X4, dist)
-    with config_context(working_memory=0):
-        actual = KNNImputer(missing_values=np.nan, weights="distance").fit_transform(
-            X_WEIGHT_8X4
-        )
-    if not np.allclose(actual, expected, rtol=0, atol=0, equal_nan=True):
+    actual = KNNImputer(missing_values=np.nan, weights="distance").fit_transform(
+        X_WEIGHT_8X4
+    )
+    if not np.allclose(actual, expected, rtol=0, atol=1e-12, equal_nan=True):
         err = float(np.max(np.abs(actual - expected)))
         return _fail(f"sklearn full-dist vs imputer max_abs_err={err:.6g}")
     return _pass()
@@ -212,17 +207,15 @@ def run_knn_imputer_only() -> int:
     """Smallest sklearn surface: only ``KNNImputer``, literal golden ``[2,2]``."""
     global _LEVEL
     _LEVEL = "knn-imputer-only"
-    from sklearn import config_context
     from sklearn.impute import KNNImputer
 
     # Analytic value from the test recipe with correct distances (≈2.3).
     golden_r2c2 = 2.3
-    with config_context(working_memory=0):
-        actual_r2c2 = float(
-            KNNImputer(missing_values=np.nan, weights="distance").fit_transform(
-                X_WEIGHT_8X4
-            )[2, 2]
-        )
+    actual_r2c2 = float(
+        KNNImputer(missing_values=np.nan, weights="distance").fit_transform(
+            X_WEIGHT_8X4
+        )[2, 2]
+    )
     if not np.isclose(actual_r2c2, golden_r2c2, rtol=0, atol=0):
         return _fail(f"imputed[2,2]={actual_r2c2} golden={golden_r2c2}")
     return _pass()

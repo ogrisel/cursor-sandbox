@@ -26,7 +26,7 @@ python blis_macos_reproducer/minimal_blis_reproducer.py --list-levels
 ### Primary reproducer (`scalar-vs-imputer`)
 
 - **Expected** `imputed[2,2]`: weighted average using **NumPy scalar** `nan_euclidean` (no BLAS GEMM).
-- **Actual** `imputed[2,2]`: `sklearn.impute.KNNImputer` with `working_memory=0` (chunked BLAS path).
+- **Actual** `imputed[2,2]`: `sklearn.impute.KNNImputer` with default config (same as upstream pytest).
 
 This is the smallest check that still fails on BLIS (~`0.5` vs ~`2.3`).
 
