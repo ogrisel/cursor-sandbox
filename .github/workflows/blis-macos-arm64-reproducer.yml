@@ -21,28 +21,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  numpy-reproducer:
-    name: numpy-${{ matrix.blas_impl }}
-    runs-on: macos-15
-    strategy:
-      fail-fast: false
-      matrix:
-        blas_impl: [blis, openblas, newaccelerate]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup micromamba
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          micromamba-version: latest
-          init-shell: bash
-
-      - name: Verify NumPy reproducer (${{ matrix.blas_impl }})
-        shell: bash -el {0}
-        run: |
-          chmod +x blis_macos_reproducer/*.sh
-          ./blis_macos_reproducer/ci_verify_numpy_reproducer.sh "${{ matrix.blas_impl }}"
-
   minimal-reproducer:
     name: minimal-${{ matrix.blas_impl }}
     runs-on: macos-15
@@ -88,7 +66,7 @@ jobs:
   c-reproducer:
     name: pure-c-blis
     runs-on: macos-15
-    needs: [numpy-reproducer, minimal-reproducer]
+    needs: [minimal-reproducer]
     if: ${{ always() && !cancelled() }}
     steps:
       - uses: actions/checkout@v4

@@ -82,9 +82,30 @@ def _nan_euclidean_scalar(x: np.ndarray, missing_values: float = np.nan) -> np.n
 
 
 def _nan_euclidean_gemm(x: np.ndarray, missing_values: float = np.nan) -> np.ndarray:
-    from numpy_blis_reproducer import _nan_euclidean_via_gemm
+    """Port of sklearn.metrics.pairwise.nan_euclidean_distances (uses X @ X.T GEMM)."""
+    x = np.array(x, dtype=np.float64, copy=True)
+    missing_x = _missing_mask(x, missing_values)
+    x[missing_x] = 0.0
+    y = x
 
-    return _nan_euclidean_via_gemm(x, missing_values=missing_values)
+    distances = -2.0 * (x @ y.T)
+    row_sq = np.sum(x * x, axis=1, keepdims=True)
+    distances += row_sq
+    distances += row_sq.T
+    np.maximum(distances, 0.0, out=distances)
+
+    distances -= (x * x) @ missing_x.T
+    distances -= missing_x @ (y * y).T
+    np.clip(distances, 0.0, None, out=distances)
+    np.fill_diagonal(distances, 0.0)
+
+    present = 1 - missing_x
+    present_count = np.dot(present, present.T)
+    distances[present_count == 0] = np.nan
+    np.maximum(1, present_count, out=present_count)
+    distances /= present_count
+    distances *= x.shape[1]
+    return np.sqrt(distances, out=distances)
 
 
 def _expected_8x4_from_dist(x: np.ndarray, dist: np.ndarray) -> np.ndarray:

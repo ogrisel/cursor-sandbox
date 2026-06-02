@@ -30,15 +30,20 @@ python blis_macos_reproducer/minimal_blis_reproducer.py --list-levels
 
 This is the smallest check that still fails on BLIS (~`0.5` vs ~`2.3`).
 
-## Other scripts
+## Files
 
 | File | Role |
 |------|------|
-| `numpy_blis_reproducer.py` | NumPy GEMM `nan_euclidean` vs scalar loop |
-| `run_numpy_blas_reproducer.sh` | NumPy-only mamba env |
-| `build_and_run_c_blis_reproducer.sh` | Pure C `cblas_dgemm` + upstream BLIS 2.0 |
-| `ci_probe_minimal_levels.sh` | Run all levels on BLIS (diagnostics) |
+| `minimal_blis_reproducer.py` | Progressive minimal reproducer (all levels, self-contained) |
+| `run_minimal_blas_reproducer.sh` | Create a mamba env for a backend + run one level |
+| `ci_verify_minimal_reproducer.sh` | CI gate: BLIS must fail, openblas/newaccelerate must pass |
+| `ci_probe_minimal_levels.sh` | Run every level on BLIS (diagnostics) |
+| `build_and_run_c_blis_reproducer.sh` + `blis_gemm_reproducer.c` | Pure C `cblas_dgemm` against upstream BLIS 2.0 (microkernel control; passes) |
 
 ## CI
 
-`.github/workflows/blis-macos-arm64-reproducer.yml` gates on `scalar-vs-imputer` for each `libblas` backend.
+`.github/workflows/blis-macos-arm64-reproducer.yml`:
+
+- `minimal-reproducer` (matrix `blis` / `openblas` / `newaccelerate`): gates `scalar-vs-imputer` — **fails** on BLIS, **passes** on openblas/newaccelerate.
+- `minimal-level-probe-blis`: runs every level on BLIS for diagnostics.
+- `pure-c-blis`: builds BLIS 2.0 and runs the C `dgemm` control.
