@@ -1,0 +1,68 @@
+name: BLIS macOS arm64 randomized-eigsh reproducer
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "blis_eigsh_reproducer/**"
+      - ".github/workflows/blis-eigsh-reproducer.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "blis_eigsh_reproducer/**"
+      - ".github/workflows/blis-eigsh-reproducer.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  # Primary gate: the minimal NumPy+SciPy-only reproducer must FAIL on BLIS and
+  # PASS on OpenBLAS / Accelerate.
+  numpy-eigsh:
+    name: numpy-eigsh-${{ matrix.blas_impl }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        blas_impl: [blis, openblas, newaccelerate]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: latest
+          init-shell: bash
+
+      - name: Verify numpy-eigsh reproducer (${{ matrix.blas_impl }})
+        shell: bash -el {0}
+        run: |
+          chmod +x blis_eigsh_reproducer/*.sh
+          ./blis_eigsh_reproducer/ci_verify_eigsh_reproducer.sh "${{ matrix.blas_impl }}" numpy-eigsh
+
+  # Informational: run pytest -> sklearn-eigsh -> numpy-eigsh on BLIS in one job
+  # to confirm the bug reproduces at every level and compare error magnitudes.
+  level-probe:
+    name: eigsh-level-probe-blis
+    runs-on: macos-15
+    needs: [numpy-eigsh]
+    if: ${{ always() && !cancelled() }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: latest
+          init-shell: bash
+
+      - name: Probe all eigsh levels on BLIS
+        shell: bash -el {0}
+        run: |
+          chmod +x blis_eigsh_reproducer/*.sh
+          ./blis_eigsh_reproducer/ci_probe_eigsh_levels.sh
