@@ -74,7 +74,7 @@ def _nan_euclidean_via_gemm(x: np.ndarray, missing_values: float = np.nan) -> np
     present_y = present_x if missing_y is missing_x else ~missing_y
     present_count = np.dot(present_x, present_y.T)
     distances[present_count == 0] = np.nan
-    np.maximum(1.0, present_count, out=present_count)
+    np.maximum(1, present_count, out=present_count)
     distances /= present_count
     distances *= x.shape[1]
     return np.sqrt(distances, out=distances)

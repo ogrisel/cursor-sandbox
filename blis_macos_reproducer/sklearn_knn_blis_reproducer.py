@@ -7,10 +7,10 @@ import subprocess
 import sys
 
 # Subset of failures from scikit-learn macOS pylatest_conda_forge_arm (BLIS default).
-_KNN_TESTS = (
-    "sklearn.impute.tests.test_knn::test_knn_imputer_with_simple_example",
-    "sklearn.impute.tests.test_knn::test_knn_imputer_weight_distance",
-    "sklearn.impute.tests.test_knn::test_knn_imputer_distance_weighted_not_enough_neighbors",
+_KNN_TEST_FILTER = (
+    "test_knn_imputer_with_simple_example or "
+    "test_knn_imputer_weight_distance or "
+    "test_knn_imputer_distance_weighted_not_enough_neighbors"
 )
 
 
@@ -21,7 +21,10 @@ def main() -> int:
         "pytest",
         "-xvs",
         "--tb=short",
-        *_KNN_TESTS,
+        "--pyargs",
+        "sklearn.impute.tests.test_knn",
+        "-k",
+        _KNN_TEST_FILTER,
     ]
     print("Running:", " ".join(cmd), flush=True)
     return subprocess.call(cmd)
