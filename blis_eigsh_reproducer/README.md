@@ -5,14 +5,21 @@ Minimal fixed-data reproducer for the BLIS corruption behind the
 failure observed after [scikit-learn#34162](https://github.com/scikit-learn/scikit-learn/pull/34162#discussion_r3332644920)
 flipped the conda `libblas` build to BLIS on macOS arm64.
 
-The reproducer only computes:
+The original expression is:
 
 ```text
 C = (V @ diag(S)) @ V.T
 ```
 
-`V` is `100 x 10`, `S` has length `10`, and the final multiply is a single
-`dgemm` with shape `(100, 10) @ (10, 100)`.
+`V` is `100 x 10` and `S` has length `10`. The first operation
+`V @ diag(S)` is not faulty and is eliminated: both reproducers form `V * S`
+by direct column scaling. The only BLAS call is therefore the second/final GEMM:
+
+```text
+C = (V * S) @ V.T
+```
+
+with shape `(100, 10) @ (10, 100)`.
 
 ## Fixed data format
 
@@ -34,8 +41,8 @@ Values are row-major decimal `double` literals. The C program parses them with
 
 ## Reproducers
 
-- `minimal_gemm_repro.py`: Python/NumPy version, compares BLAS-backed `@` against
-  a non-BLAS `einsum` reference.
+- `minimal_gemm_repro.py`: Python/NumPy version, forms `V * S` by broadcasting,
+  then compares the single BLAS-backed `@` against a non-BLAS `einsum` reference.
 - `minimal_gemm_repro.c`: C/CBLAS version, forms `V * S` by column scaling and
   calls one `cblas_dgemm` for `(V * S) @ V.T`; compares against a simple triple
   loop reference.

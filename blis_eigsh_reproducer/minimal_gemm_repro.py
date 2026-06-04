@@ -8,12 +8,13 @@ The inputs are stored as plain ASCII files in ``fixtures/``:
     ...
 
 This script loads ``V_100_10.txt`` and ``S_100_10.txt`` and performs only the
-faulty step:
+faulty GEMM:
 
-    C = (V @ diag(S)) @ V.T
+    C = (V * S) @ V.T
 
-The BLAS result is compared against a non-BLAS ``einsum`` reference. On macOS
-arm64 with conda-forge BLIS, this single fixed-data GEMM returns ~1e+272 garbage.
+where ``V * S`` is simple column scaling (not a GEMM). The BLAS result is
+compared against a non-BLAS ``einsum`` reference. On macOS arm64 with
+conda-forge BLIS, this single fixed-data GEMM returns ~1e+272 garbage.
 """
 
 from __future__ import annotations
@@ -44,15 +45,15 @@ def _einsum_matmul(A, B):
 def _target_gemm():
     V = _read_txt("V_100_10.txt")
     S = _read_txt("S_100_10.txt").ravel()
-    M1 = V @ np.diag(S)
-    C = M1 @ V.T
-    C_ref = _einsum_matmul(_einsum_matmul(V, np.diag(S)), V.T)
+    VS = V * S  # column scaling: equivalent to V @ diag(S), but no GEMM.
+    C = VS @ V.T
+    C_ref = _einsum_matmul(VS, V.T)
     err = float(np.max(np.abs(C - C_ref)))
     scale = float(np.max(np.abs(C_ref))) or 1.0
     rel = err / scale
     bad = rel > 1e-9 or not np.isfinite(C).all()
     print(
-        f"Python fixed-data V@diag(S)@V.T: max_abs_err={err:.17e} "
+        f"Python fixed-data (V*S)@V.T: max_abs_err={err:.17e} "
         f"rel_err={rel:.17e} max|out|={float(np.max(np.abs(C))):.17e}"
         + ("   <<< MISMATCH (bug reproduced)" if bad else "   (ok)"),
         flush=True,
