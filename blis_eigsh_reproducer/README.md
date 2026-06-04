@@ -51,6 +51,25 @@ On macOS arm64 with conda-forge BLIS (`libblas 8_h886686a_blis`), both
 reproducers return catastrophic garbage (`~8e+272` or larger). OpenBLAS and
 newaccelerate pass.
 
+## BLAS architecture reported by threadpoolctl
+
+The CI wrappers print:
+
+```bash
+python -m threadpoolctl -i numpy
+```
+
+Latest run checked: `26963580867`.
+
+| backend | conda `libblas` build | threadpoolctl `internal_api` | version | threading | architecture |
+| --- | --- | --- | --- | --- | --- |
+| BLIS | `8_h886686a_blis` | `blis` | `2.0` | `pthreads` | `firestorm` |
+| OpenBLAS | `8_h51639a9_openblas` | `openblas` | `0.3.33` | `openmp` | `VORTEX` |
+| newaccelerate | `8_h280a802_newaccelerate` | not reported (`[]`) | - | - | - |
+
+The BLIS `firestorm` path reproduces the corruption; OpenBLAS `VORTEX` and
+newaccelerate pass.
+
 ## Run locally
 
 ```bash
@@ -68,4 +87,5 @@ newaccelerate pass.
 - `c-fixed-data-{blis,openblas,newaccelerate}`
 
 The BLIS jobs are expected to fail internally and are inverted by the wrappers;
-OpenBLAS and newaccelerate must pass.
+OpenBLAS and newaccelerate must pass. Each job prints the `threadpoolctl` report
+before running the reproducer.
