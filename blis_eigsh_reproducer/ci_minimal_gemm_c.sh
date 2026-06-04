@@ -38,7 +38,6 @@ set +e
     -lcblas -lblas -lm \
     -o "$bin"
 compile_rc=$?
-set -e
 if [[ "$compile_rc" -ne 0 ]]; then
     echo "Retrying without -lcblas (some BLAS builds expose CBLAS from libblas) ..."
     "$cc_bin" -O2 -std=c99 \
@@ -48,6 +47,12 @@ if [[ "$compile_rc" -ne 0 ]]; then
         "${script_dir}/minimal_gemm_repro.c" \
         -lblas -lm \
         -o "$bin"
+    compile_rc=$?
+fi
+set -e
+if [[ "$compile_rc" -ne 0 ]]; then
+    echo "ERROR: failed to compile/link the fixed-data C reproducer" >&2
+    exit 2
 fi
 
 unset OMP_NUM_THREADS || true

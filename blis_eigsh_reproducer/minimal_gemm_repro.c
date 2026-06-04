@@ -11,12 +11,32 @@
 //
 // This program has no parser dependency; it only needs CBLAS for dgemm.
 
-#include <cblas.h>
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// Minimal CBLAS declarations to avoid depending on a packaged cblas.h header.
+// Values follow the standard Netlib CBLAS ABI used by BLIS/OpenBLAS/Accelerate.
+enum CBLAS_ORDER { CblasRowMajor = 101, CblasColMajor = 102 };
+enum CBLAS_TRANSPOSE { CblasNoTrans = 111, CblasTrans = 112, CblasConjTrans = 113 };
+void cblas_dgemm(
+    const enum CBLAS_ORDER Order,
+    const enum CBLAS_TRANSPOSE TransA,
+    const enum CBLAS_TRANSPOSE TransB,
+    const int M,
+    const int N,
+    const int K,
+    const double alpha,
+    const double *A,
+    const int lda,
+    const double *B,
+    const int ldb,
+    const double beta,
+    double *C,
+    const int ldc
+);
 
 static double *read_matrix(const char *path, int *rows, int *cols) {
     FILE *f = fopen(path, "r");
