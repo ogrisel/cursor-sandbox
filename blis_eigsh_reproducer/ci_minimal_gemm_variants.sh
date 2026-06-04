@@ -39,7 +39,7 @@ else
 fi
 
 declare -a summary
-for variant in single gemm-prequel svd-prequel eigsh-prequel; do
+for variant in single gemm-prequel svd-prequel eigsh-prequel contig-vt fortran-v strided-view; do
     echo "==================================================================="
     "$mamba_bin" run -n "$env_name" \
         python "${script_dir}/minimal_gemm_repro.py" --variant "$variant"

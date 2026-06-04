@@ -10,6 +10,17 @@ The randomized eigendecomposition (`_randomized_eigsh`, built on
 exactly-low-rank PSD matrix to `decimal=6`. The whole pipeline is just BLAS GEMM
 + LAPACK QR / LU / SVD, so it reproduces with **NumPy + SciPy only**.
 
+The failure has now been stripped further to a **single fixed-data GEMM**:
+
+```text
+C = (V @ diag(S)) @ V.T
+```
+
+where `V` is `100 x 10` and `S` has length `10`. The fixtures are stored as
+plain ASCII files (`fixtures/V_100_10.txt`, `fixtures/S_100_10.txt`) whose first
+line is `rows cols` followed by whitespace-separated double values, so they can
+be parsed from C with `fscanf` and no external parser dependency.
+
 ## Key findings (from CI on `macos-15`, conda `libblas 8_h886686a_blis`)
 
 - The failure is a **catastrophic numerical corruption**, not a small rounding
@@ -22,6 +33,9 @@ exactly-low-rank PSD matrix to `decimal=6`. The whole pipeline is just BLAS GEMM
 - A *separate* BLIS bug: with `BLIS_NUM_THREADS>=4` the same small matrices
   **deadlock** (hang). The `blis-thread-sweep` job documents this; the numerical
   corruption at 1–2 threads is the bug this reproducer targets.
+- The **single fixed-data step** `V @ diag(S) @ V.T` reproduces on BLIS and passes
+  on OpenBLAS when run from both Python and C (one `cblas_dgemm` call for the
+  final multiply).
 - The NumPy+SciPy port is **bit-for-bit identical** to
   `sklearn._randomized_eigsh` on a non-buggy BLAS (Linux OpenBLAS:
   `max|ΔS| = max|Δ|V|| = 0`), and fails on the exact same `(n, rank)` cases as
@@ -40,15 +54,19 @@ every LU/QR/SVD residual through the whole pipeline. On BLIS:
   dimension), which BLAS returns as `~1e+296` garbage while the einsum reference
   gives `~5e-14`.
 
-It is **order / state dependent**: the trace that starts at `(100,10)` sees *no*
-divergence, but iterating the full grid in order (so `(10,7)` runs first)
-reproduces it at the `n=100` cases — exactly matching `numpy-eigsh` / `pytest`.
+The full pipeline originally looked order / state dependent in-process, but
+saving the exact `V` and `S` operands to disk makes the **single target GEMM**
+fail in a fresh process with no prequel. Random small-inner-dimension GEMMs
+(`numpy-gemm-min`) still pass, so the fixture values / layout are important, not
+just the shape.
 
-A pure-NumPy sequence of the same `(n,rank) @ (rank,n)` GEMMs with random data
-(`numpy-gemm-min`, no SciPy / no SVD) does **not** reproduce it. So the bug
-requires the SciPy/LAPACK SVD pipeline to set up the state, and then surfaces in
-the next small-inner-dim GEMM. **The minimal reliable reproducer is therefore
-NumPy + SciPy `_randomized_eigsh` (`numpy-eigsh`)**, not a bare GEMM.
+The smallest reproducer for BLIS maintainers is therefore the fixed-data C
+program:
+
+```bash
+./blis_eigsh_reproducer/ci_minimal_gemm_c.sh blis      # expected FAIL
+./blis_eigsh_reproducer/ci_minimal_gemm_c.sh openblas  # expected PASS
+```
 
 ## Levels (largest → smallest sklearn surface)
 
@@ -59,6 +77,8 @@ NumPy + SciPy `_randomized_eigsh` (`numpy-eigsh`)**, not a bare GEMM.
 | `numpy-eigsh` | numpy, scipy | self-contained port of `_randomized_eigsh` (**primary gate**) |
 | `numpy-kernels` | numpy, scipy | isolated `A@Q` (vs einsum) + LU/QR/SVD residuals on the initial data |
 | `numpy-trace` | numpy, scipy | step-by-step pipeline trace; finds the first BLAS divergence |
+| `minimal_gemm_repro.py` | numpy | fixed-data `V @ diag(S) @ V.T`; single variant fails on BLIS |
+| `minimal_gemm_repro.c` | CBLAS | C fixed-data reproducer; parses ASCII fixtures with `fscanf` |
 | `numpy-gemm-min` | numpy | pure-numpy small-inner-dim GEMM sequence (no scipy); does **not** repro |
 
 `numpy-eigsh` loops over the upstream `(n, rank)` grid and fails as soon as one
@@ -70,6 +90,7 @@ case exceeds the `decimal=6` tolerance.
 ./blis_eigsh_reproducer/run_eigsh_blas_reproducer.sh blis     numpy-eigsh   # expected FAIL
 ./blis_eigsh_reproducer/run_eigsh_blas_reproducer.sh openblas numpy-eigsh   # expected PASS
 ./blis_eigsh_reproducer/run_eigsh_blas_reproducer.sh blis     numpy-kernels # localize primitive
+./blis_eigsh_reproducer/ci_minimal_gemm_c.sh blis                           # fixed-data C repro
 ```
 
 ## CI
@@ -81,7 +102,11 @@ case exceeds the `decimal=6` tolerance.
 - `blis-localize-and-cross-level` — informational: localizes the broken
   primitive and runs all levels on BLIS to show identical reproduction.
 - `trace-{blis,openblas}` — informational: full step-by-step pipeline trace.
+- `minimal-gemm-c-{blis,openblas}` — fixed-data C reproducer, BLIS must FAIL and
+  OpenBLAS must PASS.
+- `minimal-gemm-{blis,openblas}` — fixed-data Python variants, including the
+  single-step no-prequel reproducer.
 - `gemm-min-{blis,openblas}` — informational: pure-numpy GEMM simplification
-  attempt (passes on both → bare GEMM is not enough).
+  attempt with random data (passes on both → arbitrary data is not enough).
 - `blis-thread-sweep` — informational: documents the secondary `>=4`-thread
   deadlock with a timeout guard.

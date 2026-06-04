@@ -112,6 +112,30 @@ jobs:
           chmod +x blis_eigsh_reproducer/*.sh
           ./blis_eigsh_reproducer/ci_minimal_gemm_variants.sh "${{ matrix.blas_impl }}"
 
+  # Same fixed-data single-step reproducer, but in C with a dependency-free
+  # parser for the ASCII fixtures and one cblas_dgemm call.
+  minimal-gemm-c:
+    name: minimal-gemm-c-${{ matrix.blas_impl }}
+    runs-on: macos-15
+    needs: [numpy-eigsh]
+    if: ${{ always() && !cancelled() }}
+    strategy:
+      fail-fast: false
+      matrix:
+        blas_impl: [blis, openblas]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          micromamba-version: latest
+          init-shell: bash
+      - name: Build and run fixed-data C GEMM reproducer (${{ matrix.blas_impl }})
+        shell: bash -el {0}
+        run: |
+          chmod +x blis_eigsh_reproducer/*.sh
+          ./blis_eigsh_reproducer/ci_minimal_gemm_c.sh "${{ matrix.blas_impl }}"
+
   # Most aggressive simplification attempt: a pure-numpy small-inner-dim GEMM
   # sequence (no scipy / no SVD), to see if a bare GEMM already diverges.
   gemm-min:
