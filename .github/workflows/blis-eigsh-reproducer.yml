@@ -1,4 +1,4 @@
-name: BLIS macOS arm64 randomized-eigsh reproducer
+name: BLIS macOS arm64 fixed-data GEMM reproducer
 
 permissions:
   contents: read
@@ -21,10 +21,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Primary gate: the minimal NumPy+SciPy-only reproducer must FAIL on BLIS and
-  # PASS on OpenBLAS / Accelerate (single-threaded -> deterministic).
-  numpy-eigsh:
-    name: numpy-eigsh-${{ matrix.blas_impl }}
+  python-fixed-data:
+    name: python-fixed-data-${{ matrix.blas_impl }}
     runs-on: macos-15
     strategy:
       fail-fast: false
@@ -37,43 +35,19 @@ jobs:
         with:
           micromamba-version: latest
           init-shell: bash
-      - name: Verify numpy-eigsh reproducer (${{ matrix.blas_impl }})
+      - name: Run fixed-data Python reproducer (${{ matrix.blas_impl }})
         shell: bash -el {0}
         run: |
           chmod +x blis_eigsh_reproducer/*.sh
-          ./blis_eigsh_reproducer/ci_verify_eigsh_reproducer.sh "${{ matrix.blas_impl }}" numpy-eigsh
+          ./blis_eigsh_reproducer/ci_minimal_gemm_python.sh "${{ matrix.blas_impl }}"
 
-  # Localize the broken primitive (GEMM vs LU/QR/SVD) and show every level
-  # reproduces the same failure on BLIS (single-threaded). Informational.
-  blis-localize:
-    name: blis-localize-and-cross-level
+  c-fixed-data:
+    name: c-fixed-data-${{ matrix.blas_impl }}
     runs-on: macos-15
-    needs: [numpy-eigsh]
-    if: ${{ always() && !cancelled() }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup micromamba
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          micromamba-version: latest
-          init-shell: bash
-      - name: Probe all eigsh levels on BLIS
-        shell: bash -el {0}
-        run: |
-          chmod +x blis_eigsh_reproducer/*.sh
-          ./blis_eigsh_reproducer/ci_probe_eigsh_levels.sh
-
-  # Step-by-step pipeline trace to find the first BLAS/reference divergence
-  # (isolated primitives are correct, so the corruption emerges in the chain).
-  trace:
-    name: trace-${{ matrix.blas_impl }}
-    runs-on: macos-15
-    needs: [numpy-eigsh]
-    if: ${{ always() && !cancelled() }}
     strategy:
       fail-fast: false
       matrix:
-        blas_impl: [blis, openblas]
+        blas_impl: [blis, openblas, newaccelerate]
     steps:
       - uses: actions/checkout@v4
       - name: Setup micromamba
@@ -81,104 +55,8 @@ jobs:
         with:
           micromamba-version: latest
           init-shell: bash
-      - name: Trace pipeline (${{ matrix.blas_impl }})
-        shell: bash -el {0}
-        run: |
-          chmod +x blis_eigsh_reproducer/*.sh
-          ./blis_eigsh_reproducer/run_eigsh_blas_reproducer.sh "${{ matrix.blas_impl }}" numpy-trace || true
-
-  # Minimal fixed-data reproducer of the V@diag(S)@V.T corruption: load captured
-  # operands and run the target GEMM with various tiny "prequels" (each in its
-  # own process) to find how little state is needed to trigger the bug.
-  minimal-gemm:
-    name: minimal-gemm-${{ matrix.blas_impl }}
-    runs-on: macos-15
-    needs: [numpy-eigsh]
-    if: ${{ always() && !cancelled() }}
-    strategy:
-      fail-fast: false
-      matrix:
-        blas_impl: [blis, openblas]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup micromamba
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          micromamba-version: latest
-          init-shell: bash
-      - name: Run minimal fixed-data GEMM variants (${{ matrix.blas_impl }})
-        shell: bash -el {0}
-        run: |
-          chmod +x blis_eigsh_reproducer/*.sh
-          ./blis_eigsh_reproducer/ci_minimal_gemm_variants.sh "${{ matrix.blas_impl }}"
-
-  # Same fixed-data single-step reproducer, but in C with a dependency-free
-  # parser for the ASCII fixtures and one cblas_dgemm call.
-  minimal-gemm-c:
-    name: minimal-gemm-c-${{ matrix.blas_impl }}
-    runs-on: macos-15
-    needs: [numpy-eigsh]
-    if: ${{ always() && !cancelled() }}
-    strategy:
-      fail-fast: false
-      matrix:
-        blas_impl: [blis, openblas]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup micromamba
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          micromamba-version: latest
-          init-shell: bash
-      - name: Build and run fixed-data C GEMM reproducer (${{ matrix.blas_impl }})
+      - name: Build and run fixed-data C reproducer (${{ matrix.blas_impl }})
         shell: bash -el {0}
         run: |
           chmod +x blis_eigsh_reproducer/*.sh
           ./blis_eigsh_reproducer/ci_minimal_gemm_c.sh "${{ matrix.blas_impl }}"
-
-  # Most aggressive simplification attempt: a pure-numpy small-inner-dim GEMM
-  # sequence (no scipy / no SVD), to see if a bare GEMM already diverges.
-  gemm-min:
-    name: gemm-min-${{ matrix.blas_impl }}
-    runs-on: macos-15
-    needs: [numpy-eigsh]
-    if: ${{ always() && !cancelled() }}
-    strategy:
-      fail-fast: false
-      matrix:
-        blas_impl: [blis, openblas]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup micromamba
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          micromamba-version: latest
-          init-shell: bash
-      - name: Pure-numpy GEMM sequence (${{ matrix.blas_impl }})
-        shell: bash -el {0}
-        run: |
-          chmod +x blis_eigsh_reproducer/*.sh
-          ./blis_eigsh_reproducer/run_eigsh_blas_reproducer.sh "${{ matrix.blas_impl }}" numpy-gemm-min || true
-
-  # Document the *secondary* BLIS bug: with BLIS_NUM_THREADS>=4 the same
-  # matrices deadlock (numerical corruption still occurs at 1-2 threads).
-  blis-thread-sweep:
-    name: blis-thread-sweep
-    runs-on: macos-15
-    needs: [numpy-eigsh]
-    if: ${{ always() && !cancelled() }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup micromamba
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          micromamba-version: latest
-          init-shell: bash
-      - name: Sweep BLIS thread counts (numpy-eigsh)
-        shell: bash -el {0}
-        env:
-          LEVEL: numpy-eigsh
-          TIMEOUT_SECS: "90"
-        run: |
-          chmod +x blis_eigsh_reproducer/*.sh
-          ./blis_eigsh_reproducer/ci_sweep_eigsh_blis.sh
