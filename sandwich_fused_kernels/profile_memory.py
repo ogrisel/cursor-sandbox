@@ -100,8 +100,9 @@ def main() -> None:
     parser.add_argument("--n-cols", type=int, default=80)
     args = parser.parse_args()
 
-    warmup_numba("blas_fused")
-    warmup_jax("tensordot")
+    warmup_numba("blas_tiled")
+    warmup_jax("scan_chunked")
+    warmup_jax("einsum")
 
     rng = np.random.default_rng(0)
     for dtype_name in ("float64", "float32"):
@@ -143,20 +144,28 @@ def main() -> None:
                 materializes_weighted_x=False,
             ),
             _measure(
-                "numba_blas_fused",
-                lambda X, d: sandwich_numba(X, d, variant="blas_fused"),
+                "numba_blas_tiled",
+                lambda X, d: sandwich_numba(X, d, variant="blas_tiled"),
                 X,
                 d,
                 materializes_diag=False,
                 materializes_weighted_x=True,
             ),
             _measure(
-                "jax_tensordot",
-                lambda X, d: sandwich_jax(X, d, variant="tensordot"),
+                "jax_scan_chunked",
+                lambda X, d: sandwich_jax(X, d, variant="scan_chunked"),
                 X,
                 d,
                 materializes_diag=False,
-                materializes_weighted_x=True,
+                materializes_weighted_x=False,
+            ),
+            _measure(
+                "jax_einsum",
+                lambda X, d: sandwich_jax(X, d, variant="einsum"),
+                X,
+                d,
+                materializes_diag=False,
+                materializes_weighted_x=False,
             ),
         ]
 

@@ -3,9 +3,9 @@
     "kernel": "numpy_diag_matmul",
     "n_rows": 140000,
     "n_cols": 80,
-    "dtype": "float32",
-    "peak_rss_mb": 0.5546875,
-    "theoretical_extra_mb": 74810.791015625,
+    "dtype": "float64",
+    "peak_rss_mb": 1.55859375,
+    "theoretical_extra_mb": 149621.58203125,
     "materializes_diag": true,
     "materializes_weighted_x": true
   },
@@ -13,9 +13,9 @@
     "kernel": "numpy_weighted_gram",
     "n_rows": 140000,
     "n_cols": 80,
-    "dtype": "float32",
+    "dtype": "float64",
     "peak_rss_mb": 0.0,
-    "theoretical_extra_mb": 42.724609375,
+    "theoretical_extra_mb": 85.44921875,
     "materializes_diag": false,
     "materializes_weighted_x": true
   },
@@ -23,8 +23,8 @@
     "kernel": "numpy_einsum",
     "n_rows": 140000,
     "n_cols": 80,
-    "dtype": "float32",
-    "peak_rss_mb": 0.00390625,
+    "dtype": "float64",
+    "peak_rss_mb": 0.0,
     "theoretical_extra_mb": 0.0,
     "materializes_diag": false,
     "materializes_weighted_x": false
@@ -33,30 +33,40 @@
     "kernel": "tabmat",
     "n_rows": 140000,
     "n_cols": 80,
-    "dtype": "float32",
-    "peak_rss_mb": 0.7734375,
+    "dtype": "float64",
+    "peak_rss_mb": 0.5703125,
     "theoretical_extra_mb": 0.0,
     "materializes_diag": false,
     "materializes_weighted_x": false
   },
   {
-    "kernel": "numba_blas_fused",
+    "kernel": "numba_blas_tiled",
     "n_rows": 140000,
     "n_cols": 80,
-    "dtype": "float32",
-    "peak_rss_mb": 1.359375,
-    "theoretical_extra_mb": 42.724609375,
+    "dtype": "float64",
+    "peak_rss_mb": 7.5625,
+    "theoretical_extra_mb": 85.44921875,
     "materializes_diag": false,
     "materializes_weighted_x": true
   },
   {
-    "kernel": "jax_tensordot",
+    "kernel": "jax_scan_chunked",
     "n_rows": 140000,
     "n_cols": 80,
-    "dtype": "float32",
-    "peak_rss_mb": 1.91015625,
-    "theoretical_extra_mb": 42.724609375,
+    "dtype": "float64",
+    "peak_rss_mb": 20.3203125,
+    "theoretical_extra_mb": 0.0,
     "materializes_diag": false,
-    "materializes_weighted_x": true
+    "materializes_weighted_x": false
+  },
+  {
+    "kernel": "jax_einsum",
+    "n_rows": 140000,
+    "n_cols": 80,
+    "dtype": "float64",
+    "peak_rss_mb": 1.75390625,
+    "theoretical_extra_mb": 0.0,
+    "materializes_diag": false,
+    "materializes_weighted_x": false
   }
 ]

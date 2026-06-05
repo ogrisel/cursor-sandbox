@@ -112,10 +112,20 @@ def _extra_alloc_estimate_mb(n_rows: int, n_cols: int, dtype: str, kernel: str) 
     bytes_per = 4 if dtype == "float32" else 8
     if kernel in {"numpy_diag_matmul"}:
         return (n_rows * n_rows + n_rows * n_cols) * bytes_per / (1024 * 1024)
-    if kernel in {"numpy_weighted_gram", "jax_weighted_gram"}:
+    chunk_rows = 4096
+    if kernel in {
+        "numpy_weighted_gram",
+        "jax_weighted_gram",
+        "jax_tensordot",
+        "numba_blas_fused",
+    }:
         return n_rows * n_cols * bytes_per / (1024 * 1024)
-    if kernel in {"numpy_einsum", "jax_einsum", "jax_tensordot"}:
+    if kernel in {"jax_scan_chunked", "jax_einsum_chunked", "numba_blas_tiled"}:
+        return chunk_rows * n_cols * bytes_per / (1024 * 1024)
+    if kernel in {"numpy_einsum", "jax_einsum"}:
         return n_cols * n_cols * bytes_per / (1024 * 1024)
+    if kernel in {"numba_blas_chunked"}:
+        return chunk_rows * n_cols * bytes_per / (1024 * 1024) + n_cols * n_cols * bytes_per
     return 0.0
 
 
@@ -127,13 +137,16 @@ def _kernel_registry() -> dict[str, Callable[..., np.ndarray]]:
         "tabmat": sandwich_tabmat,
         "numba_serial": lambda X, d: sandwich_numba(X, d, variant="serial"),
         "numba_parallel": lambda X, d: sandwich_numba(X, d, variant="parallel"),
-        "numba_blocked": lambda X, d: sandwich_numba(X, d, variant="blocked"),
+        "numba_fused_blocked": lambda X, d: sandwich_numba(X, d, variant="fused_blocked"),
         "numba_k_parallel": lambda X, d: sandwich_numba(X, d, variant="k_parallel"),
         "numba_blas_chunked": lambda X, d: sandwich_numba(X, d, variant="blas_chunked"),
+        "numba_blas_tiled": lambda X, d: sandwich_numba(X, d, variant="blas_tiled"),
         "numba_blas_fused": lambda X, d: sandwich_numba(X, d, variant="blas_fused"),
         "jax_einsum": lambda X, d: sandwich_jax(X, d, variant="einsum"),
         "jax_weighted_gram": lambda X, d: sandwich_jax(X, d, variant="weighted_gram"),
         "jax_tensordot": lambda X, d: sandwich_jax(X, d, variant="tensordot"),
+        "jax_scan_chunked": lambda X, d: sandwich_jax(X, d, variant="scan_chunked"),
+        "jax_einsum_chunked": lambda X, d: sandwich_jax(X, d, variant="einsum_chunked"),
     }
 
 
@@ -156,9 +169,15 @@ def run_benchmarks(
     seed: int,
 ) -> list[KernelResult]:
     registry = _kernel_registry()
-    for variant in ("blocked", "parallel", "k_parallel", "serial", "blas_chunked", "blas_fused"):
+    for variant in (
+        "fused_blocked",
+        "k_parallel",
+        "blas_chunked",
+        "blas_tiled",
+        "blas_fused",
+    ):
         warmup_numba(variant)
-    for variant in ("einsum", "weighted_gram", "tensordot"):
+    for variant in ("einsum", "weighted_gram", "tensordot", "scan_chunked", "einsum_chunked"):
         warmup_jax(variant)
 
     results: list[KernelResult] = []
@@ -283,7 +302,7 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--warmup", type=int, default=2)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--profile-kernel", type=str, default="numba_blocked")
+    parser.add_argument("--profile-kernel", type=str, default="numba_blas_tiled")
     parser.add_argument("--profile-problem", type=str, default="glm_medium")
     args = parser.parse_args()
 
