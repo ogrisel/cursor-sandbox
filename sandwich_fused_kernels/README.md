@@ -51,6 +51,33 @@ Measured at **140k×80 float64** (`profile_memory.py`):
 
 **Trade-off:** tabmat is both fastest and most memory-efficient. Compiler backends that approach NumPy speed either materialize weighted row blocks (BLAS) or rely on XLA fusion (`einsum`) without reaching tabmat latency.
 
+## SIMD inspection (iteration 5)
+
+`inspect_simd.py` disassembles generated machine code (or dumps XLA/LLVM artifacts) and classifies SIMD families. Artifacts: `artifacts/simd_inspection.md`.
+
+| Backend | Variant | SIMD ISA | Instructions (sample) | Vectorizes successfully? |
+|---|---|---|---|---|
+| **tabmat** | `dense_base` micro-kernel | **SSE128** (`xmm`) | `mulpd`, `addpd`, `movapd` | **Yes** — hand-unrolled 4×4 blocks, no gather/scatter |
+| **tabmat** | `_denseC_sandwich` OpenMP | Scalar | `movsd`, `mulsd` | Setup loops only; compute is in `dense_base` |
+| **NumPy/BLAS** | `dgemm_kernel_HASWELL` | **AVX2+FMA** (`ymm`) | `vfmadd231pd`, `vbroadcastsd` | **Yes** — via OpenBLAS when weighted Gram calls `dgemm` |
+| **Numba** | `blas_fused` | **AVX2** (`ymm`) | `vmulpd`, `vbroadcastsd` | **Yes** — delegates to same BLAS stack |
+| **Numba** | `fused_blocked` | **AVX2** (`ymm`) | `vmulpd`, `vaddpd` on block `acc` | **Partially** — SIMD on contiguous `acc`, not on full `out` |
+| **Numba** | `k_inner` + `prange` | **AVX2** (`ymm`) | **`vscatterqpd`** | **No (harmful)** — auto-vectorization scatters into strided `out[i,j]` |
+| **JAX** | `einsum` fusion thunk | Scalar LLVM | `fmul float` (unrolled) | **No** in fusion kernel; matmul SIMD is in XLA/Eigen **runtime** |
+
+### Why some compilers fail to get useful SIMD
+
+1. **Numba `k_inner`**: LLVM vectorizes the `j`/`prange` loop but stores through **gather/scatter** into the dense output matrix — more SIMD instructions, much worse performance (100 ms vs 24 ms `fused_blocked` on glm_small).
+2. **Numba `fused_blocked`**: SIMD applies to **stack/block accumulators** with contiguous stores; lacks tabmat's manual 4×4 structure and still misses BLAS-level throughput.
+3. **JAX `einsum`**: XLA emits a **scalar-unrolled** `broadcast_multiply_fusion` thunk; the contraction itself is lowered to runtime libraries where SIMD is opaque to our dump.
+4. **tabmat vs AVX2 Numba**: tabmat uses **narrower SSE** but **better access patterns**; wider AVX2 does not help when memory patterns are wrong.
+
+### Iteration 5 outcome
+
+- Added `inspect_simd.py` and `numba_k_inner` experiment.
+- **Rejected** `k_inner` for production: SIMD present but `vscatterqpd` makes it ~4× slower than `fused_blocked` despite fewer flops in theory.
+- **Retained** `fused_blocked` and BLAS paths as best Numba options; **retained** JAX `einsum` (runtime matmul SIMD).
+
 ## Running benchmarks
 
 From the repo root:
@@ -78,6 +105,14 @@ uv run --python 3.11 --exclude-newer P7D \
   python sandwich_fused_kernels/profile_memory.py
 ```
 
+SIMD inspection:
+
+```bash
+uv run --python 3.11 --exclude-newer P7D \
+  --with tabmat --with numba --with jax --with jaxlib --with scipy \
+  python sandwich_fused_kernels/inspect_simd.py
+```
+
 Artifacts land in `sandwich_fused_kernels/artifacts/`.
 
 ## Experimental log
@@ -85,6 +120,13 @@ Artifacts land in `sandwich_fused_kernels/artifacts/`.
 ### Iterations 1–3 (initial exploration)
 
 See git history. Key findings: scalar Numba loops uncompetitive; tabmat leads all shapes; JAX `tensordot` best compiler on small f64.
+
+### Iteration 5 — SIMD disassembly
+
+- Added `inspect_simd.py`; disassembled tabmat `.so`, Numba `inspect_asm()`, JAX XLA dumps, OpenBLAS `dgemm_kernel_HASWELL`.
+- tabmat uses **SSE128 `mulpd`/`addpd`**; OpenBLAS/Numba BLAS use **AVX2 `vfmadd231pd`**.
+- Numba `k_inner` auto-vectorization emits **`vscatterqpd`** → rejected (slower despite SIMD).
+- JAX fusion thunk is **scalar LLVM**; matmul SIMD is in linked XLA/Eigen runtime.
 
 ### Iteration 4 — move to repo root + tabmat analysis + refined kernels
 
@@ -127,6 +169,7 @@ Full tables: `artifacts/benchmark_report.md`.
 sandwich_fused_kernels/
 ├── README.md
 ├── analyze_tabmat.py
+├── inspect_simd.py
 ├── benchmark_sandwich.py
 ├── profile_memory.py
 ├── kernels/
@@ -139,6 +182,9 @@ sandwich_fused_kernels/
     ├── benchmark_results.json
     ├── benchmark_report.md
     ├── tabmat_advantage_analysis.md
+    ├── simd_inspection.md
+    ├── tabmat_dense.so.asm
+    ├── numba_*.asm
     ├── memory_profile_float64.json
     └── profile_*.txt
 ```

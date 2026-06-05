@@ -138,6 +138,7 @@ def _kernel_registry() -> dict[str, Callable[..., np.ndarray]]:
         "numba_serial": lambda X, d: sandwich_numba(X, d, variant="serial"),
         "numba_parallel": lambda X, d: sandwich_numba(X, d, variant="parallel"),
         "numba_fused_blocked": lambda X, d: sandwich_numba(X, d, variant="fused_blocked"),
+        "numba_k_inner": lambda X, d: sandwich_numba(X, d, variant="k_inner"),
         "numba_k_parallel": lambda X, d: sandwich_numba(X, d, variant="k_parallel"),
         "numba_blas_chunked": lambda X, d: sandwich_numba(X, d, variant="blas_chunked"),
         "numba_blas_tiled": lambda X, d: sandwich_numba(X, d, variant="blas_tiled"),
@@ -171,6 +172,7 @@ def run_benchmarks(
     registry = _kernel_registry()
     for variant in (
         "fused_blocked",
+        "k_inner",
         "k_parallel",
         "blas_chunked",
         "blas_tiled",

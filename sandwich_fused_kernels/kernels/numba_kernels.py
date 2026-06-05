@@ -22,6 +22,20 @@ def sandwich_numba_serial(X: np.ndarray, d: np.ndarray) -> np.ndarray:
 
 
 @njit(parallel=True, fastmath=True, cache=True)
+def sandwich_numba_k_inner(X: np.ndarray, d: np.ndarray) -> np.ndarray:
+    """Parallel over columns with k as innermost loop (LLVM emits AVX2 ymm)."""
+    n_rows, n_cols = X.shape
+    out = np.zeros((n_cols, n_cols), dtype=X.dtype)
+    for j in prange(n_cols):
+        for i in range(n_cols):
+            acc = X.dtype.type(0.0)
+            for k in range(n_rows):
+                acc += X[k, i] * d[k] * X[k, j]
+            out[i, j] = acc
+    return out
+
+
+@njit(parallel=True, fastmath=True, cache=True)
 def sandwich_numba_parallel(X: np.ndarray, d: np.ndarray) -> np.ndarray:
     """Parallel over output columns; symmetric accumulation."""
     n_rows, n_cols = X.shape
@@ -142,6 +156,7 @@ def sandwich_numba_k_parallel(X: np.ndarray, d: np.ndarray) -> np.ndarray:
 _VARIANTS = {
     "serial": sandwich_numba_serial,
     "parallel": sandwich_numba_parallel,
+    "k_inner": sandwich_numba_k_inner,
     "fused_blocked": sandwich_numba_fused_blocked,
     "blas_fused": sandwich_numba_blas_fused,
     "blas_chunked": sandwich_numba_blas_chunked,
