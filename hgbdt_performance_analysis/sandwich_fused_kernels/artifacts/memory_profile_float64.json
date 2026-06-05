@@ -1,0 +1,62 @@
+[
+  {
+    "kernel": "numpy_diag_matmul",
+    "n_rows": 140000,
+    "n_cols": 80,
+    "dtype": "float64",
+    "peak_rss_mb": 1.48046875,
+    "theoretical_extra_mb": 149621.58203125,
+    "materializes_diag": true,
+    "materializes_weighted_x": true
+  },
+  {
+    "kernel": "numpy_weighted_gram",
+    "n_rows": 140000,
+    "n_cols": 80,
+    "dtype": "float64",
+    "peak_rss_mb": 0.0,
+    "theoretical_extra_mb": 85.44921875,
+    "materializes_diag": false,
+    "materializes_weighted_x": true
+  },
+  {
+    "kernel": "numpy_einsum",
+    "n_rows": 140000,
+    "n_cols": 80,
+    "dtype": "float64",
+    "peak_rss_mb": 0.0,
+    "theoretical_extra_mb": 0.0,
+    "materializes_diag": false,
+    "materializes_weighted_x": false
+  },
+  {
+    "kernel": "tabmat",
+    "n_rows": 140000,
+    "n_cols": 80,
+    "dtype": "float64",
+    "peak_rss_mb": 0.58984375,
+    "theoretical_extra_mb": 0.0,
+    "materializes_diag": false,
+    "materializes_weighted_x": false
+  },
+  {
+    "kernel": "numba_blas_fused",
+    "n_rows": 140000,
+    "n_cols": 80,
+    "dtype": "float64",
+    "peak_rss_mb": 0.0,
+    "theoretical_extra_mb": 85.44921875,
+    "materializes_diag": false,
+    "materializes_weighted_x": true
+  },
+  {
+    "kernel": "jax_tensordot",
+    "n_rows": 140000,
+    "n_cols": 80,
+    "dtype": "float64",
+    "peak_rss_mb": 10.57421875,
+    "theoretical_extra_mb": 85.44921875,
+    "materializes_diag": false,
+    "materializes_weighted_x": true
+  }
+]

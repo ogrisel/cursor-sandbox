@@ -1,0 +1,332 @@
+#!/usr/bin/env python3
+"""Benchmark and profile sandwich-product kernels on CPU."""
+
+from __future__ import annotations
+
+import argparse
+import cProfile
+import gc
+import json
+import os
+import pstats
+import statistics
+import time
+import tracemalloc
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Callable
+
+import numpy as np
+import psutil
+
+from kernels import (
+    sandwich_jax,
+    sandwich_numba,
+    sandwich_numpy_diag_matmul,
+    sandwich_numpy_einsum,
+    sandwich_numpy_weighted_gram,
+    sandwich_reference,
+    sandwich_tabmat,
+    warmup_jax,
+    warmup_numba,
+)
+
+
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_ARTIFACTS = BASE_DIR / "artifacts"
+
+
+@dataclass
+class ProblemSpec:
+    name: str
+    n_rows: int
+    n_cols: int
+    dtype: str
+
+
+@dataclass
+class KernelResult:
+    kernel: str
+    problem: str
+    median_seconds: float
+    min_seconds: float
+    max_seconds: float
+    peak_rss_delta_mb: float
+    tracemalloc_peak_mb: float
+    max_abs_error: float
+    relative_error: float
+    extra_alloc_estimate_mb: float
+    speedup_vs_numpy_einsum: float
+    speedup_vs_tabmat: float
+
+
+def _make_problem(spec: ProblemSpec, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(seed)
+    dtype = np.float32 if spec.dtype == "float32" else np.float64
+    X = rng.standard_normal((spec.n_rows, spec.n_cols), dtype=dtype)
+    d = rng.random(spec.n_rows, dtype=dtype) + 0.1
+    return np.ascontiguousarray(X), np.ascontiguousarray(d)
+
+
+def _rss_mb() -> float:
+    return psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024)
+
+
+def _measure_kernel(
+    fn: Callable[[], np.ndarray],
+    reference: np.ndarray,
+    *,
+    repeats: int,
+    warmup: int,
+) -> tuple[list[float], float, float, float, float]:
+    gc.collect()
+    rss_before = _rss_mb()
+    tracemalloc.start()
+    timings: list[float] = []
+    out: np.ndarray | None = None
+
+    for _ in range(warmup):
+        out = fn()
+
+    for _ in range(repeats):
+        gc.collect()
+        t0 = time.perf_counter()
+        out = fn()
+        timings.append(time.perf_counter() - t0)
+
+    _, peak_trace = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    rss_after = _rss_mb()
+
+    assert out is not None
+    diff = np.abs(out - reference)
+    denom = np.maximum(np.abs(reference), 1e-12)
+    max_abs_error = float(diff.max())
+    relative_error = float((diff / denom).max())
+    peak_rss_delta = max(0.0, rss_after - rss_before)
+    tracemalloc_peak_mb = peak_trace / (1024 * 1024)
+    return timings, peak_rss_delta, tracemalloc_peak_mb, max_abs_error, relative_error
+
+
+def _extra_alloc_estimate_mb(n_rows: int, n_cols: int, dtype: str, kernel: str) -> float:
+    bytes_per = 4 if dtype == "float32" else 8
+    if kernel in {"numpy_diag_matmul"}:
+        return (n_rows * n_rows + n_rows * n_cols) * bytes_per / (1024 * 1024)
+    if kernel in {"numpy_weighted_gram", "jax_weighted_gram"}:
+        return n_rows * n_cols * bytes_per / (1024 * 1024)
+    if kernel in {"numpy_einsum", "jax_einsum", "jax_tensordot"}:
+        return n_cols * n_cols * bytes_per / (1024 * 1024)
+    return 0.0
+
+
+def _kernel_registry() -> dict[str, Callable[..., np.ndarray]]:
+    return {
+        "numpy_diag_matmul": sandwich_numpy_diag_matmul,
+        "numpy_einsum": sandwich_numpy_einsum,
+        "numpy_weighted_gram": sandwich_numpy_weighted_gram,
+        "tabmat": sandwich_tabmat,
+        "numba_serial": lambda X, d: sandwich_numba(X, d, variant="serial"),
+        "numba_parallel": lambda X, d: sandwich_numba(X, d, variant="parallel"),
+        "numba_blocked": lambda X, d: sandwich_numba(X, d, variant="blocked"),
+        "numba_k_parallel": lambda X, d: sandwich_numba(X, d, variant="k_parallel"),
+        "numba_blas_chunked": lambda X, d: sandwich_numba(X, d, variant="blas_chunked"),
+        "numba_blas_fused": lambda X, d: sandwich_numba(X, d, variant="blas_fused"),
+        "jax_einsum": lambda X, d: sandwich_jax(X, d, variant="einsum"),
+        "jax_weighted_gram": lambda X, d: sandwich_jax(X, d, variant="weighted_gram"),
+        "jax_tensordot": lambda X, d: sandwich_jax(X, d, variant="tensordot"),
+    }
+
+
+def _default_problems() -> list[ProblemSpec]:
+    return [
+        ProblemSpec("glm_small", 50_000, 40, "float64"),
+        ProblemSpec("glm_medium", 140_000, 80, "float64"),
+        ProblemSpec("glm_tall_skinny", 320_000, 32, "float64"),
+        ProblemSpec("glm_square_cols", 80_000, 120, "float64"),
+        ProblemSpec("glm_small_f32", 50_000, 40, "float32"),
+    ]
+
+
+def run_benchmarks(
+    *,
+    problems: list[ProblemSpec],
+    kernels: list[str],
+    repeats: int,
+    warmup: int,
+    seed: int,
+) -> list[KernelResult]:
+    registry = _kernel_registry()
+    for variant in ("blocked", "parallel", "k_parallel", "serial", "blas_chunked", "blas_fused"):
+        warmup_numba(variant)
+    for variant in ("einsum", "weighted_gram", "tensordot"):
+        warmup_jax(variant)
+
+    results: list[KernelResult] = []
+    baseline_times: dict[str, float] = {}
+    tabmat_times: dict[str, float] = {}
+
+    for spec in problems:
+        X, d = _make_problem(spec, seed)
+        reference = sandwich_reference(X, d)
+
+        for kernel_name in kernels:
+            fn = registry[kernel_name]
+            timings, rss_delta, trace_peak, max_err, rel_err = _measure_kernel(
+                lambda X=X, d=d, fn=fn: fn(X, d),
+                reference,
+                repeats=repeats,
+                warmup=warmup,
+            )
+            median = statistics.median(timings)
+            if kernel_name == "numpy_einsum":
+                baseline_times[spec.name] = median
+            if kernel_name == "tabmat":
+                tabmat_times[spec.name] = median
+
+            results.append(
+                KernelResult(
+                    kernel=kernel_name,
+                    problem=spec.name,
+                    median_seconds=median,
+                    min_seconds=min(timings),
+                    max_seconds=max(timings),
+                    peak_rss_delta_mb=rss_delta,
+                    tracemalloc_peak_mb=trace_peak,
+                    max_abs_error=max_err,
+                    relative_error=rel_err,
+                    extra_alloc_estimate_mb=_extra_alloc_estimate_mb(
+                        spec.n_rows, spec.n_cols, spec.dtype, kernel_name
+                    ),
+                    speedup_vs_numpy_einsum=0.0,
+                    speedup_vs_tabmat=0.0,
+                )
+            )
+
+        for row in results:
+            if row.problem != spec.name:
+                continue
+            base = baseline_times.get(spec.name)
+            tab = tabmat_times.get(spec.name)
+            if base:
+                row.speedup_vs_numpy_einsum = base / row.median_seconds
+            if tab:
+                row.speedup_vs_tabmat = tab / row.median_seconds
+
+    return results
+
+
+def profile_kernel(
+    kernel_name: str,
+    spec: ProblemSpec,
+    *,
+    seed: int,
+    out_path: Path,
+) -> None:
+    registry = _kernel_registry()
+    X, d = _make_problem(spec, seed)
+    fn = registry[kernel_name]
+
+    if kernel_name.startswith("numba"):
+        warmup_numba(kernel_name.removeprefix("numba_"))
+    if kernel_name.startswith("jax"):
+        warmup_jax(kernel_name.removeprefix("jax_"))
+
+    profiler = cProfile.Profile()
+    profiler.enable()
+    fn(X, d)
+    profiler.disable()
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as handle:
+        stats = pstats.Stats(profiler, stream=handle)
+        stats.sort_stats("cumtime")
+        stats.print_stats(40)
+
+
+def _write_markdown_report(results: list[KernelResult], path: Path) -> None:
+    by_problem: dict[str, list[KernelResult]] = {}
+    for row in results:
+        by_problem.setdefault(row.problem, []).append(row)
+
+    lines = ["# Sandwich benchmark report", ""]
+    for problem, rows in by_problem.items():
+        rows_sorted = sorted(rows, key=lambda r: r.median_seconds)
+        lines.append(f"## {problem}")
+        lines.append("")
+        lines.append(
+            "| kernel | median (ms) | vs numpy_einsum | vs tabmat | peak RSS Δ (MB) | max rel err |"
+        )
+        lines.append("|---|---:|---:|---:|---:|---:|")
+        for row in rows_sorted:
+            lines.append(
+                f"| {row.kernel} | {row.median_seconds * 1000:.2f} | "
+                f"{row.speedup_vs_numpy_einsum:.2f}x | {row.speedup_vs_tabmat:.2f}x | "
+                f"{row.peak_rss_delta_mb:.2f} | {row.relative_error:.2e} |"
+            )
+        best = rows_sorted[0]
+        tab = next((r for r in rows if r.kernel == "tabmat"), None)
+        lines.append("")
+        if tab:
+            lines.append(
+                f"Best: **{best.kernel}** ({best.median_seconds * 1000:.2f} ms). "
+                f"tabmat: {tab.median_seconds * 1000:.2f} ms "
+                f"({tab.median_seconds / best.median_seconds:.2f}x vs best)."
+            )
+        lines.append("")
+
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--artifacts-dir", type=Path, default=DEFAULT_ARTIFACTS)
+    parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--warmup", type=int, default=2)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--profile-kernel", type=str, default="numba_blocked")
+    parser.add_argument("--profile-problem", type=str, default="glm_medium")
+    args = parser.parse_args()
+
+    problems = _default_problems()
+    kernels = list(_kernel_registry().keys())
+    results = run_benchmarks(
+        problems=problems,
+        kernels=kernels,
+        repeats=args.repeats,
+        warmup=args.warmup,
+        seed=args.seed,
+    )
+
+    args.artifacts_dir.mkdir(parents=True, exist_ok=True)
+    json_path = args.artifacts_dir / "benchmark_results.json"
+    json_path.write_text(
+        json.dumps([asdict(r) for r in results], indent=2),
+        encoding="utf-8",
+    )
+
+    _write_markdown_report(results, args.artifacts_dir / "benchmark_report.md")
+
+    profile_spec = next(p for p in problems if p.name == args.profile_problem)
+    profile_kernel(
+        args.profile_kernel,
+        profile_spec,
+        seed=args.seed,
+        out_path=args.artifacts_dir / f"profile_{args.profile_kernel}_{args.profile_problem}.txt",
+    )
+
+    best_overall = min(results, key=lambda r: r.median_seconds)
+    print(
+        json.dumps(
+            {
+                "results_path": str(json_path),
+                "best_kernel": best_overall.kernel,
+                "best_problem": best_overall.problem,
+                "best_median_ms": best_overall.median_seconds * 1000,
+            },
+            indent=2,
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()
