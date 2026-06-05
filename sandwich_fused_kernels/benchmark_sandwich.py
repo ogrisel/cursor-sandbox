@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark and profile sandwich-product kernels on CPU."""
+"""Benchmark sandwich-product kernels on CPU (single- and multi-threaded)."""
 
 from __future__ import annotations
 
@@ -30,6 +30,7 @@ from kernels import (
     warmup_jax,
     warmup_numba,
 )
+from threading_utils import default_multi_thread_count, sandwich_threading
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -48,6 +49,8 @@ class ProblemSpec:
 class KernelResult:
     kernel: str
     problem: str
+    threading: str
+    num_threads: int
     median_seconds: float
     min_seconds: float
     max_seconds: float
@@ -120,7 +123,13 @@ def _extra_alloc_estimate_mb(n_rows: int, n_cols: int, dtype: str, kernel: str) 
         "numba_blas_fused",
     }:
         return n_rows * n_cols * bytes_per / (1024 * 1024)
-    if kernel in {"jax_scan_chunked", "jax_einsum_chunked", "numba_blas_tiled"}:
+    if kernel in {
+        "jax_scan_chunked",
+        "jax_einsum_chunked",
+        "numba_blas_tiled",
+        "numba_blas_kchunk_mt",
+        "numba_k_chunk_tabmat",
+    }:
         return chunk_rows * n_cols * bytes_per / (1024 * 1024)
     if kernel in {"numpy_einsum", "jax_einsum"}:
         return n_cols * n_cols * bytes_per / (1024 * 1024)
@@ -131,24 +140,60 @@ def _extra_alloc_estimate_mb(n_rows: int, n_cols: int, dtype: str, kernel: str) 
 
 def _kernel_registry() -> dict[str, Callable[..., np.ndarray]]:
     return {
-        "numpy_diag_matmul": sandwich_numpy_diag_matmul,
         "numpy_einsum": sandwich_numpy_einsum,
         "numpy_weighted_gram": sandwich_numpy_weighted_gram,
+        "numpy_diag_matmul": sandwich_numpy_diag_matmul,
         "tabmat": sandwich_tabmat,
-        "numba_serial": lambda X, d: sandwich_numba(X, d, variant="serial"),
-        "numba_parallel": lambda X, d: sandwich_numba(X, d, variant="parallel"),
+        "numba_rival_st": lambda X, d: sandwich_numba(X, d, variant="rival_st"),
+        "numba_kouter_st": lambda X, d: sandwich_numba(X, d, variant="kouter_st"),
+        "numba_tabmat_style_st": lambda X, d: sandwich_numba(X, d, variant="tabmat_style_st"),
+        "numba_rival_mt": lambda X, d: sandwich_numba(X, d, variant="rival_mt"),
+        "numba_tabmat_style_mt": lambda X, d: sandwich_numba(X, d, variant="tabmat_style_mt"),
+        "numba_kchunk_kouter_mt": lambda X, d: sandwich_numba(X, d, variant="rival_mt"),
+        "numba_k_chunk_tabmat": lambda X, d: sandwich_numba(X, d, variant="k_chunk_tabmat"),
+        "numba_blas_kchunk_mt": lambda X, d: sandwich_numba(X, d, variant="blas_kchunk_mt"),
         "numba_fused_blocked": lambda X, d: sandwich_numba(X, d, variant="fused_blocked"),
-        "numba_k_inner": lambda X, d: sandwich_numba(X, d, variant="k_inner"),
-        "numba_k_parallel": lambda X, d: sandwich_numba(X, d, variant="k_parallel"),
-        "numba_blas_chunked": lambda X, d: sandwich_numba(X, d, variant="blas_chunked"),
-        "numba_blas_tiled": lambda X, d: sandwich_numba(X, d, variant="blas_tiled"),
         "numba_blas_fused": lambda X, d: sandwich_numba(X, d, variant="blas_fused"),
+        "numba_blas_tiled": lambda X, d: sandwich_numba(X, d, variant="blas_tiled"),
         "jax_einsum": lambda X, d: sandwich_jax(X, d, variant="einsum"),
-        "jax_weighted_gram": lambda X, d: sandwich_jax(X, d, variant="weighted_gram"),
         "jax_tensordot": lambda X, d: sandwich_jax(X, d, variant="tensordot"),
-        "jax_scan_chunked": lambda X, d: sandwich_jax(X, d, variant="scan_chunked"),
-        "jax_einsum_chunked": lambda X, d: sandwich_jax(X, d, variant="einsum_chunked"),
     }
+
+
+def _blas_threads_for_kernel(kernel_name: str, threading_mode: str, num_threads: int) -> int:
+    """Chunked BLAS kernels use single-thread GEMM inside each prange worker."""
+    if threading_mode == "multi" and kernel_name in {
+        "numba_blas_kchunk_mt",
+        "numba_blas_tiled",
+        "numba_blas_chunked",
+    }:
+        return 1
+    return num_threads
+
+
+def _kernels_for_threading(threading_mode: str) -> list[str]:
+    """Pick kernel variants appropriate for each threading regime."""
+    common = [
+        "numpy_einsum",
+        "numpy_weighted_gram",
+        "tabmat",
+        "numba_blas_fused",
+        "jax_einsum",
+    ]
+    if threading_mode == "single":
+        return common + [
+            "numba_rival_st",
+            "numba_tabmat_style_st",
+            "numba_k_chunk_tabmat",
+        ]
+    return common + [
+        "numba_rival_mt",
+        "numba_blas_kchunk_mt",
+        "numba_tabmat_style_mt",
+        "numba_k_chunk_tabmat",
+        "numba_blas_tiled",
+        "numba_fused_blocked",
+    ]
 
 
 def _default_problems() -> list[ProblemSpec]:
@@ -165,21 +210,26 @@ def run_benchmarks(
     *,
     problems: list[ProblemSpec],
     kernels: list[str],
+    threading_mode: str,
+    num_threads: int,
     repeats: int,
     warmup: int,
     seed: int,
 ) -> list[KernelResult]:
     registry = _kernel_registry()
     for variant in (
+        "rival_st",
+        "tabmat_style_st",
+        "rival_mt",
+        "blas_kchunk_mt",
+        "tabmat_style_mt",
+        "k_chunk_tabmat",
         "fused_blocked",
-        "k_inner",
-        "k_parallel",
-        "blas_chunked",
         "blas_tiled",
         "blas_fused",
     ):
         warmup_numba(variant)
-    for variant in ("einsum", "weighted_gram", "tensordot", "scan_chunked", "einsum_chunked"):
+    for variant in ("einsum", "tensordot"):
         warmup_jax(variant)
 
     results: list[KernelResult] = []
@@ -192,22 +242,21 @@ def run_benchmarks(
 
         for kernel_name in kernels:
             fn = registry[kernel_name]
-            timings, rss_delta, trace_peak, max_err, rel_err = _measure_kernel(
-                lambda X=X, d=d, fn=fn: fn(X, d),
-                reference,
-                repeats=repeats,
-                warmup=warmup,
-            )
+            blas_threads = _blas_threads_for_kernel(kernel_name, threading_mode, num_threads)
+            with sandwich_threading(num_threads, blas_threads=blas_threads):
+                timings, rss_delta, trace_peak, max_err, rel_err = _measure_kernel(
+                    lambda X=X, d=d, fn=fn: fn(X, d),
+                    reference,
+                    repeats=repeats,
+                    warmup=warmup,
+                )
             median = statistics.median(timings)
-            if kernel_name == "numpy_einsum":
-                baseline_times[spec.name] = median
-            if kernel_name == "tabmat":
-                tabmat_times[spec.name] = median
-
             results.append(
                 KernelResult(
                     kernel=kernel_name,
                     problem=spec.name,
+                    threading=threading_mode,
+                    num_threads=num_threads,
                     median_seconds=median,
                     min_seconds=min(timings),
                     max_seconds=max(timings),
@@ -222,9 +271,13 @@ def run_benchmarks(
                     speedup_vs_tabmat=0.0,
                 )
             )
+            if kernel_name == "numpy_einsum":
+                baseline_times[spec.name] = median
+            if kernel_name == "tabmat":
+                tabmat_times[spec.name] = median
 
         for row in results:
-            if row.problem != spec.name:
+            if row.problem != spec.name or row.threading != threading_mode:
                 continue
             base = baseline_times.get(spec.name)
             tab = tabmat_times.get(spec.name)
@@ -236,40 +289,16 @@ def run_benchmarks(
     return results
 
 
-def profile_kernel(
-    kernel_name: str,
-    spec: ProblemSpec,
-    *,
-    seed: int,
-    out_path: Path,
-) -> None:
-    registry = _kernel_registry()
-    X, d = _make_problem(spec, seed)
-    fn = registry[kernel_name]
-
-    if kernel_name.startswith("numba"):
-        warmup_numba(kernel_name.removeprefix("numba_"))
-    if kernel_name.startswith("jax"):
-        warmup_jax(kernel_name.removeprefix("jax_"))
-
-    profiler = cProfile.Profile()
-    profiler.enable()
-    fn(X, d)
-    profiler.disable()
-
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", encoding="utf-8") as handle:
-        stats = pstats.Stats(profiler, stream=handle)
-        stats.sort_stats("cumtime")
-        stats.print_stats(40)
-
-
-def _write_markdown_report(results: list[KernelResult], path: Path) -> None:
+def _write_markdown_report(results: list[KernelResult], path: Path, title: str) -> None:
     by_problem: dict[str, list[KernelResult]] = {}
     for row in results:
         by_problem.setdefault(row.problem, []).append(row)
 
-    lines = ["# Sandwich benchmark report", ""]
+    lines = [f"# {title}", ""]
+    if results:
+        lines.append(f"Threading: **{results[0].threading}** ({results[0].num_threads} threads)")
+        lines.append("")
+
     for problem, rows in by_problem.items():
         rows_sorted = sorted(rows, key=lambda r: r.median_seconds)
         lines.append(f"## {problem}")
@@ -298,34 +327,91 @@ def _write_markdown_report(results: list[KernelResult], path: Path) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def profile_kernel(
+    kernel_name: str,
+    spec: ProblemSpec,
+    *,
+    seed: int,
+    out_path: Path,
+    num_threads: int,
+) -> None:
+    registry = _kernel_registry()
+    X, d = _make_problem(spec, seed)
+    fn = registry[kernel_name]
+
+    if kernel_name.startswith("numba"):
+        variant = kernel_name.removeprefix("numba_")
+        if variant.endswith("_st"):
+            variant = variant.replace("_st", "_st")
+        warmup_numba(variant.replace("tabmat_style_mt", "tabmat_style_mt").replace("tabmat_style_st", "tabmat_style_st"))
+    if kernel_name.startswith("jax"):
+        warmup_jax("einsum")
+
+    with sandwich_threading(num_threads):
+        profiler = cProfile.Profile()
+        profiler.enable()
+        fn(X, d)
+        profiler.disable()
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as handle:
+        stats = pstats.Stats(profiler, stream=handle)
+        stats.sort_stats("cumtime")
+        stats.print_stats(40)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts-dir", type=Path, default=DEFAULT_ARTIFACTS)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--warmup", type=int, default=2)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--profile-kernel", type=str, default="numba_blas_tiled")
+    parser.add_argument("--profile-kernel", type=str, default="numba_tabmat_style_mt")
     parser.add_argument("--profile-problem", type=str, default="glm_medium")
     args = parser.parse_args()
 
     problems = _default_problems()
-    kernels = list(_kernel_registry().keys())
-    results = run_benchmarks(
-        problems=problems,
-        kernels=kernels,
-        repeats=args.repeats,
-        warmup=args.warmup,
-        seed=args.seed,
-    )
+    mt_threads = default_multi_thread_count()
+
+    all_results: list[KernelResult] = []
+    for threading_mode, num_threads in (("single", 1), ("multi", mt_threads)):
+        kernels = _kernels_for_threading(threading_mode)
+        all_results.extend(
+            run_benchmarks(
+                problems=problems,
+                kernels=kernels,
+                threading_mode=threading_mode,
+                num_threads=num_threads,
+                repeats=args.repeats,
+                warmup=args.warmup,
+                seed=args.seed,
+            )
+        )
 
     args.artifacts_dir.mkdir(parents=True, exist_ok=True)
     json_path = args.artifacts_dir / "benchmark_results.json"
     json_path.write_text(
-        json.dumps([asdict(r) for r in results], indent=2),
+        json.dumps([asdict(r) for r in all_results], indent=2),
         encoding="utf-8",
     )
 
-    _write_markdown_report(results, args.artifacts_dir / "benchmark_report.md")
+    single = [r for r in all_results if r.threading == "single"]
+    multi = [r for r in all_results if r.threading == "multi"]
+    _write_markdown_report(
+        single,
+        args.artifacts_dir / "benchmark_report_single_thread.md",
+        "Sandwich benchmark report (single-threaded)",
+    )
+    _write_markdown_report(
+        multi,
+        args.artifacts_dir / "benchmark_report_multi_thread.md",
+        "Sandwich benchmark report (multi-threaded)",
+    )
+    _write_markdown_report(
+        all_results,
+        args.artifacts_dir / "benchmark_report.md",
+        "Sandwich benchmark report (single + multi threaded)",
+    )
 
     profile_spec = next(p for p in problems if p.name == args.profile_problem)
     profile_kernel(
@@ -333,16 +419,27 @@ def main() -> None:
         profile_spec,
         seed=args.seed,
         out_path=args.artifacts_dir / f"profile_{args.profile_kernel}_{args.profile_problem}.txt",
+        num_threads=mt_threads,
     )
 
-    best_overall = min(results, key=lambda r: r.median_seconds)
+    best_single = min(single, key=lambda r: r.median_seconds)
+    best_multi = min(multi, key=lambda r: r.median_seconds)
     print(
         json.dumps(
             {
                 "results_path": str(json_path),
-                "best_kernel": best_overall.kernel,
-                "best_problem": best_overall.problem,
-                "best_median_ms": best_overall.median_seconds * 1000,
+                "single_thread_best": {
+                    "kernel": best_single.kernel,
+                    "problem": best_single.problem,
+                    "median_ms": best_single.median_seconds * 1000,
+                    "vs_tabmat": best_single.speedup_vs_tabmat,
+                },
+                "multi_thread_best": {
+                    "kernel": best_multi.kernel,
+                    "problem": best_multi.problem,
+                    "median_ms": best_multi.median_seconds * 1000,
+                    "vs_tabmat": best_multi.speedup_vs_tabmat,
+                },
             },
             indent=2,
         )

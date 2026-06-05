@@ -78,16 +78,39 @@ Measured at **140k×80 float64** (`profile_memory.py`):
 - **Rejected** `k_inner` for production: SIMD present but `vscatterqpd` makes it ~4× slower than `fused_blocked` despite fewer flops in theory.
 - **Retained** `fused_blocked` and BLAS paths as best Numba options; **retained** JAX `einsum` (runtime matmul SIMD).
 
+### Iteration 6 — single- vs multi-threaded benchmarks + rival Numba kernels
+
+Benchmarks now report **single-threaded (1 thread)** and **multi-threaded (4 threads)** results separately via `threading_utils.sandwich_threading`, which pins Numba, OpenMP, and BLAS pools. Chunked BLAS kernels use `blas_threads=1` inside each `prange` worker to avoid oversubscription.
+
+**New Numba kernels** (`kernels/numba_kernels.py`):
+
+| Kernel | Threading | Strategy |
+|---|---|---|
+| `rival_st` / `tabmat_style_st` | Single | Block-outer 4×4 fused rank-1 updates, symmetric flush |
+| `rival_mt` / `k_chunk_tabmat` | Multi | `prange` over row chunks → block-outer fused partials → sum |
+| `blas_kchunk_mt` | Multi | `prange` over row chunks → single-thread `(Xc*dc).T @ Xc` per worker |
+| `kouter_st` | Single | K-outer block buffers (tested; slower than block-outer on these shapes) |
+
+**Symmetric flush bug fixed:** off-diagonal blocks (`ib > jb`) were incorrectly skipped by a `gi > gj` filter meant only for diagonal blocks.
+
+**Rival-kernel outcome:** pure fused `rival_mt` reaches **~0.10× tabmat** on `glm_small` MT (21 ms vs 2.1 ms). The best Numba MT path is **`blas_kchunk_mt`** at **~0.33× tabmat** (6.4 ms) — still ~3× behind tabmat's fused OpenMP+SSE micro-kernel, but **~3× faster than the fused rival** and **~2× faster than `blas_fused`** on the same problem.
+
 ## Running benchmarks
 
 From the repo root:
 
 ```bash
 uv run --python 3.11 --exclude-newer P7D \
-  --with tabmat --with numba --with jax --with jaxlib --with psutil --with matplotlib \
+  --with tabmat --with numba --with jax --with jaxlib --with scipy --with threadpoolctl --with psutil \
   python sandwich_fused_kernels/benchmark_sandwich.py \
   --repeats 5 --warmup 2
 ```
+
+Outputs:
+
+- `artifacts/benchmark_report_single_thread.md`
+- `artifacts/benchmark_report_multi_thread.md`
+- `artifacts/benchmark_report.md` (combined)
 
 Tabmat advantage analysis:
 
@@ -135,33 +158,44 @@ See git history. Key findings: scalar Numba loops uncompetitive; tabmat leads al
 - Added `numba_fused_blocked` (corrected symmetric bug), `numba_blas_tiled` (2048-row chunks), `jax_scan_chunked`, `jax_einsum_chunked`.
 - **Profiling validated assumptions:** fused blocked Numba still 10× behind tabmat; BLAS chunking helps medium/tall shapes; chunked JAX does not beat fused `einsum` on CPU.
 
-### Iteration 4 results (linux-amd64, 4 cores, 5 repeats)
+### Iteration 6 results (linux-amd64, 4 cores, 5 repeats)
 
-| Problem | tabmat | Best compiler | vs tabmat | vs numpy_einsum | Best compiler memory trait |
-|---|---:|---|---:|---:|---|
-| glm_small 50k×40 f64 | 2.32 ms | jax_weighted_gram 10.68 ms | 0.22× | **1.93×** | materializes weighted `X` |
-| glm_medium 140k×80 f64 | 20.48 ms | numba_blas_fused 81.56 ms | 0.25× | **1.45×** | materializes weighted `X` |
-| glm_tall_skinny 320k×32 f64 | 10.61 ms | numba_blas_tiled 68.37 ms | 0.16× | 1.00× | chunked weighted GEMM |
-| glm_square_cols 80k×120 f64 | 20.63 ms | numpy_einsum 81.33 ms | 0.25× | 1.00× | fused einsum, low RSS |
-| glm_small_f32 50k×40 | 2.46 ms | jax_einsum 8.06 ms | 0.31× | **1.57×** | low RSS |
+#### Single-threaded (1 thread)
 
-Full tables: `artifacts/benchmark_report.md`.
+| Problem | tabmat | Best Numba | `rival_st` | Best Numba vs tabmat |
+|---|---:|---|---:|---:|
+| glm_small 50k×40 f64 | 6.59 ms | blas_fused 14.35 ms | 94.5 ms | 0.46× |
+| glm_medium 140k×80 f64 | 65.87 ms | blas_fused 101.6 ms | 946 ms | 0.65× |
+| glm_tall_skinny 320k×32 f64 | 38.62 ms | blas_fused 79.0 ms | 353 ms | 0.49× |
+| glm_small_f32 50k×40 | 4.33 ms | blas_fused 7.44 ms | 80.7 ms | 0.58× |
+
+#### Multi-threaded (4 threads)
+
+| Problem | tabmat | Best Numba | `rival_mt` | `blas_kchunk_mt` | Best Numba vs tabmat |
+|---|---:|---|---:|---:|---:|
+| glm_small 50k×40 f64 | 2.11 ms | blas_tiled 6.34 ms | 21.2 ms | 6.42 ms | **0.33×** |
+| glm_medium 140k×80 f64 | 21.77 ms | blas_tiled 45.5 ms | 259 ms | 48.9 ms | **0.48×** |
+| glm_tall_skinny 320k×32 f64 | 13.36 ms | blas_kchunk 39.8 ms | 109 ms | 39.8 ms | **0.34×** |
+| glm_small_f32 50k×40 | 1.61 ms | blas_kchunk 5.64 ms | 20.9 ms | 5.64 ms | **0.28×** |
+
+Full tables: `artifacts/benchmark_report_single_thread.md`, `artifacts/benchmark_report_multi_thread.md`.
 
 ## Best performance achieved so far
 
-| Metric | Result |
-|---|---|
-| **Overall fastest** | tabmat — 2.32 ms (`glm_small` f64) |
-| **Best compiler vs numpy_einsum** | `jax_weighted_gram` — **1.93×** on `glm_small` |
-| **Best compiler vs tabmat** | `jax_weighted_gram` — **0.22×** (still ~4.6× slower) |
-| **Best memory-efficient compiler** | `jax_einsum` / `numba_fused_blocked` — no full `n×m` buffer; latter is much slower |
-| **Best medium-size compiler** | `numba_blas_fused` — 81.6 ms vs tabmat 20.5 ms, **1.45× numpy** |
+| Metric | Single-threaded | Multi-threaded |
+|---|---|---|
+| **Overall fastest** | tabmat — 4.33 ms (`glm_small_f32`) | tabmat — 1.61 ms (`glm_small_f32`) |
+| **Best Numba vs tabmat** | `blas_fused` — **0.58×** (`glm_small_f32`) | `blas_tiled` / `blas_kchunk_mt` — **0.33×** (`glm_small` f64) |
+| **Best fused rival vs tabmat** | `rival_st` — 0.07× (`glm_small` f64) | `rival_mt` — 0.10× (`glm_small` f64) |
+| **Best compiler vs numpy_einsum (MT)** | — | `blas_tiled` — **2.21×** (`glm_small` f64) |
 
 **Practical recommendation:**
 
-- Use **tabmat** when available.
-- Fallback: **`jax.jit` + `einsum`** (f64 small/medium, low memory) or **`numba_blas_fused`** (when JAX unavailable).
-- Avoid pure scalar Numba triple loops for production; they remain order-of-magnitude too slow.
+- Use **tabmat** when available (fastest ST and MT; lowest memory).
+- **Best Numba MT:** `blas_kchunk_mt` or `blas_tiled` with `blas_threads=1` per worker (~3× slower than tabmat on small GLM shapes).
+- **Best Numba ST:** `blas_fused` (~0.5–0.6× tabmat).
+- **Fused `rival_*` kernels** validate tabmat's algorithmic choices (fused weights, symmetric blocks) but LLVM cannot match hand-tuned SSE micro-kernels; they remain **~10× behind tabmat**.
+- Avoid `k_inner` and scatter-vectorized output updates.
 
 ## Layout
 
@@ -171,6 +205,7 @@ sandwich_fused_kernels/
 ├── analyze_tabmat.py
 ├── inspect_simd.py
 ├── benchmark_sandwich.py
+├── threading_utils.py
 ├── profile_memory.py
 ├── kernels/
 │   ├── reference.py
@@ -181,6 +216,8 @@ sandwich_fused_kernels/
 └── artifacts/
     ├── benchmark_results.json
     ├── benchmark_report.md
+    ├── benchmark_report_single_thread.md
+    ├── benchmark_report_multi_thread.md
     ├── tabmat_advantage_analysis.md
     ├── simd_inspection.md
     ├── tabmat_dense.so.asm
