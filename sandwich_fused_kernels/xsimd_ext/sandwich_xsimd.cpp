@@ -18,7 +18,9 @@ namespace {
 
 using batch = xsimd::batch<double>;
 constexpr std::size_t kBatch = batch::size;
-constexpr int kBlock = 4;
+constexpr int kDefaultBlock = 4;
+constexpr int kDefaultChunkFactor = 4;
+constexpr int kMaxBlock = 64;
 
 inline void rank1_update_block(
     double* acc,
@@ -86,6 +88,7 @@ inline void accumulate_tabmat_blocks(
     int block
 ) {
     const int n_blocks = (n_cols + block - 1) / block;
+    std::vector<double> acc(static_cast<std::size_t>(block) * static_cast<std::size_t>(block), 0.0);
     for (int jb = 0; jb < n_blocks; ++jb) {
         const int j0 = jb * block;
         const int j1 = std::min(j0 + block, n_cols);
@@ -94,13 +97,13 @@ inline void accumulate_tabmat_blocks(
             const int i0 = ib * block;
             const int i1 = std::min(i0 + block, n_cols);
             const int ni = i1 - i0;
-            double acc[kBlock * kBlock] = {0.0};
+            std::fill(acc.begin(), acc.end(), 0.0);
             for (int k = 0; k < n_rows; ++k) {
                 const double w = d[k];
                 const double* x_row = X + static_cast<std::size_t>(k) * n_cols;
-                rank1_update_block(acc, block, x_row, i0, j0, ni, nj, w);
+                rank1_update_block(acc.data(), block, x_row, i0, j0, ni, nj, w);
             }
-            flush_block_acc(out, n_cols, acc, block, i0, j0, ni, nj, ib == jb);
+            flush_block_acc(out, n_cols, acc.data(), block, i0, j0, ni, nj, ib == jb);
         }
     }
 }
@@ -111,8 +114,17 @@ void sandwich_xsimd_impl(
     double* out,
     int n_rows,
     int n_cols,
-    int n_threads
+    int n_threads,
+    int block,
+    int chunk_factor
 ) {
+    if (block < 1 || block > kMaxBlock) {
+        block = kDefaultBlock;
+    }
+    if (chunk_factor < 1) {
+        chunk_factor = kDefaultChunkFactor;
+    }
+
     std::memset(out, 0, static_cast<std::size_t>(n_cols) * n_cols * sizeof(double));
 
 #ifdef _OPENMP
@@ -120,7 +132,7 @@ void sandwich_xsimd_impl(
         omp_set_num_threads(n_threads);
     }
     if (n_threads > 1) {
-        const int n_chunks = std::max(n_threads * 4, 1);
+        const int n_chunks = std::max(n_threads * chunk_factor, 1);
         const int k_chunk = (n_rows + n_chunks - 1) / n_chunks;
         const int actual_chunks = (n_rows + k_chunk - 1) / k_chunk;
         const std::size_t block_elems =
@@ -135,7 +147,7 @@ void sandwich_xsimd_impl(
             const double* Xc = X + static_cast<std::size_t>(k0) * n_cols;
             const double* dc = d + k0;
             double* part = partial.data() + static_cast<std::size_t>(cb) * block_elems;
-            accumulate_tabmat_blocks(Xc, dc, part, k1 - k0, n_cols, kBlock);
+            accumulate_tabmat_blocks(Xc, dc, part, k1 - k0, n_cols, block);
         }
 
         for (int cb = 0; cb < actual_chunks; ++cb) {
@@ -147,7 +159,7 @@ void sandwich_xsimd_impl(
         return;
     }
 #endif
-    accumulate_tabmat_blocks(X, d, out, n_rows, n_cols, kBlock);
+    accumulate_tabmat_blocks(X, d, out, n_rows, n_cols, block);
 }
 
 }  // namespace
@@ -160,7 +172,9 @@ void sandwich_xsimd_f64(
     double* out,
     std::int64_t n_rows,
     std::int64_t n_cols,
-    int n_threads
+    int n_threads,
+    int block,
+    int chunk_factor
 ) {
     sandwich_xsimd_impl(
         X,
@@ -168,7 +182,9 @@ void sandwich_xsimd_f64(
         out,
         static_cast<int>(n_rows),
         static_cast<int>(n_cols),
-        n_threads
+        n_threads,
+        block,
+        chunk_factor
     );
 }
 

@@ -174,10 +174,9 @@ def sandwich_numba_rival_st(X: np.ndarray, d: np.ndarray) -> np.ndarray:
 
 
 @njit(parallel=True, fastmath=True, cache=True)
-def sandwich_numba_tabmat_style_mt(X: np.ndarray, d: np.ndarray) -> np.ndarray:
-    """Multi-thread tabmat-style: parallel over j-blocks, private accumulators."""
+def _tabmat_style_mt_impl(X: np.ndarray, d: np.ndarray, block: int) -> np.ndarray:
+    """Multi-thread tabmat-style: parallel over j-blocks with tunable tile size."""
     n_rows, n_cols = X.shape
-    block = 8
     n_blocks = (n_cols + block - 1) // block
     out = np.zeros((n_cols, n_cols), dtype=X.dtype)
 
@@ -199,6 +198,12 @@ def sandwich_numba_tabmat_style_mt(X: np.ndarray, d: np.ndarray) -> np.ndarray:
                 _rank1_update_block(acc, X[k], i0, j0, ni, nj, w)
             _flush_block_acc(acc, out, i0, j0, ni, nj, ib == jb)
     return out
+
+
+@njit(cache=True, fastmath=True)
+def sandwich_numba_tabmat_style_mt(X: np.ndarray, d: np.ndarray) -> np.ndarray:
+    """Multi-thread tabmat-style: parallel over j-blocks, private accumulators."""
+    return _tabmat_style_mt_impl(X, d, 8)
 
 
 @njit(parallel=True, fastmath=True, cache=True)

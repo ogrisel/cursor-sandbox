@@ -256,11 +256,57 @@ Multi-threaded: Helion stays single-threaded (~8.6 ms MT vs tabmat 2.2 ms MT).
 
 Install Helion deps: `pip install torch helion packaging setuptools`
 
+### Iteration 9 — chunk/tile autotuning
+
+Autotuning sweeps block sizes, row-chunk counts, and JAX chunk sizes per problem and thread count. Results are cached in `artifacts/autotune_cache.json` and loaded by `kernels/tuned_kernels.py`.
+
+Run autotune (multi-threaded, all benchmark problems):
+
+```bash
+uv run --python 3.11 --exclude-newer P7D \
+  --with tabmat --with numba --with jax --with jaxlib --with scipy --with threadpoolctl --with psutil \
+  python sandwich_fused_kernels/autotune_sandwich.py --threading multi
+```
+
+Quick smoke (one problem, reduced grid): add `--quick`.
+
+Benchmark with tuned variants (default `--include-tuned`):
+
+```bash
+uv run --python 3.11 --exclude-newer P7D \
+  --with tabmat --with numba --with jax --with jaxlib --with scipy --with threadpoolctl --with psutil \
+  python sandwich_fused_kernels/benchmark_sandwich.py
+```
+
+Build xsimd before tuning `xsimd_mt`: `sandwich_fused_kernels/xsimd_ext/build.sh`
+
+#### Autotune outcome (linux-amd64, 4 threads)
+
+| Problem | tabmat | Best tuned | params highlight | vs tabmat |
+|---|---:|---|---|---:|
+| glm_small f64 | 2.32 ms | **numba_blas_tuned** 1.73 ms | `n_chunks=128` | **1.35×** |
+| glm_medium f64 | 18.36 ms | **numba_blas_tuned** 10.10 ms | `n_chunks=128` | **1.82×** |
+| glm_tall_skinny f64 | 11.91 ms | **numba_blas_tuned** 6.02 ms | `n_chunks=128` | **1.98×** |
+| glm_square_cols f64 | 20.50 ms | **numba_blas_tuned** 11.76 ms | `n_chunks=32` | **1.74×** |
+| glm_small f64 | 2.32 ms | **xsimd_tuned** 2.28 ms | `block=32, chunk_factor=4` | **1.02×** |
+| glm_tall_skinny f64 | 11.91 ms | **xsimd_tuned** 8.88 ms | `block=32, chunk_factor=4` | **1.34×** |
+
+**Findings:**
+
+- **Many more row chunks** (`n_chunks=128`, ~390 rows/chunk on glm_small) lets each OpenMP worker run a small single-thread GEMM with minimal reduction overhead — tuned Numba BLAS **beats tabmat MT** on all f64 GLM shapes tested.
+- **Fused Numba** (`numba_fused_tuned`) improves ~2× over default `rival_mt` but remains **~0.2–0.3× tabmat** — tile autotuning cannot fix LLVM micro-kernel quality.
+- **xsimd** autotuned block size (often 32–64) reaches **parity or better vs tabmat** on several shapes when built with OpenMP.
+- **JAX chunked** benefits modestly from chunk tuning but stays **~0.13–0.23× tabmat** on CPU.
+
+Full autotune table: `artifacts/autotune_report.md`.
+
 ## Layout
 
 ```
 sandwich_fused_kernels/
 ├── README.md
+├── autotune_config.py
+├── autotune_sandwich.py
 ├── analyze_tabmat.py
 ├── inspect_simd.py
 ├── benchmark_sandwich.py
@@ -275,11 +321,15 @@ sandwich_fused_kernels/
 │   ├── numpy_baseline.py
 │   ├── tabmat_baseline.py
 │   ├── numba_kernels.py
+│   ├── tuned_kernels.py      # autotuned dispatch (reads autotune_cache.json)
 │   ├── helion_kernel.py      # Helion @helion.kernel sandwich (see kernels/README.md)
 │   ├── helion_baseline.py    # NumPy wrapper for Helion benchmarks
 │   ├── xsimd_kernel.py
 │   └── jax_kernels.py
 └── artifacts/
+    ├── autotune_cache.json
+    ├── autotune_report.md
+    ├── autotune_results.json
     ├── benchmark_results.json
     ├── benchmark_report.md
     ├── benchmark_report_single_thread.md

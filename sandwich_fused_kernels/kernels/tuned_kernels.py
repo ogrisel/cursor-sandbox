@@ -1,0 +1,157 @@
+"""Autotuned sandwich kernel dispatch (loads params from autotune cache)."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+
+from autotune_config import AutotuneCache, DEFAULT_CACHE_PATH, TuneParams
+
+from . import numba_kernels as nk
+from . import xsimd_kernel as xk
+
+_CACHE: AutotuneCache | None = None
+
+
+def _cache() -> AutotuneCache:
+    global _CACHE
+    if _CACHE is None:
+        _CACHE = AutotuneCache.load(DEFAULT_CACHE_PATH)
+    return _CACHE
+
+
+def reload_autotune_cache(path: Path = DEFAULT_CACHE_PATH) -> None:
+    global _CACHE
+    _CACHE = AutotuneCache.load(path)
+
+
+def _params(
+    family: str,
+    *,
+    problem: str | None,
+    threading: str,
+    num_threads: int,
+    fallback: TuneParams,
+) -> TuneParams:
+    if problem is None:
+        return fallback
+    cached = _cache().get(problem, threading, num_threads, family)
+    return cached if cached is not None else fallback
+
+
+def sandwich_numba_fused_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "multi",
+    num_threads: int = 1,
+) -> np.ndarray:
+    p = _params(
+        "numba_fused_mt",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=TuneParams(block=4, n_chunks=max(num_threads * 4, 1)),
+    )
+    if num_threads <= 1:
+        out = np.zeros((X.shape[1], X.shape[1]), dtype=X.dtype)
+        nk._accumulate_tabmat_blocks(X, d, out, p.block)
+        return out
+    return nk._sandwich_kchunk_fused_impl(X, d, p.n_chunks, p.block)
+
+
+def sandwich_numba_blas_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "multi",
+    num_threads: int = 1,
+) -> np.ndarray:
+    p = _params(
+        "numba_blas_mt",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=TuneParams(n_chunks=max(num_threads * 2, 1)),
+    )
+    if num_threads <= 1:
+        return nk.sandwich_numba_blas_fused(X, d)
+    return nk._sandwich_kchunk_blas_impl(X, d, p.n_chunks)
+
+
+def sandwich_numba_jblock_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "multi",
+    num_threads: int = 1,
+) -> np.ndarray:
+    p = _params(
+        "numba_jblock_mt",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=TuneParams(block=8),
+    )
+    return nk._tabmat_style_mt_impl(X, d, p.block)
+
+
+def sandwich_jax_chunked_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "multi",
+    num_threads: int = 1,
+) -> np.ndarray:
+    from .jax_kernels import sandwich_jax_chunked
+
+    p = _params(
+        "jax_chunked",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=TuneParams(jax_chunk=4096),
+    )
+    return sandwich_jax_chunked(X, d, chunk=p.jax_chunk)
+
+
+def sandwich_xsimd_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "multi",
+    num_threads: int = 1,
+) -> np.ndarray:
+    p = _params(
+        "xsimd_mt",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=TuneParams(xsimd_block=4, xsimd_chunk_factor=4),
+    )
+    return xk.sandwich_xsimd(
+        X,
+        d,
+        num_threads=num_threads,
+        block=p.xsimd_block,
+        chunk_factor=p.xsimd_chunk_factor,
+    )
+
+
+def warmup_tuned(num_threads: int = 1) -> None:
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((256, 16), dtype=np.float64)
+    d = rng.random(256, dtype=np.float64) + 0.1
+    sandwich_numba_fused_tuned(X, d, num_threads=num_threads)
+    sandwich_numba_blas_tuned(X, d, num_threads=num_threads)
+    sandwich_numba_jblock_tuned(X, d, num_threads=num_threads)
+    try:
+        sandwich_xsimd_tuned(X, d, num_threads=num_threads)
+    except FileNotFoundError:
+        pass

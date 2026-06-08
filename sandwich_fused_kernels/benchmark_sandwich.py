@@ -38,6 +38,20 @@ from kernels import (
 )
 from threading_utils import default_multi_thread_count, sandwich_threading
 
+try:
+    from kernels.tuned_kernels import (
+        sandwich_jax_chunked_tuned,
+        sandwich_numba_blas_tuned,
+        sandwich_numba_fused_tuned,
+        sandwich_numba_jblock_tuned,
+        sandwich_xsimd_tuned,
+        warmup_tuned,
+    )
+
+    _TUNED_AVAILABLE = True
+except ImportError:
+    _TUNED_AVAILABLE = False
+
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_ARTIFACTS = BASE_DIR / "artifacts"
@@ -144,6 +158,38 @@ def _extra_alloc_estimate_mb(n_rows: int, n_cols: int, dtype: str, kernel: str) 
     return 0.0
 
 
+def _xsimd_built() -> bool:
+    lib_path = BASE_DIR / "xsimd_ext" / "libsandwich_xsimd.so"
+    return lib_path.is_file()
+
+
+def _tuned_registry(
+    *,
+    problem: str,
+    threading_mode: str,
+    num_threads: int,
+) -> dict[str, Callable[..., np.ndarray]]:
+    if not _TUNED_AVAILABLE:
+        return {}
+    return {
+        "numba_fused_tuned": lambda X, d: sandwich_numba_fused_tuned(
+            X, d, problem=problem, threading=threading_mode, num_threads=num_threads
+        ),
+        "numba_blas_tuned": lambda X, d: sandwich_numba_blas_tuned(
+            X, d, problem=problem, threading=threading_mode, num_threads=num_threads
+        ),
+        "numba_jblock_tuned": lambda X, d: sandwich_numba_jblock_tuned(
+            X, d, problem=problem, threading=threading_mode, num_threads=num_threads
+        ),
+        "jax_chunked_tuned": lambda X, d: sandwich_jax_chunked_tuned(
+            X, d, problem=problem, threading=threading_mode, num_threads=num_threads
+        ),
+        "xsimd_tuned": lambda X, d: sandwich_xsimd_tuned(
+            X, d, problem=problem, threading=threading_mode, num_threads=num_threads
+        ),
+    }
+
+
 def _kernel_registry(*, include_helion: bool) -> dict[str, Callable[..., np.ndarray]]:
     registry: dict[str, Callable[..., np.ndarray]] = {
         "numpy_einsum": sandwich_numpy_einsum,
@@ -181,6 +227,7 @@ def _blas_threads_for_kernel(kernel_name: str, threading_mode: str, num_threads:
         "numba_blas_kchunk_mt",
         "numba_blas_tiled",
         "numba_blas_chunked",
+        "numba_blas_tuned",
     }:
         return 1
     return num_threads
@@ -192,7 +239,12 @@ def _helion_kernels() -> list[str]:
     return ["helion_eager", "torch_einsum", "torch_compile_einsum"]
 
 
-def _kernels_for_threading(threading_mode: str, *, include_helion: bool) -> list[str]:
+def _kernels_for_threading(
+    threading_mode: str,
+    *,
+    include_helion: bool,
+    include_tuned: bool,
+) -> list[str]:
     """Pick kernel variants appropriate for each threading regime."""
     common = [
         "numpy_einsum",
@@ -204,19 +256,35 @@ def _kernels_for_threading(threading_mode: str, *, include_helion: bool) -> list
     if include_helion:
         common.extend(_helion_kernels())
     if threading_mode == "single":
-        return common + [
+        kernels = common + [
             "numba_rival_st",
             "numba_tabmat_style_st",
             "numba_k_chunk_tabmat",
         ]
-    return common + [
-        "numba_rival_mt",
-        "numba_blas_kchunk_mt",
-        "numba_tabmat_style_mt",
-        "numba_k_chunk_tabmat",
-        "numba_blas_tiled",
-        "numba_fused_blocked",
-    ]
+    else:
+        kernels = common + [
+            "numba_rival_mt",
+            "numba_blas_kchunk_mt",
+            "numba_tabmat_style_mt",
+            "numba_k_chunk_tabmat",
+            "numba_blas_tiled",
+            "numba_fused_blocked",
+        ]
+    if include_tuned and _TUNED_AVAILABLE:
+        if threading_mode == "multi":
+            kernels.extend(
+                [
+                    "numba_fused_tuned",
+                    "numba_blas_tuned",
+                    "numba_jblock_tuned",
+                    "jax_chunked_tuned",
+                ]
+            )
+            if _xsimd_built():
+                kernels.append("xsimd_tuned")
+        else:
+            kernels.extend(["numba_fused_tuned", "numba_jblock_tuned", "jax_chunked_tuned"])
+    return kernels
 
 
 def _default_problems() -> list[ProblemSpec]:
@@ -239,6 +307,7 @@ def run_benchmarks(
     warmup: int,
     seed: int,
     include_helion: bool,
+    include_tuned: bool,
 ) -> list[KernelResult]:
     registry = _kernel_registry(include_helion=include_helion)
     for variant in (
@@ -259,6 +328,9 @@ def run_benchmarks(
         warmup_helion("eager")
         warmup_torch_compile()
 
+    if include_tuned and _TUNED_AVAILABLE:
+        warmup_tuned(num_threads=num_threads)
+
     results: list[KernelResult] = []
     baseline_times: dict[str, float] = {}
     tabmat_times: dict[str, float] = {}
@@ -268,7 +340,18 @@ def run_benchmarks(
         reference = sandwich_reference(X, d)
 
         for kernel_name in kernels:
-            fn = registry[kernel_name]
+            if kernel_name == "xsimd_tuned" and spec.dtype != "float64":
+                continue
+            if kernel_name.endswith("_tuned"):
+                fn = _tuned_registry(
+                    problem=spec.name,
+                    threading_mode=threading_mode,
+                    num_threads=num_threads,
+                ).get(kernel_name)
+                if fn is None:
+                    continue
+            else:
+                fn = registry[kernel_name]
             blas_threads = _blas_threads_for_kernel(kernel_name, threading_mode, num_threads)
             with sandwich_threading(num_threads, blas_threads=blas_threads):
                 timings, rss_delta, trace_peak, max_err, rel_err = _measure_kernel(
@@ -401,6 +484,12 @@ def main() -> None:
         default=True,
         help="Include Helion/PyTorch kernels when torch+helion are installed (default: true)",
     )
+    parser.add_argument(
+        "--include-tuned",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Include autotuned kernel variants when cache exists (default: true)",
+    )
     args = parser.parse_args()
 
     include_helion = args.include_helion and helion_available()
@@ -416,7 +505,11 @@ def main() -> None:
 
     all_results: list[KernelResult] = []
     for threading_mode, num_threads in (("single", 1), ("multi", mt_threads)):
-        kernels = _kernels_for_threading(threading_mode, include_helion=include_helion)
+        kernels = _kernels_for_threading(
+            threading_mode,
+            include_helion=include_helion,
+            include_tuned=args.include_tuned,
+        )
         all_results.extend(
             run_benchmarks(
                 problems=problems,
@@ -427,6 +520,7 @@ def main() -> None:
                 warmup=args.warmup,
                 seed=args.seed,
                 include_helion=include_helion,
+                include_tuned=args.include_tuned,
             )
         )
 

@@ -1,0 +1,402 @@
+[
+  {
+    "family": "numba_fused_mt",
+    "problem": "glm_small",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 32,
+      "n_chunks": 32,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.009560268999848631,
+    "vs_tabmat": 0.24288851088439456,
+    "max_rel_error": 3.256479608657162e-13
+  },
+  {
+    "family": "numba_blas_mt",
+    "problem": "glm_small",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 128,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.0017264014986722032,
+    "vs_tabmat": 1.3450402486405477,
+    "max_rel_error": 4.5713223966445e-13
+  },
+  {
+    "family": "numba_jblock_mt",
+    "problem": "glm_small",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 8,
+      "n_chunks": 1,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.012931508999827201,
+    "vs_tabmat": 0.1795675586707246,
+    "max_rel_error": 1.66424697300882e-12
+  },
+  {
+    "family": "jax_chunked",
+    "problem": "glm_small",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 1,
+      "jax_chunk": 3125,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.01217949750025582,
+    "vs_tabmat": 0.19065478694656335,
+    "max_rel_error": 0.00015477186541797778
+  },
+  {
+    "family": "xsimd_mt",
+    "problem": "glm_small",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 1,
+      "jax_chunk": 4096,
+      "xsimd_block": 32,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.002282130499224877,
+    "vs_tabmat": 1.017505134704683,
+    "max_rel_error": 9.001988719547739e-13
+  },
+  {
+    "family": "numba_fused_mt",
+    "problem": "glm_medium",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 16,
+      "n_chunks": 64,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.07837860999825352,
+    "vs_tabmat": 0.23419245376240447,
+    "max_rel_error": 7.722304299070644e-12
+  },
+  {
+    "family": "numba_blas_mt",
+    "problem": "glm_medium",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 128,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.010096359999806737,
+    "vs_tabmat": 1.8180491779541224,
+    "max_rel_error": 3.0125756604408583e-12
+  },
+  {
+    "family": "numba_jblock_mt",
+    "problem": "glm_medium",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 16,
+      "n_chunks": 1,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.1058149210002739,
+    "vs_tabmat": 0.17346966594559957,
+    "max_rel_error": 1.7421280847315325e-11
+  },
+  {
+    "family": "jax_chunked",
+    "problem": "glm_medium",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 1,
+      "jax_chunk": 4375,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.10255702399990696,
+    "vs_tabmat": 0.17898022272949507,
+    "max_rel_error": 0.0017925675435334293
+  },
+  {
+    "family": "xsimd_mt",
+    "problem": "glm_medium",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 1,
+      "jax_chunk": 4096,
+      "xsimd_block": 32,
+      "xsimd_chunk_factor": 16
+    },
+    "median_seconds": 0.01893449399904057,
+    "vs_tabmat": 0.9694306591402772,
+    "max_rel_error": 7.722304299070644e-12
+  },
+  {
+    "family": "numba_fused_mt",
+    "problem": "glm_tall_skinny",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 16,
+      "n_chunks": 16,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.035470158500174875,
+    "vs_tabmat": 0.33568849151913865,
+    "max_rel_error": 7.832445601402581e-13
+  },
+  {
+    "family": "numba_blas_mt",
+    "problem": "glm_tall_skinny",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 128,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.0060249579983064905,
+    "vs_tabmat": 1.976266723222848,
+    "max_rel_error": 5.829831669228301e-13
+  },
+  {
+    "family": "numba_jblock_mt",
+    "problem": "glm_tall_skinny",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 8,
+      "n_chunks": 1,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.06829787049900915,
+    "vs_tabmat": 0.17433814427700495,
+    "max_rel_error": 1.7519716019383596e-12
+  },
+  {
+    "family": "jax_chunked",
+    "problem": "glm_tall_skinny",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 1,
+      "jax_chunk": 5000,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.09169889799886732,
+    "vs_tabmat": 0.12984805990815215,
+    "max_rel_error": 0.00010003541510840333
+  },
+  {
+    "family": "xsimd_mt",
+    "problem": "glm_tall_skinny",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 1,
+      "jax_chunk": 4096,
+      "xsimd_block": 32,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.008879932498530252,
+    "vs_tabmat": 1.3408800126396472,
+    "max_rel_error": 7.832445601402581e-13
+  },
+  {
+    "family": "numba_fused_mt",
+    "problem": "glm_square_cols",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 32,
+      "n_chunks": 32,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.09416930350016628,
+    "vs_tabmat": 0.21768017536498108,
+    "max_rel_error": 1.6824760979617477e-11
+  },
+  {
+    "family": "numba_blas_mt",
+    "problem": "glm_square_cols",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 32,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.011762026502765366,
+    "vs_tabmat": 1.7427941090844217,
+    "max_rel_error": 2.5897799622991707e-12
+  },
+  {
+    "family": "numba_jblock_mt",
+    "problem": "glm_square_cols",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 32,
+      "n_chunks": 1,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.12533951300065382,
+    "vs_tabmat": 0.1635461157393151,
+    "max_rel_error": 1.7352397085223256e-11
+  },
+  {
+    "family": "jax_chunked",
+    "problem": "glm_square_cols",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 1,
+      "jax_chunk": 20000,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.08881801149982493,
+    "vs_tabmat": 0.2307954226148682,
+    "max_rel_error": 0.0028873248128446463
+  },
+  {
+    "family": "xsimd_mt",
+    "problem": "glm_square_cols",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 1,
+      "jax_chunk": 4096,
+      "xsimd_block": 64,
+      "xsimd_chunk_factor": 2
+    },
+    "median_seconds": 0.020850683498792932,
+    "vs_tabmat": 0.9831231911942367,
+    "max_rel_error": 2.109551580104126e-11
+  },
+  {
+    "family": "numba_fused_mt",
+    "problem": "glm_small_f32",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 16,
+      "n_chunks": 8,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.00851958950079279,
+    "vs_tabmat": 0.19479582894856412,
+    "max_rel_error": 0.0008881152607500553
+  },
+  {
+    "family": "numba_blas_mt",
+    "problem": "glm_small_f32",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 128,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.0009334629994555144,
+    "vs_tabmat": 1.7778749667383094,
+    "max_rel_error": 0.0002613444230519235
+  },
+  {
+    "family": "numba_jblock_mt",
+    "problem": "glm_small_f32",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 8,
+      "n_chunks": 1,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.012779808499544743,
+    "vs_tabmat": 0.12985957490423544,
+    "max_rel_error": 0.002205844735726714
+  },
+  {
+    "family": "jax_chunked",
+    "problem": "glm_small_f32",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 1,
+      "jax_chunk": 6250,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": 0.00914000800003123,
+    "vs_tabmat": 0.18157319983776213,
+    "max_rel_error": 0.0001292967062909156
+  },
+  {
+    "family": "xsimd_mt",
+    "problem": "glm_small_f32",
+    "threading": "multi",
+    "num_threads": 4,
+    "params": {
+      "block": 4,
+      "n_chunks": 1,
+      "jax_chunk": 4096,
+      "xsimd_block": 4,
+      "xsimd_chunk_factor": 4
+    },
+    "median_seconds": Infinity,
+    "vs_tabmat": 0.0,
+    "max_rel_error": 0.0
+  }
+]

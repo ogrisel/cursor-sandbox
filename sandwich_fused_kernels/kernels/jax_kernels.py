@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 
 import jax
@@ -64,6 +67,57 @@ def _sandwich_jax_einsum_chunked(X: jnp.ndarray, d: jnp.ndarray, chunk: int = 40
     init = jnp.zeros((n_cols, n_cols), dtype=X.dtype)
     out, _ = jax.lax.scan(body, init, (x_chunks, d_chunks))
     return out
+
+
+_CHUNKED_FNS: dict[int, Callable[..., Any]] = {}
+
+
+def _get_jax_scan_chunked_fn(chunk: int) -> Callable[..., Any]:
+    if chunk not in _CHUNKED_FNS:
+
+        @jax.jit
+        def fn(X: jnp.ndarray, d: jnp.ndarray) -> jnp.ndarray:
+            n_rows, n_cols = X.shape
+            n_chunks = (n_rows + chunk - 1) // chunk
+            pad_rows = n_chunks * chunk - n_rows
+            Xp = jnp.pad(X, ((0, pad_rows), (0, 0)))
+            dp = jnp.pad(d, (0, pad_rows))
+            x_chunks = Xp.reshape(n_chunks, chunk, n_cols)
+            d_chunks = dp.reshape(n_chunks, chunk)
+
+            def body(
+                carry: jnp.ndarray, xd: tuple[jnp.ndarray, jnp.ndarray]
+            ) -> tuple[jnp.ndarray, None]:
+                xc, dc = xd
+                return carry + jnp.dot((xc * dc[:, None]).T, xc), None
+
+            init = jnp.zeros((n_cols, n_cols), dtype=X.dtype)
+            out, _ = jax.lax.scan(body, init, (x_chunks, d_chunks))
+            return out
+
+        _CHUNKED_FNS[chunk] = fn
+    return _CHUNKED_FNS[chunk]
+
+
+def sandwich_jax_chunked(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    chunk: int = 4096,
+    rows: np.ndarray | None = None,
+    cols: np.ndarray | None = None,
+) -> np.ndarray:
+    """Row-chunked JAX Gram with tunable chunk size (for autotuning)."""
+    if rows is None:
+        rows = np.arange(X.shape[0], dtype=np.int64)
+    if cols is None:
+        cols = np.arange(X.shape[1], dtype=np.int64)
+
+    X_sub = np.ascontiguousarray(X[np.ix_(rows, cols)], dtype=X.dtype)
+    d_sub = np.ascontiguousarray(np.asarray(d, dtype=X.dtype)[rows], dtype=X.dtype)
+    fn = _get_jax_scan_chunked_fn(chunk)
+    out = fn(jnp.asarray(X_sub), jnp.asarray(d_sub))
+    return np.asarray(jax.device_get(out))
 
 
 _VARIANTS = {

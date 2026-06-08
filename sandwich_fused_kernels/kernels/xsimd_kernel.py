@@ -29,6 +29,8 @@ def _load_library() -> ctypes.CDLL:
         ctypes.c_int64,
         ctypes.c_int64,
         ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
     ]
     lib.sandwich_xsimd_f64.restype = None
     lib.sandwich_xsimd_batch_width.argtypes = []
@@ -47,6 +49,8 @@ def sandwich_xsimd(
     d: np.ndarray,
     *,
     num_threads: int = 1,
+    block: int = 4,
+    chunk_factor: int = 4,
 ) -> np.ndarray:
     """Compute X.T @ diag(d) @ X via the xsimd/OpenMP extension."""
     if X.dtype != np.float64:
@@ -65,6 +69,8 @@ def sandwich_xsimd(
         Xc.shape[0],
         Xc.shape[1],
         int(num_threads),
+        int(block),
+        int(chunk_factor),
     )
     return out
 
