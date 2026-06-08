@@ -195,7 +195,41 @@ Full tables: `artifacts/benchmark_report_single_thread.md`, `artifacts/benchmark
 - **Best Numba MT:** `blas_kchunk_mt` or `blas_tiled` with `blas_threads=1` per worker (~3× slower than tabmat on small GLM shapes).
 - **Best Numba ST:** `blas_fused` (~0.5–0.6× tabmat).
 - **Fused `rival_*` kernels** validate tabmat's algorithmic choices (fused weights, symmetric blocks) but LLVM cannot match hand-tuned SSE micro-kernels; they remain **~10× behind tabmat**.
+- **xsimd C++ extension** (`xsimd_ext/`) reaches **~0.91× tabmat MT** on `glm_small` when built with OpenMP; Numba cannot compile xsimd directly — use the ctypes wrapper in `kernels/xsimd_kernel.py`.
+- **Helion** compiles to **Triton GPU** kernels; on CPU use `ref_mode=EAGER` for correctness checks only. **`torch.compile`** on CPU (`weighted_gram`) can be competitive with tabmat for this shape.
 - Avoid `k_inner` and scatter-vectorized output updates.
+
+### Iteration 7 — xsimd C++ extension + Helion / torch.compile
+
+#### Numba + xsimd?
+
+**Numba has no xsimd backend.** LLVM autovectorization inside `@njit` is the closest pure-Python path. tabmat itself uses **C++/Cython + xsimd** (`dense_helpers.cpp`). To replicate that from Python:
+
+1. Build the native extension: `sandwich_fused_kernels/xsimd_ext/build.sh`
+2. Call via `kernels/xsimd_kernel.py` (ctypes; optionally alongside Numba benchmarks)
+
+The extension implements tabmat-style **4×4 block-outer fused rank-1** updates with **xsimd AVX batches** (width=8 on this host) and **OpenMP k-chunk** parallelism.
+
+| Kernel | ST (1 thread) | MT (4 threads) | vs tabmat MT |
+|---|---:|---:|---:|
+| tabmat | 2.09 ms | 6.85 ms | 1.00× |
+| xsimd_ext | 33.2 ms | **7.52 ms** | **0.91×** |
+| numba rival_mt | — | ~21 ms | ~0.10× |
+
+#### Helion (PyTorch DSL → Triton)
+
+Helion targets **GPU Triton** (`@helion.kernel` + `hl.tile`). On a CPU-only host:
+
+| Kernel | median (ms) | Notes |
+|---|---:|---|
+| `helion_eager` (`ref_mode=EAGER`) | 1.75 | CPU tile reference interpreter |
+| `helion_triton` | skipped | requires CUDA GPU |
+| `torch_compile_weighted_gram` | **1.06** | TorchInductor CPU GEMM |
+| `torch_einsum` (eager) | 1.61 | fused einsum |
+
+Helion autotuning + Triton codegen requires a GPU; use `HELION_INTERPRET=1` / `ref_mode=EAGER` for CPU-only validation.
+
+Run: `python sandwich_fused_kernels/benchmark_xsimd_helion.py` (needs `helion`, `torch` in `.venv-helion` or similar).
 
 ## Layout
 
@@ -205,19 +239,28 @@ sandwich_fused_kernels/
 ├── analyze_tabmat.py
 ├── inspect_simd.py
 ├── benchmark_sandwich.py
+├── benchmark_xsimd_helion.py
 ├── threading_utils.py
+├── xsimd_ext/
+│   ├── build.sh
+│   └── sandwich_xsimd.cpp
 ├── profile_memory.py
 ├── kernels/
 │   ├── reference.py
 │   ├── numpy_baseline.py
 │   ├── tabmat_baseline.py
 │   ├── numba_kernels.py
+│   ├── xsimd_kernel.py
+│   ├── helion_kernel.py
 │   └── jax_kernels.py
 └── artifacts/
     ├── benchmark_results.json
     ├── benchmark_report.md
     ├── benchmark_report_single_thread.md
     ├── benchmark_report_multi_thread.md
+    ├── benchmark_xsimd_report.md
+    ├── benchmark_helion_report.md
+    ├── benchmark_xsimd_helion.json
     ├── tabmat_advantage_analysis.md
     ├── simd_inspection.md
     ├── tabmat_dense.so.asm

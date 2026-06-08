@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 *.nbc
 *.nbi
+.venv-helion/
+xsimd_ext/*.so
+third_party/

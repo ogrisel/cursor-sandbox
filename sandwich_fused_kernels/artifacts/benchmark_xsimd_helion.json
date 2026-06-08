@@ -1,0 +1,92 @@
+{
+  "problem": {
+    "n_rows": 50000,
+    "n_cols": 40,
+    "dtype": "float64"
+  },
+  "xsimd": [
+    {
+      "kernel": "tabmat",
+      "threading": "single",
+      "num_threads": 1,
+      "median_ms": 2.087095001115813,
+      "vs_tabmat": 1.0,
+      "max_rel_err": 0.0,
+      "notes": "reference native xsimd in tabmat"
+    },
+    {
+      "kernel": "xsimd_ext",
+      "threading": "single",
+      "num_threads": 1,
+      "median_ms": 33.23766300127318,
+      "vs_tabmat": 0.06279307305799045,
+      "max_rel_err": 1.66424697300882e-12,
+      "notes": "xsimd batch width=8"
+    },
+    {
+      "kernel": "tabmat",
+      "threading": "multi",
+      "num_threads": 4,
+      "median_ms": 6.852800999695319,
+      "vs_tabmat": 1.0,
+      "max_rel_err": 0.0,
+      "notes": "reference native xsimd in tabmat"
+    },
+    {
+      "kernel": "xsimd_ext",
+      "threading": "multi",
+      "num_threads": 4,
+      "median_ms": 7.524786999056232,
+      "vs_tabmat": 0.9106970071783833,
+      "max_rel_err": 9.001988719547739e-13,
+      "notes": "xsimd batch width=8"
+    }
+  ],
+  "helion_torch": [
+    {
+      "kernel": "torch_einsum",
+      "threading": "single",
+      "num_threads": 1,
+      "median_ms": 1.6138959999807412,
+      "vs_tabmat": 0.0,
+      "max_rel_err": 5.947318789687304e-16,
+      "notes": "eager PyTorch"
+    },
+    {
+      "kernel": "torch_compile_einsum",
+      "threading": "single",
+      "num_threads": 1,
+      "median_ms": 3.0757059994357405,
+      "vs_tabmat": 0.0,
+      "max_rel_err": 5.947318789687304e-16,
+      "notes": "torch.compile CPU inductor"
+    },
+    {
+      "kernel": "torch_compile_weighted_gram",
+      "threading": "single",
+      "num_threads": 1,
+      "median_ms": 1.0640450000209967,
+      "vs_tabmat": 0.0,
+      "max_rel_err": 5.947318789687304e-16,
+      "notes": "torch.compile CPU inductor"
+    },
+    {
+      "kernel": "helion_eager",
+      "threading": "single",
+      "num_threads": 1,
+      "median_ms": 1.7457220001233509,
+      "vs_tabmat": 0.0,
+      "max_rel_err": 5.947318789687304e-16,
+      "notes": "Helion ref_mode=EAGER (CPU reference tiles)"
+    },
+    {
+      "kernel": "helion_triton",
+      "threading": "n/a",
+      "num_threads": 0,
+      "median_ms": 0.0,
+      "vs_tabmat": 0.0,
+      "max_rel_err": 0.0,
+      "notes": "skipped: no CUDA GPU in this environment"
+    }
+  ]
+}
