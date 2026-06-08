@@ -298,6 +298,26 @@ Build xsimd before tuning `xsimd_mt`: `sandwich_fused_kernels/xsimd_ext/build.sh
 - **xsimd** autotuned block size (often 32–64) reaches **parity or better vs tabmat** on several shapes when built with OpenMP.
 - **JAX chunked** benefits modestly from chunk tuning but stays **~0.13–0.23× tabmat** on CPU.
 
+#### Helion / PyTorch tile autotuning
+
+Helion `hl.tile(..., block_size=...)` and matching pure-PyTorch tiled kernels are tuned over output tile sizes (`tile_m`, `tile_n`) and row tile size (`tile_k`). Run with torch+helion installed (e.g. `.venv-helion`):
+
+```bash
+.venv-helion/bin/python sandwich_fused_kernels/autotune_sandwich.py \
+  --families helion_tiled torch_tiled --threading single
+```
+
+`torch_compile_tiled_tuned` reuses the best `torch_tiled` tile params (separate compile grid search is too slow).
+
+| Problem (ST) | tabmat | helion_tiled_tuned | torch_tiled_tuned | Best vs tabmat |
+|---|---:|---:|---:|---:|
+| glm_medium f64 | 90.7 ms | 55.7 ms | 69.5 ms | **1.63×** (helion) |
+| glm_tall_skinny f64 | 64.8 ms | 24.7 ms | 19.3 ms | **3.36×** (torch) |
+| glm_square_cols f64 | 73.3 ms | 59.6 ms | 49.4 ms | **1.48×** (torch) |
+| glm_small f32 | 4.7 ms | 6.2 ms | 4.9 ms | **0.96×** (torch) |
+
+Large output/row tiles (often 32×32 or 64×64 output, full-row or 16k+ row chunks) dramatically reduce interpreter overhead vs default Helion eager (which uses one big tile per dimension).
+
 Full autotune table: `artifacts/autotune_report.md`.
 
 ## Layout

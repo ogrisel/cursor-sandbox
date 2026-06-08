@@ -37,7 +37,19 @@ def _params(
     if problem is None:
         return fallback
     cached = _cache().get(problem, threading, num_threads, family)
-    return cached if cached is not None else fallback
+    if cached is not None:
+        return cached
+    if family in {"helion_tiled", "torch_tiled", "torch_compile_tiled"} and threading == "multi":
+        cached = _cache().get(problem, "single", 1, family)
+        if cached is not None:
+            return cached
+    if family == "torch_compile_tiled":
+        cached = _cache().get(problem, threading, num_threads, "torch_tiled")
+        if cached is None and threading == "multi":
+            cached = _cache().get(problem, "single", 1, "torch_tiled")
+        if cached is not None:
+            return cached
+    return fallback
 
 
 def sandwich_numba_fused_tuned(
@@ -144,6 +156,72 @@ def sandwich_xsimd_tuned(
     )
 
 
+def _helion_tile_fallback() -> TuneParams:
+    return TuneParams(tile_m=16, tile_n=16, tile_k=8192)
+
+
+def sandwich_helion_tiled_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "single",
+    num_threads: int = 1,
+) -> np.ndarray:
+    from . import helion_baseline as hb
+
+    p = _params(
+        "helion_tiled",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=_helion_tile_fallback(),
+    )
+    return hb.sandwich_helion_tiled(X, d, tile_m=p.tile_m, tile_n=p.tile_n, tile_k=p.tile_k)
+
+
+def sandwich_torch_tiled_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "single",
+    num_threads: int = 1,
+) -> np.ndarray:
+    from . import helion_baseline as hb
+
+    p = _params(
+        "torch_tiled",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=_helion_tile_fallback(),
+    )
+    return hb.sandwich_torch_tiled(X, d, tile_m=p.tile_m, tile_n=p.tile_n, tile_k=p.tile_k)
+
+
+def sandwich_torch_compile_tiled_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "single",
+    num_threads: int = 1,
+) -> np.ndarray:
+    from . import helion_baseline as hb
+
+    p = _params(
+        "torch_compile_tiled",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=_helion_tile_fallback(),
+    )
+    return hb.sandwich_torch_compile_tiled(
+        X, d, tile_m=p.tile_m, tile_n=p.tile_n, tile_k=p.tile_k
+    )
+
+
 def warmup_tuned(num_threads: int = 1) -> None:
     rng = np.random.default_rng(0)
     X = rng.standard_normal((256, 16), dtype=np.float64)
@@ -154,4 +232,13 @@ def warmup_tuned(num_threads: int = 1) -> None:
     try:
         sandwich_xsimd_tuned(X, d, num_threads=num_threads)
     except FileNotFoundError:
+        pass
+    try:
+        from . import helion_baseline as hb
+
+        if hb.helion_available():
+            sandwich_helion_tiled_tuned(X, d, num_threads=num_threads)
+        sandwich_torch_tiled_tuned(X, d, num_threads=num_threads)
+        sandwich_torch_compile_tiled_tuned(X, d, num_threads=num_threads)
+    except ImportError:
         pass

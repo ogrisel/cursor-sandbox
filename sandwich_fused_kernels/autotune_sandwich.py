@@ -26,6 +26,8 @@ from autotune_config import (
     TuneResult,
     block_candidates,
     chunk_count_candidates,
+    helion_row_tile_candidates,
+    helion_tile_candidates,
     jax_chunk_candidates,
     xsimd_block_candidates,
     xsimd_chunk_factor_candidates,
@@ -44,7 +46,27 @@ TUNABLE_FAMILIES = (
     "numba_jblock_mt",
     "jax_chunked",
     "xsimd_mt",
+    "helion_tiled",
+    "torch_tiled",
 )
+
+
+def _helion_available() -> bool:
+    try:
+        from kernels.helion_baseline import helion_available
+
+        return helion_available()
+    except ImportError:
+        return False
+
+
+def _torch_available() -> bool:
+    try:
+        import torch  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
 
 
 def _time_kernel(
@@ -97,6 +119,16 @@ def _iter_xsimd_params(n_cols: int, num_threads: int) -> Iterator[TuneParams]:
             yield TuneParams(xsimd_block=block, xsimd_chunk_factor=chunk_factor)
 
 
+def _iter_helion_tile_params(n_rows: int, n_cols: int, *, symmetric: bool = True) -> Iterator[TuneParams]:
+    tiles = helion_tile_candidates(n_cols)
+    row_tiles = helion_row_tile_candidates(n_rows)
+    for tile_m in tiles:
+        tile_ns = [tile_m] if symmetric else tiles
+        for tile_n in tile_ns:
+            for tile_k in row_tiles:
+                yield TuneParams(tile_m=tile_m, tile_n=tile_n, tile_k=tile_k)
+
+
 def _param_grid(
     family: str,
     *,
@@ -115,6 +147,8 @@ def _param_grid(
         params = list(_iter_jax_params(n_rows, num_threads))
     elif family == "xsimd_mt":
         params = list(_iter_xsimd_params(n_cols, num_threads))
+    elif family in {"helion_tiled", "torch_tiled"}:
+        params = list(_iter_helion_tile_params(n_rows, n_cols))
     else:
         raise ValueError(f"unknown family: {family}")
 
@@ -131,6 +165,13 @@ def _param_grid(
             return [
                 TuneParams(xsimd_block=4, xsimd_chunk_factor=4),
                 TuneParams(xsimd_block=8, xsimd_chunk_factor=8),
+            ]
+        if family in {"helion_tiled", "torch_tiled"}:
+            return [
+                TuneParams(tile_m=4, tile_n=4, tile_k=512),
+                TuneParams(tile_m=8, tile_n=8, tile_k=4096),
+                TuneParams(tile_m=16, tile_n=16, tile_k=8192),
+                TuneParams(tile_m=32, tile_n=32, tile_k=16384),
             ]
     return params
 
@@ -177,6 +218,18 @@ def _run_with_params(
             block=params.xsimd_block,
             chunk_factor=params.xsimd_chunk_factor,
         )
+    if family == "helion_tiled":
+        from kernels import helion_baseline as hb
+
+        return hb.sandwich_helion_tiled(
+            X, d, tile_m=params.tile_m, tile_n=params.tile_n, tile_k=params.tile_k
+        )
+    if family == "torch_tiled":
+        from kernels import helion_baseline as hb
+
+        return hb.sandwich_torch_tiled(
+            X, d, tile_m=params.tile_m, tile_n=params.tile_n, tile_k=params.tile_k
+        )
     raise ValueError(f"unknown family: {family}")
 
 
@@ -201,6 +254,14 @@ def _warmup_family(family: str, num_threads: int) -> None:
         from kernels.xsimd_kernel import warmup_xsimd
 
         warmup_xsimd(num_threads=num_threads)
+    if family == "helion_tiled":
+        from kernels import helion_kernel
+
+        helion_kernel.warmup_helion("tiled")
+    if family in {"torch_tiled", "torch_compile_tiled"}:
+        from kernels import helion_kernel
+
+        helion_kernel.warmup_torch_tiled()
 
 
 def tune_family(
@@ -317,6 +378,12 @@ def run_autotune(
             if family == "xsimd_mt" and spec.dtype != "float64":
                 print(f"  skip {family}: float64 only", flush=True)
                 continue
+            if family == "helion_tiled" and not _helion_available():
+                print(f"  skip {family}: helion/torch not installed", flush=True)
+                continue
+            if family in {"torch_tiled", "torch_compile_tiled"} and not _torch_available():
+                print(f"  skip {family}: torch not installed", flush=True)
+                continue
             print(f"  tuning {family}...", flush=True)
             try:
                 row = tune_family(
@@ -333,8 +400,13 @@ def run_autotune(
             except FileNotFoundError as exc:
                 print(f"  skip {family}: {exc}", flush=True)
                 continue
+            except RuntimeError as exc:
+                print(f"  skip {family}: {exc}", flush=True)
+                continue
 
             cache.set(spec.name, threading, num_threads, family, row.params)
+            if family == "torch_tiled":
+                cache.set(spec.name, threading, num_threads, "torch_compile_tiled", row.params)
             results.append(row)
             print(
                 f"    best {row.params.to_dict()} -> {row.median_seconds * 1000:.2f} ms "

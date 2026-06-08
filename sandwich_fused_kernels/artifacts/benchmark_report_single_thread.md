@@ -6,88 +6,118 @@ Threading: **single** (1 threads)
 
 | kernel | median (ms) | vs numpy_einsum | vs tabmat | peak RSS Δ (MB) | max rel err |
 |---|---:|---:|---:|---:|---:|
-| tabmat | 7.33 | 2.28x | 1.00x | 0.31 | 5.77e-13 |
-| jax_einsum | 11.24 | 1.49x | 0.65x | 57.04 | 7.23e-05 |
-| jax_chunked_tuned | 13.86 | 1.21x | 0.53x | 35.53 | 1.16e-04 |
-| numpy_weighted_gram | 15.94 | 1.05x | 0.46x | 0.00 | 3.16e-14 |
-| numpy_einsum | 16.76 | 1.00x | 0.44x | 0.00 | 3.16e-14 |
-| numba_blas_fused | 17.92 | 0.93x | 0.41x | 0.32 | 3.16e-14 |
-| numba_jblock_tuned | 38.49 | 0.44x | 0.19x | 0.00 | 1.66e-12 |
-| numba_k_chunk_tabmat | 71.40 | 0.23x | 0.10x | 0.00 | 1.66e-12 |
-| numba_fused_tuned | 78.30 | 0.21x | 0.09x | 0.00 | 1.66e-12 |
-| numba_rival_st | 84.48 | 0.20x | 0.09x | 0.00 | 1.66e-12 |
-| numba_tabmat_style_st | 84.75 | 0.20x | 0.09x | 0.00 | 1.66e-12 |
+| torch_einsum | 7.92 | 2.74x | 1.02x | 0.00 | 1.83e-13 |
+| tabmat | 8.10 | 2.67x | 1.00x | 0.33 | 5.77e-13 |
+| torch_compile_einsum | 8.85 | 2.45x | 0.92x | 1.35 | 4.52e-13 |
+| helion_eager | 10.12 | 2.14x | 0.80x | 0.00 | 1.83e-13 |
+| jax_chunked_tuned | 13.01 | 1.67x | 0.62x | 19.61 | 1.16e-04 |
+| torch_compile_tiled_tuned | 13.96 | 1.55x | 0.58x | 8.66 | 4.52e-13 |
+| jax_einsum | 15.45 | 1.40x | 0.52x | 73.10 | 7.23e-05 |
+| torch_tiled_tuned | 17.15 | 1.26x | 0.47x | 0.00 | 1.83e-13 |
+| numpy_weighted_gram | 21.08 | 1.03x | 0.38x | 0.00 | 3.16e-14 |
+| numpy_einsum | 21.68 | 1.00x | 0.37x | 0.00 | 3.16e-14 |
+| numba_blas_fused | 22.30 | 0.97x | 0.36x | 0.32 | 3.16e-14 |
+| helion_tiled_tuned | 28.21 | 0.77x | 0.29x | 0.00 | 4.64e-13 |
+| numba_jblock_tuned | 39.00 | 0.56x | 0.21x | 0.00 | 1.66e-12 |
+| numba_k_chunk_tabmat | 70.13 | 0.31x | 0.12x | 0.00 | 1.66e-12 |
+| numba_fused_tuned | 77.27 | 0.28x | 0.10x | 0.00 | 1.66e-12 |
+| numba_rival_st | 85.95 | 0.25x | 0.09x | 0.00 | 1.66e-12 |
+| numba_tabmat_style_st | 89.85 | 0.24x | 0.09x | 0.00 | 1.66e-12 |
 
-Best: **tabmat** (7.33 ms). tabmat: 7.33 ms (1.00x vs best).
+Best: **torch_einsum** (7.92 ms). tabmat: 8.10 ms (1.02x vs best).
 
 ## glm_medium
 
 | kernel | median (ms) | vs numpy_einsum | vs tabmat | peak RSS Δ (MB) | max rel err |
 |---|---:|---:|---:|---:|---:|
-| tabmat | 67.48 | 1.48x | 1.00x | 0.00 | 4.59e-12 |
-| numpy_weighted_gram | 98.67 | 1.01x | 0.68x | 0.00 | 0.00e+00 |
-| numpy_einsum | 100.10 | 1.00x | 0.67x | 0.09 | 0.00e+00 |
-| numba_blas_fused | 107.60 | 0.93x | 0.63x | 0.27 | 0.00e+00 |
-| jax_einsum | 113.25 | 0.88x | 0.60x | 43.45 | 1.35e-03 |
-| jax_chunked_tuned | 120.96 | 0.83x | 0.56x | 44.95 | 6.96e-04 |
-| numba_jblock_tuned | 427.90 | 0.23x | 0.16x | 0.00 | 1.74e-11 |
-| numba_k_chunk_tabmat | 877.23 | 0.11x | 0.08x | 0.00 | 1.74e-11 |
-| numba_fused_tuned | 931.66 | 0.11x | 0.07x | 0.00 | 1.74e-11 |
-| numba_rival_st | 969.53 | 0.10x | 0.07x | 0.00 | 1.74e-11 |
-| numba_tabmat_style_st | 971.78 | 0.10x | 0.07x | 0.00 | 1.74e-11 |
+| torch_einsum | 67.54 | 1.58x | 1.05x | 0.00 | 2.90e-12 |
+| tabmat | 70.59 | 1.51x | 1.00x | 0.00 | 4.59e-12 |
+| helion_eager | 70.82 | 1.51x | 1.00x | 0.00 | 2.90e-12 |
+| torch_compile_einsum | 78.19 | 1.37x | 0.90x | 0.04 | 2.70e-12 |
+| torch_compile_tiled_tuned | 86.36 | 1.24x | 0.82x | 81.26 | 1.94e-12 |
+| numpy_einsum | 106.82 | 1.00x | 0.66x | 0.09 | 0.00e+00 |
+| numpy_weighted_gram | 108.96 | 0.98x | 0.65x | 0.00 | 0.00e+00 |
+| jax_einsum | 109.12 | 0.98x | 0.65x | 43.05 | 1.35e-03 |
+| helion_tiled_tuned | 110.59 | 0.97x | 0.64x | 0.00 | 2.52e-12 |
+| jax_chunked_tuned | 122.32 | 0.87x | 0.58x | 44.16 | 6.96e-04 |
+| numba_blas_fused | 122.64 | 0.87x | 0.58x | 0.27 | 0.00e+00 |
+| torch_tiled_tuned | 173.69 | 0.62x | 0.41x | 0.00 | 4.13e-12 |
+| numba_jblock_tuned | 429.28 | 0.25x | 0.16x | 0.00 | 1.74e-11 |
+| numba_k_chunk_tabmat | 855.03 | 0.12x | 0.08x | 0.00 | 1.74e-11 |
+| numba_fused_tuned | 885.40 | 0.12x | 0.08x | 0.00 | 1.74e-11 |
+| numba_tabmat_style_st | 946.88 | 0.11x | 0.07x | 0.00 | 1.74e-11 |
+| numba_rival_st | 987.53 | 0.11x | 0.07x | 0.00 | 1.74e-11 |
 
-Best: **tabmat** (67.48 ms). tabmat: 67.48 ms (1.00x vs best).
+Best: **torch_einsum** (67.54 ms). tabmat: 70.59 ms (1.05x vs best).
 
 ## glm_tall_skinny
 
 | kernel | median (ms) | vs numpy_einsum | vs tabmat | peak RSS Δ (MB) | max rel err |
 |---|---:|---:|---:|---:|---:|
-| tabmat | 42.22 | 1.99x | 1.00x | 0.00 | 4.63e-13 |
-| numpy_weighted_gram | 82.92 | 1.01x | 0.51x | 0.00 | 0.00e+00 |
-| numpy_einsum | 84.12 | 1.00x | 0.50x | 0.00 | 0.00e+00 |
-| numba_blas_fused | 90.73 | 0.93x | 0.47x | 0.00 | 0.00e+00 |
-| jax_einsum | 103.32 | 0.81x | 0.41x | 39.80 | 1.96e-04 |
-| jax_chunked_tuned | 107.25 | 0.78x | 0.39x | 40.38 | 6.18e-05 |
-| numba_jblock_tuned | 162.17 | 0.52x | 0.26x | 0.00 | 1.75e-12 |
-| numba_k_chunk_tabmat | 306.53 | 0.27x | 0.14x | 0.00 | 1.75e-12 |
-| numba_fused_tuned | 327.08 | 0.26x | 0.13x | 0.00 | 1.75e-12 |
-| numba_tabmat_style_st | 361.86 | 0.23x | 0.12x | 0.00 | 1.75e-12 |
-| numba_rival_st | 363.98 | 0.23x | 0.12x | 0.00 | 1.75e-12 |
+| torch_tiled_tuned | 39.59 | 2.23x | 1.39x | 0.00 | 6.10e-13 |
+| helion_tiled_tuned | 45.76 | 1.93x | 1.20x | 5.41 | 6.10e-13 |
+| torch_compile_tiled_tuned | 52.42 | 1.68x | 1.05x | 0.46 | 4.45e-13 |
+| tabmat | 55.02 | 1.60x | 1.00x | 0.00 | 4.63e-13 |
+| torch_einsum | 70.84 | 1.25x | 0.78x | 0.00 | 4.32e-13 |
+| torch_compile_einsum | 84.48 | 1.04x | 0.65x | 0.03 | 9.35e-13 |
+| numpy_einsum | 88.20 | 1.00x | 0.62x | 0.00 | 0.00e+00 |
+| numpy_weighted_gram | 89.80 | 0.98x | 0.61x | 0.00 | 0.00e+00 |
+| helion_eager | 90.20 | 0.98x | 0.61x | 0.00 | 4.32e-13 |
+| jax_chunked_tuned | 118.35 | 0.75x | 0.46x | 42.92 | 6.18e-05 |
+| numba_blas_fused | 142.34 | 0.62x | 0.39x | 0.00 | 0.00e+00 |
+| numba_jblock_tuned | 197.15 | 0.45x | 0.28x | 0.00 | 1.75e-12 |
+| jax_einsum | 212.58 | 0.41x | 0.26x | 39.14 | 1.96e-04 |
+| numba_fused_tuned | 394.11 | 0.22x | 0.14x | 0.00 | 1.75e-12 |
+| numba_k_chunk_tabmat | 471.92 | 0.19x | 0.12x | 0.00 | 1.75e-12 |
+| numba_tabmat_style_st | 606.50 | 0.15x | 0.09x | 0.00 | 1.75e-12 |
+| numba_rival_st | 679.71 | 0.13x | 0.08x | 0.00 | 1.75e-12 |
 
-Best: **tabmat** (42.22 ms). tabmat: 42.22 ms (1.00x vs best).
+Best: **torch_tiled_tuned** (39.59 ms). tabmat: 55.02 ms (1.39x vs best).
 
 ## glm_square_cols
 
 | kernel | median (ms) | vs numpy_einsum | vs tabmat | peak RSS Δ (MB) | max rel err |
 |---|---:|---:|---:|---:|---:|
-| tabmat | 79.32 | 1.63x | 1.00x | 0.00 | 2.25e-12 |
-| jax_chunked_tuned | 97.72 | 1.32x | 0.81x | 40.25 | 2.03e-03 |
-| jax_einsum | 111.79 | 1.16x | 0.71x | 37.73 | 3.43e-03 |
-| numba_blas_fused | 121.11 | 1.07x | 0.65x | 0.27 | 0.00e+00 |
-| numpy_einsum | 129.32 | 1.00x | 0.61x | 0.12 | 0.00e+00 |
-| numpy_weighted_gram | 138.53 | 0.93x | 0.57x | 0.00 | 0.00e+00 |
-| numba_jblock_tuned | 607.16 | 0.21x | 0.13x | 0.00 | 1.74e-11 |
-| numba_k_chunk_tabmat | 1223.21 | 0.11x | 0.06x | 0.00 | 1.74e-11 |
-| numba_fused_tuned | 1304.80 | 0.10x | 0.06x | 0.00 | 1.74e-11 |
-| numba_rival_st | 1325.19 | 0.10x | 0.06x | 0.00 | 1.74e-11 |
-| numba_tabmat_style_st | 1327.57 | 0.10x | 0.06x | 0.00 | 1.74e-11 |
+| torch_einsum | 86.64 | 1.80x | 1.29x | 0.00 | 3.26e-12 |
+| helion_eager | 97.54 | 1.60x | 1.15x | 0.00 | 3.26e-12 |
+| torch_compile_einsum | 101.06 | 1.55x | 1.11x | 0.03 | 6.96e-12 |
+| tabmat | 112.11 | 1.39x | 1.00x | 0.00 | 2.25e-12 |
+| jax_einsum | 123.56 | 1.26x | 0.91x | 37.73 | 3.43e-03 |
+| torch_compile_tiled_tuned | 126.97 | 1.23x | 0.88x | 0.00 | 7.53e-12 |
+| torch_tiled_tuned | 135.08 | 1.16x | 0.83x | 7.99 | 8.77e-12 |
+| numpy_weighted_gram | 137.89 | 1.13x | 0.81x | 0.00 | 0.00e+00 |
+| numba_blas_fused | 146.63 | 1.07x | 0.76x | 0.27 | 0.00e+00 |
+| helion_tiled_tuned | 148.38 | 1.05x | 0.76x | 0.00 | 4.62e-12 |
+| numpy_einsum | 156.22 | 1.00x | 0.72x | 0.12 | 0.00e+00 |
+| jax_chunked_tuned | 159.53 | 0.98x | 0.70x | 39.12 | 2.03e-03 |
+| numba_jblock_tuned | 913.07 | 0.17x | 0.12x | 0.00 | 1.74e-11 |
+| numba_k_chunk_tabmat | 1158.57 | 0.13x | 0.10x | 0.00 | 1.74e-11 |
+| numba_fused_tuned | 1371.42 | 0.11x | 0.08x | 0.00 | 1.74e-11 |
+| numba_tabmat_style_st | 2104.29 | 0.07x | 0.05x | 0.00 | 1.74e-11 |
+| numba_rival_st | 2121.39 | 0.07x | 0.05x | 0.00 | 1.74e-11 |
 
-Best: **tabmat** (79.32 ms). tabmat: 79.32 ms (1.00x vs best).
+Best: **torch_einsum** (86.64 ms). tabmat: 112.11 ms (1.29x vs best).
 
 ## glm_small_f32
 
 | kernel | median (ms) | vs numpy_einsum | vs tabmat | peak RSS Δ (MB) | max rel err |
 |---|---:|---:|---:|---:|---:|
-| tabmat | 5.02 | 1.78x | 1.00x | 0.00 | 1.60e-04 |
-| numpy_weighted_gram | 8.31 | 1.07x | 0.60x | 0.00 | 1.00e-05 |
-| numba_blas_fused | 8.80 | 1.01x | 0.57x | 14.03 | 1.00e-05 |
-| numpy_einsum | 8.92 | 1.00x | 0.56x | 0.00 | 1.00e-05 |
-| jax_einsum | 9.23 | 0.97x | 0.54x | 13.66 | 1.04e-04 |
-| jax_chunked_tuned | 11.72 | 0.76x | 0.43x | 8.51 | 9.63e-05 |
-| numba_jblock_tuned | 37.30 | 0.24x | 0.13x | 0.00 | 2.21e-03 |
-| numba_k_chunk_tabmat | 72.76 | 0.12x | 0.07x | 0.00 | 2.21e-03 |
-| numba_fused_tuned | 77.75 | 0.11x | 0.06x | 0.00 | 2.21e-03 |
-| numba_rival_st | 82.48 | 0.11x | 0.06x | 0.37 | 2.21e-03 |
-| numba_tabmat_style_st | 83.64 | 0.11x | 0.06x | 0.00 | 2.21e-03 |
+| torch_compile_einsum | 5.15 | 3.11x | 1.70x | 1.36 | 1.32e-04 |
+| torch_einsum | 6.44 | 2.49x | 1.36x | 0.00 | 1.32e-04 |
+| torch_compile_tiled_tuned | 6.60 | 2.43x | 1.32x | 0.51 | 1.32e-04 |
+| tabmat | 8.74 | 1.83x | 1.00x | 0.00 | 1.60e-04 |
+| helion_eager | 9.95 | 1.61x | 0.88x | 0.00 | 1.32e-04 |
+| torch_tiled_tuned | 11.42 | 1.40x | 0.77x | 0.00 | 1.32e-04 |
+| jax_chunked_tuned | 12.11 | 1.32x | 0.72x | 0.00 | 9.63e-05 |
+| numpy_weighted_gram | 15.28 | 1.05x | 0.57x | 0.00 | 1.00e-05 |
+| numba_blas_fused | 15.76 | 1.02x | 0.55x | 0.00 | 1.00e-05 |
+| numpy_einsum | 16.02 | 1.00x | 0.55x | 0.00 | 1.00e-05 |
+| jax_einsum | 16.80 | 0.95x | 0.52x | 0.00 | 1.04e-04 |
+| helion_tiled_tuned | 19.79 | 0.81x | 0.44x | 0.00 | 1.32e-04 |
+| numba_jblock_tuned | 44.25 | 0.36x | 0.20x | 0.00 | 2.21e-03 |
+| numba_fused_tuned | 97.24 | 0.16x | 0.09x | 0.00 | 2.21e-03 |
+| numba_k_chunk_tabmat | 108.18 | 0.15x | 0.08x | 0.00 | 2.21e-03 |
+| numba_rival_st | 144.28 | 0.11x | 0.06x | 0.00 | 2.21e-03 |
+| numba_tabmat_style_st | 149.58 | 0.11x | 0.06x | 0.00 | 2.21e-03 |
 
-Best: **tabmat** (5.02 ms). tabmat: 5.02 ms (1.00x vs best).
+Best: **torch_compile_einsum** (5.15 ms). tabmat: 8.74 ms (1.70x vs best).

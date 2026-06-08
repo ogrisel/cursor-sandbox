@@ -20,6 +20,9 @@ class TuneParams:
     jax_chunk: int = 4096
     xsimd_block: int = 4
     xsimd_chunk_factor: int = 4
+    tile_m: int = 8
+    tile_n: int = 8
+    tile_k: int = 4096
 
     def to_dict(self) -> dict[str, int]:
         return asdict(self)
@@ -32,6 +35,9 @@ class TuneParams:
             jax_chunk=int(data.get("jax_chunk", 4096)),
             xsimd_block=int(data.get("xsimd_block", 4)),
             xsimd_chunk_factor=int(data.get("xsimd_chunk_factor", 4)),
+            tile_m=int(data.get("tile_m", 8)),
+            tile_n=int(data.get("tile_n", 8)),
+            tile_k=int(data.get("tile_k", 4096)),
         )
 
 
@@ -118,3 +124,15 @@ def xsimd_block_candidates(n_cols: int) -> list[int]:
 
 def xsimd_chunk_factor_candidates() -> list[int]:
     return [1, 2, 4, 8, 16, 32]
+
+
+def helion_tile_candidates(n_cols: int) -> list[int]:
+    return block_candidates(n_cols)
+
+
+def helion_row_tile_candidates(n_rows: int) -> list[int]:
+    explicit = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+    merged = sorted({r for r in explicit if r <= n_rows})
+    if n_rows not in merged:
+        merged.append(n_rows)
+    return merged or [4096]

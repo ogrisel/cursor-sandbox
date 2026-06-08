@@ -15,7 +15,8 @@
 ## Autotuned kernels
 
 Run `autotune_sandwich.py` to populate `artifacts/autotune_cache.json`, then call e.g.
-`sandwich_numba_blas_tuned(X, d, problem="glm_small", threading="multi", num_threads=4)`.
+`sandwich_numba_blas_tuned(X, d, problem="glm_small", threading="multi", num_threads=4)` or
+`sandwich_helion_tiled_tuned(X, d, problem="glm_small", threading="single")`.
 Benchmark harness includes `*_tuned` variants when `--include-tuned` (default).
 
 ## Helion sandwich kernel

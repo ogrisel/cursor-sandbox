@@ -43,6 +43,63 @@ def sandwich_helion_eager(X: np.ndarray, d: np.ndarray) -> np.ndarray:
     return sandwich_helion(X, d, mode="eager")
 
 
+def sandwich_helion_tiled(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    tile_m: int = 8,
+    tile_n: int = 8,
+    tile_k: int = 4096,
+) -> np.ndarray:
+    """Helion CPU kernel with explicit tile sizes."""
+    import torch
+
+    torch.set_num_threads(1)
+    dtype = torch.float32 if X.dtype == np.float32 else torch.float64
+    Xt = torch.as_tensor(X, dtype=dtype)
+    dt = torch.as_tensor(d, dtype=dtype)
+    out = helion_kernel.sandwich_helion_tiled(Xt, dt, tile_m, tile_n, tile_k)
+    return out.detach().cpu().numpy()
+
+
+def sandwich_torch_tiled(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    tile_m: int = 8,
+    tile_n: int = 8,
+    tile_k: int = 4096,
+) -> np.ndarray:
+    """Pure PyTorch tiled sandwich with tunable tile sizes."""
+    import torch
+
+    torch.set_num_threads(1)
+    dtype = torch.float32 if X.dtype == np.float32 else torch.float64
+    Xt = torch.as_tensor(X, dtype=dtype)
+    dt = torch.as_tensor(d, dtype=dtype)
+    out = helion_kernel.sandwich_torch_tiled(Xt, dt, tile_m, tile_n, tile_k)
+    return out.detach().cpu().numpy()
+
+
+def sandwich_torch_compile_tiled(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    tile_m: int = 8,
+    tile_n: int = 8,
+    tile_k: int = 4096,
+) -> np.ndarray:
+    """torch.compile(tiled) baseline."""
+    import torch
+
+    torch.set_num_threads(1)
+    dtype = torch.float32 if X.dtype == np.float32 else torch.float64
+    Xt = torch.as_tensor(X, dtype=dtype)
+    dt = torch.as_tensor(d, dtype=dtype)
+    out = helion_kernel.sandwich_torch_compile_tiled(Xt, dt, tile_m, tile_n, tile_k)
+    return out.detach().cpu().numpy()
+
+
 def sandwich_torch_einsum(X: np.ndarray, d: np.ndarray) -> np.ndarray:
     """Pure PyTorch einsum baseline (no Helion DSL)."""
     import torch

@@ -40,10 +40,13 @@ from threading_utils import default_multi_thread_count, sandwich_threading
 
 try:
     from kernels.tuned_kernels import (
+        sandwich_helion_tiled_tuned,
         sandwich_jax_chunked_tuned,
         sandwich_numba_blas_tuned,
         sandwich_numba_fused_tuned,
         sandwich_numba_jblock_tuned,
+        sandwich_torch_compile_tiled_tuned,
+        sandwich_torch_tiled_tuned,
         sandwich_xsimd_tuned,
         warmup_tuned,
     )
@@ -153,6 +156,12 @@ def _extra_alloc_estimate_mb(n_rows: int, n_cols: int, dtype: str, kernel: str) 
         return chunk_rows * n_cols * bytes_per / (1024 * 1024)
     if kernel in {"numpy_einsum", "jax_einsum", "helion_eager", "torch_einsum", "torch_compile_einsum"}:
         return n_cols * n_cols * bytes_per / (1024 * 1024)
+    if kernel in {
+        "helion_tiled_tuned",
+        "torch_tiled_tuned",
+        "torch_compile_tiled_tuned",
+    }:
+        return chunk_rows * n_cols * bytes_per / (1024 * 1024)
     if kernel in {"numba_blas_chunked"}:
         return chunk_rows * n_cols * bytes_per / (1024 * 1024) + n_cols * n_cols * bytes_per
     return 0.0
@@ -185,6 +194,15 @@ def _tuned_registry(
             X, d, problem=problem, threading=threading_mode, num_threads=num_threads
         ),
         "xsimd_tuned": lambda X, d: sandwich_xsimd_tuned(
+            X, d, problem=problem, threading=threading_mode, num_threads=num_threads
+        ),
+        "helion_tiled_tuned": lambda X, d: sandwich_helion_tiled_tuned(
+            X, d, problem=problem, threading=threading_mode, num_threads=num_threads
+        ),
+        "torch_tiled_tuned": lambda X, d: sandwich_torch_tiled_tuned(
+            X, d, problem=problem, threading=threading_mode, num_threads=num_threads
+        ),
+        "torch_compile_tiled_tuned": lambda X, d: sandwich_torch_compile_tiled_tuned(
             X, d, problem=problem, threading=threading_mode, num_threads=num_threads
         ),
     }
@@ -239,6 +257,12 @@ def _helion_kernels() -> list[str]:
     return ["helion_eager", "torch_einsum", "torch_compile_einsum"]
 
 
+def _helion_tuned_kernels() -> list[str]:
+    if not helion_available():
+        return []
+    return ["helion_tiled_tuned", "torch_tiled_tuned", "torch_compile_tiled_tuned"]
+
+
 def _kernels_for_threading(
     threading_mode: str,
     *,
@@ -271,6 +295,7 @@ def _kernels_for_threading(
             "numba_fused_blocked",
         ]
     if include_tuned and _TUNED_AVAILABLE:
+        helion_tuned = _helion_tuned_kernels() if include_helion else []
         if threading_mode == "multi":
             kernels.extend(
                 [
@@ -282,8 +307,10 @@ def _kernels_for_threading(
             )
             if _xsimd_built():
                 kernels.append("xsimd_tuned")
+            kernels.extend(helion_tuned)
         else:
             kernels.extend(["numba_fused_tuned", "numba_jblock_tuned", "jax_chunked_tuned"])
+            kernels.extend(helion_tuned)
     return kernels
 
 
