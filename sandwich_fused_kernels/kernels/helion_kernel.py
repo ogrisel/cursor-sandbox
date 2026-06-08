@@ -1,4 +1,12 @@
-"""Helion and torch.compile sandwich kernels (PyTorch 2.9+)."""
+"""Helion and torch.compile sandwich kernels (PyTorch 2.9+).
+
+Location: ``sandwich_fused_kernels/kernels/helion_kernel.py``
+
+NumPy-facing wrapper: ``sandwich_fused_kernels/kernels/helion_baseline.py``
+
+The Helion sandwich product kernel is ``sandwich_helion_eager`` below — it tiles
+the output (m×m) and reduces over rows with fused ``d[k]`` inside ``hl.tile`` loops.
+"""
 
 from __future__ import annotations
 

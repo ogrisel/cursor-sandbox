@@ -20,6 +20,8 @@ import numpy as np
 import psutil
 
 from kernels import (
+    helion_available,
+    sandwich_helion_eager,
     sandwich_jax,
     sandwich_numba,
     sandwich_numpy_diag_matmul,
@@ -27,8 +29,12 @@ from kernels import (
     sandwich_numpy_weighted_gram,
     sandwich_reference,
     sandwich_tabmat,
+    sandwich_torch_compile_einsum,
+    sandwich_torch_einsum,
+    warmup_helion,
     warmup_jax,
     warmup_numba,
+    warmup_torch_compile,
 )
 from threading_utils import default_multi_thread_count, sandwich_threading
 
@@ -131,15 +137,15 @@ def _extra_alloc_estimate_mb(n_rows: int, n_cols: int, dtype: str, kernel: str) 
         "numba_k_chunk_tabmat",
     }:
         return chunk_rows * n_cols * bytes_per / (1024 * 1024)
-    if kernel in {"numpy_einsum", "jax_einsum"}:
+    if kernel in {"numpy_einsum", "jax_einsum", "helion_eager", "torch_einsum", "torch_compile_einsum"}:
         return n_cols * n_cols * bytes_per / (1024 * 1024)
     if kernel in {"numba_blas_chunked"}:
         return chunk_rows * n_cols * bytes_per / (1024 * 1024) + n_cols * n_cols * bytes_per
     return 0.0
 
 
-def _kernel_registry() -> dict[str, Callable[..., np.ndarray]]:
-    return {
+def _kernel_registry(*, include_helion: bool) -> dict[str, Callable[..., np.ndarray]]:
+    registry: dict[str, Callable[..., np.ndarray]] = {
         "numpy_einsum": sandwich_numpy_einsum,
         "numpy_weighted_gram": sandwich_numpy_weighted_gram,
         "numpy_diag_matmul": sandwich_numpy_diag_matmul,
@@ -158,6 +164,15 @@ def _kernel_registry() -> dict[str, Callable[..., np.ndarray]]:
         "jax_einsum": lambda X, d: sandwich_jax(X, d, variant="einsum"),
         "jax_tensordot": lambda X, d: sandwich_jax(X, d, variant="tensordot"),
     }
+    if include_helion and helion_available():
+        registry.update(
+            {
+                "helion_eager": sandwich_helion_eager,
+                "torch_einsum": sandwich_torch_einsum,
+                "torch_compile_einsum": sandwich_torch_compile_einsum,
+            }
+        )
+    return registry
 
 
 def _blas_threads_for_kernel(kernel_name: str, threading_mode: str, num_threads: int) -> int:
@@ -171,7 +186,13 @@ def _blas_threads_for_kernel(kernel_name: str, threading_mode: str, num_threads:
     return num_threads
 
 
-def _kernels_for_threading(threading_mode: str) -> list[str]:
+def _helion_kernels() -> list[str]:
+    if not helion_available():
+        return []
+    return ["helion_eager", "torch_einsum", "torch_compile_einsum"]
+
+
+def _kernels_for_threading(threading_mode: str, *, include_helion: bool) -> list[str]:
     """Pick kernel variants appropriate for each threading regime."""
     common = [
         "numpy_einsum",
@@ -180,6 +201,8 @@ def _kernels_for_threading(threading_mode: str) -> list[str]:
         "numba_blas_fused",
         "jax_einsum",
     ]
+    if include_helion:
+        common.extend(_helion_kernels())
     if threading_mode == "single":
         return common + [
             "numba_rival_st",
@@ -215,8 +238,9 @@ def run_benchmarks(
     repeats: int,
     warmup: int,
     seed: int,
+    include_helion: bool,
 ) -> list[KernelResult]:
-    registry = _kernel_registry()
+    registry = _kernel_registry(include_helion=include_helion)
     for variant in (
         "rival_st",
         "tabmat_style_st",
@@ -231,6 +255,9 @@ def run_benchmarks(
         warmup_numba(variant)
     for variant in ("einsum", "tensordot"):
         warmup_jax(variant)
+    if include_helion and helion_available():
+        warmup_helion("eager")
+        warmup_torch_compile()
 
     results: list[KernelResult] = []
     baseline_times: dict[str, float] = {}
@@ -335,7 +362,7 @@ def profile_kernel(
     out_path: Path,
     num_threads: int,
 ) -> None:
-    registry = _kernel_registry()
+    registry = _kernel_registry(include_helion=helion_available())
     X, d = _make_problem(spec, seed)
     fn = registry[kernel_name]
 
@@ -368,14 +395,28 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--profile-kernel", type=str, default="numba_tabmat_style_mt")
     parser.add_argument("--profile-problem", type=str, default="glm_medium")
+    parser.add_argument(
+        "--include-helion",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Include Helion/PyTorch kernels when torch+helion are installed (default: true)",
+    )
     args = parser.parse_args()
+
+    include_helion = args.include_helion and helion_available()
+    if args.include_helion and not include_helion:
+        print(
+            "Warning: --include-helion set but helion/torch not installed; "
+            "install with: pip install torch helion packaging setuptools",
+            flush=True,
+        )
 
     problems = _default_problems()
     mt_threads = default_multi_thread_count()
 
     all_results: list[KernelResult] = []
     for threading_mode, num_threads in (("single", 1), ("multi", mt_threads)):
-        kernels = _kernels_for_threading(threading_mode)
+        kernels = _kernels_for_threading(threading_mode, include_helion=include_helion)
         all_results.extend(
             run_benchmarks(
                 problems=problems,
@@ -385,6 +426,7 @@ def main() -> None:
                 repeats=args.repeats,
                 warmup=args.warmup,
                 seed=args.seed,
+                include_helion=include_helion,
             )
         )
 

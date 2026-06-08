@@ -231,6 +231,31 @@ Helion autotuning + Triton codegen requires a GPU; use `HELION_INTERPRET=1` / `r
 
 Run: `python sandwich_fused_kernels/benchmark_xsimd_helion.py` (needs `helion`, `torch` in `.venv-helion` or similar).
 
+### Iteration 8 — Helion in main benchmark + discoverability
+
+The Helion sandwich kernel is in **`kernels/helion_kernel.py`** (see also **`kernels/README.md`**).
+NumPy benchmark entry point: **`kernels/helion_baseline.py`** → `sandwich_helion_eager(X, d)`.
+
+`benchmark_sandwich.py` now includes Helion alongside numpy / tabmat / numba / jax when
+`torch` + `helion` are installed (`--include-helion`, default on).
+
+#### Helion vs alternatives (`glm_small` 50k×40 f64, single-threaded)
+
+| kernel | median (ms) | vs tabmat | vs numpy_einsum |
+|---|---:|---:|---:|
+| tabmat | 7.12 | 1.00× | 2.22× |
+| torch_einsum | 6.20 | 1.15× | 2.40× |
+| helion_eager | 7.20 | 0.99× | 2.07× |
+| numba_blas_fused | 14.35 | 0.50× | 1.04× |
+| jax_einsum | 19.22 | 0.37× | 0.78× |
+| numba_rival_st | 94.5 | 0.08× | 0.18× |
+
+Helion CPU eager mode is **~0.99× tabmat** on this shape (within noise of torch_einsum).
+It does **not** use xsimd or tabmat — only PyTorch + Helion DSL tile loops.
+Multi-threaded: Helion stays single-threaded (~8.6 ms MT vs tabmat 2.2 ms MT).
+
+Install Helion deps: `pip install torch helion packaging setuptools`
+
 ## Layout
 
 ```
@@ -250,8 +275,9 @@ sandwich_fused_kernels/
 │   ├── numpy_baseline.py
 │   ├── tabmat_baseline.py
 │   ├── numba_kernels.py
+│   ├── helion_kernel.py      # Helion @helion.kernel sandwich (see kernels/README.md)
+│   ├── helion_baseline.py    # NumPy wrapper for Helion benchmarks
 │   ├── xsimd_kernel.py
-│   ├── helion_kernel.py
 │   └── jax_kernels.py
 └── artifacts/
     ├── benchmark_results.json
