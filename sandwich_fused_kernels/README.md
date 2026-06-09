@@ -320,6 +320,37 @@ Large output/row tiles (often 32×32 or 64×64 output, full-row or 16k+ row chun
 
 Full autotune table: `artifacts/autotune_report.md`.
 
+### Iteration 10 — triton-cpu backend
+
+The experimental [triton-cpu](https://github.com/triton-lang/triton-cpu) backend is built via
+`sandwich_fused_kernels/build_triton_cpu.sh` (requires git submodules + C++ toolchain).
+Run benchmarks with `TRITON_CPU_BACKEND=1` and the Helion venv:
+
+```bash
+bash sandwich_fused_kernels/build_triton_cpu.sh
+TRITON_CPU_BACKEND=1 sandwich_fused_kernels/.venv-helion/bin/python \
+  sandwich_fused_kernels/benchmark_sandwich.py --repeats 3 --warmup 1
+```
+
+Three triton-cpu paths are benchmarked (single-threaded):
+
+| Kernel | Description |
+|---|---|
+| `triton_cpu_native` | Hand-written `@triton.jit` row-chunked weighted Gram |
+| `helion_triton_cpu` | Helion→Triton compile (falls back to native on codegen errors) |
+| `torch_compile_triton_cpu` | `torch.compile(einsum)` with Inductor `cpu_backend=triton` |
+
+On `glm_small` f64 (50k×40, single-threaded):
+
+| Kernel | median (ms) | vs tabmat |
+|---|---:|---:|
+| tabmat | 6.88 | 1.00× |
+| **torch_compile_triton_cpu** | **4.15** | **1.66×** |
+| triton_cpu_native | 16.28 | 0.42× |
+| helion_triton_cpu | 30.86 | 0.22× (Helion codegen fails; falls back to native) |
+
+`torch_compile_triton_cpu` also reaches **1.06× tabmat** on `glm_medium` f64 ST.
+
 ## Layout
 
 ```

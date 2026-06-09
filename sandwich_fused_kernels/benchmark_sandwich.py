@@ -31,12 +31,27 @@ from kernels import (
     sandwich_tabmat,
     sandwich_torch_compile_einsum,
     sandwich_torch_einsum,
+    triton_cpu_available,
     warmup_helion,
     warmup_jax,
     warmup_numba,
     warmup_torch_compile,
 )
 from threading_utils import default_multi_thread_count, sandwich_threading
+
+try:
+    from kernels import (
+        sandwich_helion_triton_cpu,
+        sandwich_torch_compile_triton_cpu,
+        sandwich_triton_cpu_native,
+        warmup_helion_triton_cpu,
+        warmup_torch_compile_triton_cpu,
+        warmup_triton_cpu_native,
+    )
+
+    _TRITON_CPU_IMPORTS = True
+except ImportError:
+    _TRITON_CPU_IMPORTS = False
 
 try:
     from kernels.tuned_kernels import (
@@ -156,6 +171,8 @@ def _extra_alloc_estimate_mb(n_rows: int, n_cols: int, dtype: str, kernel: str) 
         return chunk_rows * n_cols * bytes_per / (1024 * 1024)
     if kernel in {"numpy_einsum", "jax_einsum", "helion_eager", "torch_einsum", "torch_compile_einsum"}:
         return n_cols * n_cols * bytes_per / (1024 * 1024)
+    if kernel in {"helion_triton_cpu", "torch_compile_triton_cpu", "triton_cpu_native"}:
+        return n_cols * n_cols * bytes_per / (1024 * 1024)
     if kernel in {
         "helion_tiled_tuned",
         "torch_tiled_tuned",
@@ -236,6 +253,11 @@ def _kernel_registry(*, include_helion: bool) -> dict[str, Callable[..., np.ndar
                 "torch_compile_einsum": sandwich_torch_compile_einsum,
             }
         )
+    if include_helion and _TRITON_CPU_IMPORTS and triton_cpu_available():
+        registry["triton_cpu_native"] = sandwich_triton_cpu_native
+        if helion_available():
+            registry["helion_triton_cpu"] = sandwich_helion_triton_cpu
+        registry["torch_compile_triton_cpu"] = sandwich_torch_compile_triton_cpu
     return registry
 
 
@@ -249,6 +271,15 @@ def _blas_threads_for_kernel(kernel_name: str, threading_mode: str, num_threads:
     }:
         return 1
     return num_threads
+
+
+def _triton_cpu_kernels() -> list[str]:
+    if not _TRITON_CPU_IMPORTS or not triton_cpu_available():
+        return []
+    kernels = ["triton_cpu_native", "torch_compile_triton_cpu"]
+    if helion_available():
+        kernels.append("helion_triton_cpu")
+    return kernels
 
 
 def _helion_kernels() -> list[str]:
@@ -279,6 +310,7 @@ def _kernels_for_threading(
     ]
     if include_helion:
         common.extend(_helion_kernels())
+        common.extend(_triton_cpu_kernels())
     if threading_mode == "single":
         kernels = common + [
             "numba_rival_st",
@@ -354,6 +386,10 @@ def run_benchmarks(
     if include_helion and helion_available():
         warmup_helion("eager")
         warmup_torch_compile()
+    if include_helion and _TRITON_CPU_IMPORTS and triton_cpu_available():
+        warmup_triton_cpu_native()
+        warmup_helion_triton_cpu()
+        warmup_torch_compile_triton_cpu()
 
     if include_tuned and _TUNED_AVAILABLE:
         warmup_tuned(num_threads=num_threads)

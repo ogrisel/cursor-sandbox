@@ -30,6 +30,13 @@ __all__ = [
     "warmup_helion",
     "warmup_torch_compile",
     "HELION_KERNEL_SOURCE",
+    "triton_cpu_available",
+    "sandwich_triton_cpu_native",
+    "sandwich_helion_triton_cpu",
+    "sandwich_torch_compile_triton_cpu",
+    "warmup_triton_cpu_native",
+    "warmup_helion_triton_cpu",
+    "warmup_torch_compile_triton_cpu",
 ]
 
 
@@ -57,5 +64,25 @@ def __getattr__(name: str) -> Any:
             "warmup_helion": helion_baseline.warmup_helion,
             "warmup_torch_compile": helion_baseline.warmup_torch_compile,
             "HELION_KERNEL_SOURCE": helion_baseline.HELION_KERNEL_PATH,
+        }[name]
+    if name in (
+        "triton_cpu_available",
+        "sandwich_triton_cpu_native",
+        "sandwich_helion_triton_cpu",
+        "sandwich_torch_compile_triton_cpu",
+        "warmup_triton_cpu_native",
+        "warmup_helion_triton_cpu",
+        "warmup_torch_compile_triton_cpu",
+    ):
+        from . import triton_cpu_kernel
+
+        return {
+            "triton_cpu_available": triton_cpu_kernel.triton_cpu_available,
+            "sandwich_triton_cpu_native": triton_cpu_kernel.sandwich_triton_cpu_native,
+            "sandwich_helion_triton_cpu": triton_cpu_kernel.sandwich_helion_triton_cpu,
+            "sandwich_torch_compile_triton_cpu": triton_cpu_kernel.sandwich_torch_compile_triton_cpu,
+            "warmup_triton_cpu_native": triton_cpu_kernel.warmup_triton_cpu_native,
+            "warmup_helion_triton_cpu": triton_cpu_kernel.warmup_helion_triton_cpu,
+            "warmup_torch_compile_triton_cpu": triton_cpu_kernel.warmup_torch_compile_triton_cpu,
         }[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

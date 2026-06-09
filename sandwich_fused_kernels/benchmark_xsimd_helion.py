@@ -209,6 +209,77 @@ def benchmark_helion_torch(
                     "skipped: no CUDA GPU in this environment",
                 )
             )
+
+        triton_cpu_mod = _load_module("triton_cpu_kernel", BASE_DIR / "kernels/triton_cpu_kernel.py")
+        os.environ["TRITON_CPU_BACKEND"] = "1"
+        if triton_cpu_mod.triton_cpu_available():
+            triton_cpu_mod.warmup_triton_cpu_native()
+            med = _median_timings(
+                lambda: triton_cpu_mod.sandwich_triton_cpu_native(X, d),
+                repeats,
+                warmup,
+            )
+            out = triton_cpu_mod.sandwich_triton_cpu_native(X, d)
+            err = float(np.max(np.abs(out - reference) / np.maximum(np.abs(reference), 1e-12)))
+            out_rows.append(
+                BenchRow(
+                    "triton_cpu_native",
+                    "single",
+                    1,
+                    med,
+                    0.0,
+                    err,
+                    "Hand-written Triton row-chunked weighted Gram (triton-cpu)",
+                )
+            )
+
+            triton_cpu_mod.warmup_helion_triton_cpu()
+            med = _median_timings(
+                lambda: triton_cpu_mod.sandwich_helion_triton_cpu(
+                    X.astype(np.float64), d.astype(np.float64)
+                ),
+                repeats,
+                warmup,
+            )
+            out = triton_cpu_mod.sandwich_helion_triton_cpu(X, d)
+            err = float(np.max(np.abs(out - reference) / np.maximum(np.abs(reference), 1e-12)))
+            out_rows.append(
+                BenchRow(
+                    "helion_triton_cpu",
+                    "single",
+                    1,
+                    med,
+                    0.0,
+                    err,
+                    "Helion Triton via triton-cpu backend (TRITON_CPU_BACKEND=1)",
+                )
+            )
+
+            triton_cpu_mod.warmup_torch_compile_triton_cpu()
+            med = _median_timings(
+                lambda: triton_cpu_mod.sandwich_torch_compile_triton_cpu(X, d),
+                repeats,
+                warmup,
+            )
+            out = triton_cpu_mod.sandwich_torch_compile_triton_cpu(X, d)
+            err = float(np.max(np.abs(out - reference) / np.maximum(np.abs(reference), 1e-12)))
+            out_rows.append(
+                BenchRow(
+                    "torch_compile_triton_cpu",
+                    "single",
+                    1,
+                    med,
+                    0.0,
+                    err,
+                    "torch.compile Inductor cpu_backend=triton (triton-cpu)",
+                )
+            )
+        else:
+            skip_note = "skipped: triton-cpu not built (run build_triton_cpu.sh)"
+            for label in ("triton_cpu_native", "helion_triton_cpu", "torch_compile_triton_cpu"):
+                out_rows.append(
+                    BenchRow(label, "n/a", 0, 0.0, 0.0, 0.0, skip_note)
+                )
     else:
         out_rows.append(
             BenchRow(

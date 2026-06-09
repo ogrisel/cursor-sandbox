@@ -11,6 +11,7 @@
 | `helion_baseline.py` | Helion + PyTorch | NumPy wrappers for benchmark harness |
 | `xsimd_kernel.py` | C++/xsimd extension | `sandwich_xsimd(..., block=, chunk_factor=)` |
 | `tuned_kernels.py` | Autotuned dispatch | `sandwich_*_tuned` (reads `artifacts/autotune_cache.json`) |
+| `triton_cpu_kernel.py` | triton-cpu (optional build) | `sandwich_triton_cpu_native`, `sandwich_torch_compile_triton_cpu` |
 
 ## Autotuned kernels
 
