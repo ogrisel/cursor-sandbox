@@ -49,6 +49,16 @@ def _params(
             cached = _cache().get(problem, "single", 1, "torch_tiled")
         if cached is not None:
             return cached
+    if family == "torch_compile_triton_tuned":
+        cached = _cache().get(problem, threading, num_threads, "torch_compile_triton_mt")
+        if cached is None:
+            cached = _cache().get(problem, threading, num_threads, "torch_tiled")
+        if cached is None and threading == "multi":
+            cached = _cache().get(problem, "single", 1, "torch_compile_triton_mt")
+            if cached is None:
+                cached = _cache().get(problem, "single", 1, "torch_tiled")
+        if cached is not None:
+            return cached
     return fallback
 
 
@@ -200,6 +210,98 @@ def sandwich_torch_tiled_tuned(
     return hb.sandwich_torch_tiled(X, d, tile_m=p.tile_m, tile_n=p.tile_n, tile_k=p.tile_k)
 
 
+def _triton_fallback(num_threads: int) -> TuneParams:
+    return TuneParams(
+        triton_chunk=4096,
+        triton_block_m=8,
+        triton_block_k=64,
+        triton_n_chunks=max(num_threads, 1),
+    )
+
+
+def sandwich_triton_cpu_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "multi",
+    num_threads: int = 1,
+) -> np.ndarray:
+    from .triton_cpu_kernel import sandwich_triton_cpu_native
+
+    p = _params(
+        "triton_cpu_mt",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=_triton_fallback(num_threads),
+    )
+    return sandwich_triton_cpu_native(
+        X,
+        d,
+        chunk=p.triton_chunk,
+        block_m=p.triton_block_m,
+        block_k=p.triton_block_k,
+        n_chunks=p.triton_n_chunks,
+        num_threads=num_threads,
+    )
+
+
+def sandwich_torch_compile_triton_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "multi",
+    num_threads: int = 1,
+) -> np.ndarray:
+    from .triton_cpu_kernel import sandwich_torch_compile_triton_tiled
+
+    p = _params(
+        "torch_compile_triton_tuned",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=_helion_tile_fallback(),
+    )
+    return sandwich_torch_compile_triton_tiled(
+        X,
+        d,
+        tile_m=p.tile_m,
+        tile_n=p.tile_n,
+        tile_k=p.tile_k,
+        num_threads=num_threads,
+    )
+
+
+def sandwich_helion_triton_cpu_tuned(
+    X: np.ndarray,
+    d: np.ndarray,
+    *,
+    problem: str | None = None,
+    threading: str = "multi",
+    num_threads: int = 1,
+) -> np.ndarray:
+    from .triton_cpu_kernel import sandwich_helion_triton_cpu
+
+    p = _params(
+        "triton_cpu_mt",
+        problem=problem,
+        threading=threading,
+        num_threads=num_threads,
+        fallback=_triton_fallback(num_threads),
+    )
+    return sandwich_helion_triton_cpu(
+        X,
+        d,
+        num_threads=num_threads,
+        chunk=p.triton_chunk,
+        block_m=p.triton_block_m,
+        block_k=p.triton_block_k,
+        n_chunks=p.triton_n_chunks,
+    )
+
+
 def sandwich_torch_compile_tiled_tuned(
     X: np.ndarray,
     d: np.ndarray,
@@ -241,4 +343,12 @@ def warmup_tuned(num_threads: int = 1) -> None:
         sandwich_torch_tiled_tuned(X, d, num_threads=num_threads)
         sandwich_torch_compile_tiled_tuned(X, d, num_threads=num_threads)
     except ImportError:
+        pass
+    try:
+        from .triton_cpu_kernel import triton_cpu_available
+
+        if triton_cpu_available():
+            sandwich_triton_cpu_tuned(X, d, num_threads=num_threads)
+            sandwich_torch_compile_triton_tuned(X, d, num_threads=num_threads)
+    except (ImportError, RuntimeError):
         pass

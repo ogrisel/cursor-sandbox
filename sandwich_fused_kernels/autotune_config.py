@@ -23,6 +23,10 @@ class TuneParams:
     tile_m: int = 8
     tile_n: int = 8
     tile_k: int = 4096
+    triton_chunk: int = 4096
+    triton_block_m: int = 8
+    triton_block_k: int = 64
+    triton_n_chunks: int = 4
 
     def to_dict(self) -> dict[str, int]:
         return asdict(self)
@@ -38,6 +42,10 @@ class TuneParams:
             tile_m=int(data.get("tile_m", 8)),
             tile_n=int(data.get("tile_n", 8)),
             tile_k=int(data.get("tile_k", 4096)),
+            triton_chunk=int(data.get("triton_chunk", 4096)),
+            triton_block_m=int(data.get("triton_block_m", 8)),
+            triton_block_k=int(data.get("triton_block_k", 64)),
+            triton_n_chunks=int(data.get("triton_n_chunks", 4)),
         )
 
 
@@ -136,3 +144,27 @@ def helion_row_tile_candidates(n_rows: int) -> list[int]:
     if n_rows not in merged:
         merged.append(n_rows)
     return merged or [4096]
+
+
+def triton_row_chunk_candidates(n_rows: int, num_threads: int) -> list[int]:
+    if num_threads <= 1:
+        return [512, 1024, 2048, 4096, 8192]
+    per_band = [max(256, (n_rows + nc - 1) // nc) for nc in chunk_count_candidates(n_rows, num_threads)]
+    explicit = [512, 1024, 2048, 4096, 8192, 16384]
+    return sorted({c for c in per_band + explicit if c <= n_rows}) or [4096]
+
+
+def triton_block_m_candidates(n_cols: int) -> list[int]:
+    return [b for b in (4, 8, 16, 32) if b <= max(n_cols, 4)]
+
+
+def triton_block_k_candidates() -> list[int]:
+    return [64, 128, 256, 512]
+
+
+def triton_n_chunk_candidates(n_rows: int, num_threads: int) -> list[int]:
+    if num_threads <= 1:
+        return [1]
+    raw = {num_threads * m for m in (1, 2, 4, 8)}
+    raw.add(num_threads)
+    return sorted(k for k in raw if k >= 1)

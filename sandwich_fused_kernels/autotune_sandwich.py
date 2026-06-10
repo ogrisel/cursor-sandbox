@@ -29,6 +29,10 @@ from autotune_config import (
     helion_row_tile_candidates,
     helion_tile_candidates,
     jax_chunk_candidates,
+    triton_block_k_candidates,
+    triton_block_m_candidates,
+    triton_n_chunk_candidates,
+    triton_row_chunk_candidates,
     xsimd_block_candidates,
     xsimd_chunk_factor_candidates,
 )
@@ -48,6 +52,8 @@ TUNABLE_FAMILIES = (
     "xsimd_mt",
     "helion_tiled",
     "torch_tiled",
+    "triton_cpu_mt",
+    "torch_compile_triton_mt",
 )
 
 
@@ -65,6 +71,15 @@ def _torch_available() -> bool:
         import torch  # noqa: F401
 
         return True
+    except ImportError:
+        return False
+
+
+def _triton_cpu_available() -> bool:
+    try:
+        from kernels.triton_cpu_kernel import triton_cpu_available
+
+        return triton_cpu_available()
     except ImportError:
         return False
 
@@ -129,6 +144,19 @@ def _iter_helion_tile_params(n_rows: int, n_cols: int, *, symmetric: bool = True
                 yield TuneParams(tile_m=tile_m, tile_n=tile_n, tile_k=tile_k)
 
 
+def _iter_triton_cpu_params(n_rows: int, n_cols: int, num_threads: int) -> Iterator[TuneParams]:
+    for chunk in triton_row_chunk_candidates(n_rows, num_threads):
+        for block_m in triton_block_m_candidates(n_cols):
+            for block_k in triton_block_k_candidates():
+                for n_chunks in triton_n_chunk_candidates(n_rows, num_threads):
+                    yield TuneParams(
+                        triton_chunk=chunk,
+                        triton_block_m=block_m,
+                        triton_block_k=block_k,
+                        triton_n_chunks=n_chunks,
+                    )
+
+
 def _param_grid(
     family: str,
     *,
@@ -147,8 +175,10 @@ def _param_grid(
         params = list(_iter_jax_params(n_rows, num_threads))
     elif family == "xsimd_mt":
         params = list(_iter_xsimd_params(n_cols, num_threads))
-    elif family in {"helion_tiled", "torch_tiled"}:
+    elif family in {"helion_tiled", "torch_tiled", "torch_compile_triton_mt"}:
         params = list(_iter_helion_tile_params(n_rows, n_cols))
+    elif family == "triton_cpu_mt":
+        params = list(_iter_triton_cpu_params(n_rows, n_cols, num_threads))
     else:
         raise ValueError(f"unknown family: {family}")
 
@@ -166,12 +196,18 @@ def _param_grid(
                 TuneParams(xsimd_block=4, xsimd_chunk_factor=4),
                 TuneParams(xsimd_block=8, xsimd_chunk_factor=8),
             ]
-        if family in {"helion_tiled", "torch_tiled"}:
+        if family in {"helion_tiled", "torch_tiled", "torch_compile_triton_mt"}:
             return [
                 TuneParams(tile_m=4, tile_n=4, tile_k=512),
                 TuneParams(tile_m=8, tile_n=8, tile_k=4096),
                 TuneParams(tile_m=16, tile_n=16, tile_k=8192),
                 TuneParams(tile_m=32, tile_n=32, tile_k=16384),
+            ]
+        if family == "triton_cpu_mt":
+            return [
+                TuneParams(triton_chunk=2048, triton_block_m=8, triton_block_k=64, triton_n_chunks=num_threads),
+                TuneParams(triton_chunk=4096, triton_block_m=8, triton_block_k=64, triton_n_chunks=num_threads * 2),
+                TuneParams(triton_chunk=4096, triton_block_m=8, triton_block_k=128, triton_n_chunks=num_threads * 4),
             ]
     return params
 
@@ -230,6 +266,29 @@ def _run_with_params(
         return hb.sandwich_torch_tiled(
             X, d, tile_m=params.tile_m, tile_n=params.tile_n, tile_k=params.tile_k
         )
+    if family == "triton_cpu_mt":
+        from kernels.triton_cpu_kernel import sandwich_triton_cpu_native
+
+        return sandwich_triton_cpu_native(
+            X,
+            d,
+            chunk=params.triton_chunk,
+            block_m=params.triton_block_m,
+            block_k=params.triton_block_k,
+            n_chunks=params.triton_n_chunks,
+            num_threads=num_threads,
+        )
+    if family == "torch_compile_triton_mt":
+        from kernels.triton_cpu_kernel import sandwich_torch_compile_triton_tiled
+
+        return sandwich_torch_compile_triton_tiled(
+            X,
+            d,
+            tile_m=params.tile_m,
+            tile_n=params.tile_n,
+            tile_k=params.tile_k,
+            num_threads=num_threads,
+        )
     raise ValueError(f"unknown family: {family}")
 
 
@@ -262,6 +321,14 @@ def _warmup_family(family: str, num_threads: int) -> None:
         from kernels import helion_kernel
 
         helion_kernel.warmup_torch_tiled()
+    if family == "triton_cpu_mt":
+        from kernels.triton_cpu_kernel import warmup_triton_cpu_native
+
+        warmup_triton_cpu_native(num_threads=num_threads)
+    if family == "torch_compile_triton_mt":
+        from kernels.triton_cpu_kernel import warmup_torch_compile_triton_tiled
+
+        warmup_torch_compile_triton_tiled(num_threads=num_threads)
 
 
 def tune_family(
@@ -384,6 +451,9 @@ def run_autotune(
             if family in {"torch_tiled", "torch_compile_tiled"} and not _torch_available():
                 print(f"  skip {family}: torch not installed", flush=True)
                 continue
+            if family in {"triton_cpu_mt", "torch_compile_triton_mt"} and not _triton_cpu_available():
+                print(f"  skip {family}: triton-cpu not installed", flush=True)
+                continue
             print(f"  tuning {family}...", flush=True)
             try:
                 row = tune_family(
@@ -407,6 +477,8 @@ def run_autotune(
             cache.set(spec.name, threading, num_threads, family, row.params)
             if family == "torch_tiled":
                 cache.set(spec.name, threading, num_threads, "torch_compile_tiled", row.params)
+            if family == "torch_compile_triton_mt":
+                cache.set(spec.name, threading, num_threads, "torch_compile_triton_tuned", row.params)
             results.append(row)
             print(
                 f"    best {row.params.to_dict()} -> {row.median_seconds * 1000:.2f} ms "
