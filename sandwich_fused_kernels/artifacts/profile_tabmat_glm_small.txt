@@ -1,0 +1,19 @@
+         16 function calls in 0.002 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.002    0.002 /workspace/sandwich_fused_kernels/kernels/tabmat_baseline.py:9(sandwich_tabmat)
+        1    0.002    0.002    0.002    0.002 /home/ubuntu/.cache/uv/archive-v0/su17AE4Ez-BcXfVf/lib/python3.11/site-packages/tabmat/dense_matrix.py:153(sandwich)
+        1    0.000    0.000    0.000    0.000 /home/ubuntu/.cache/uv/archive-v0/su17AE4Ez-BcXfVf/lib/python3.11/site-packages/tabmat/util.py:15(setup_restrictions)
+        2    0.000    0.000    0.000    0.000 /home/ubuntu/.cache/uv/archive-v0/su17AE4Ez-BcXfVf/lib/python3.11/site-packages/tabmat/util.py:6(set_up_rows_or_cols)
+        2    0.000    0.000    0.000    0.000 {built-in method numpy.arange}
+        1    0.000    0.000    0.000    0.000 /home/ubuntu/.cache/uv/archive-v0/su17AE4Ez-BcXfVf/lib/python3.11/site-packages/tabmat/dense_matrix.py:39(__init__)
+        1    0.000    0.000    0.000    0.000 /home/ubuntu/.cache/uv/archive-v0/su17AE4Ez-BcXfVf/lib/python3.11/site-packages/tabmat/util.py:55(check_sandwich_compatible)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.000    0.000 /home/ubuntu/.cache/uv/archive-v0/su17AE4Ez-BcXfVf/lib/python3.11/site-packages/tabmat/dense_matrix.py:118(dtype)
+        2    0.000    0.000    0.000    0.000 /home/ubuntu/.cache/uv/archive-v0/su17AE4Ez-BcXfVf/lib/python3.11/site-packages/tabmat/dense_matrix.py:108(shape)
+        1    0.000    0.000    0.000    0.000 {built-in method numpy.ascontiguousarray}
+        2    0.000    0.000    0.000    0.000 {built-in method numpy.asarray}
+
+
