@@ -351,6 +351,34 @@ On `glm_small` f64 (50k×40, single-threaded):
 
 `torch_compile_triton_cpu` also reaches **1.06× tabmat** on `glm_medium` f64 ST.
 
+### Iteration 11 — triton-cpu MT tile/chunk autotuning
+
+Multi-threaded triton paths now support tunable tiles/chunks:
+
+| Family | Kernel | Tunables |
+|---|---|---|
+| `triton_cpu_mt` | `triton_cpu_tuned` | row `chunk`, Triton `block_m`/`block_k`, parallel row bands (`n_chunks`) |
+| `torch_compile_triton_mt` | `torch_compile_triton_tuned` | PyTorch tile `tile_m`/`tile_n`/`tile_k` via Inductor `cpu_backend=triton` |
+
+Run MT autotune (requires triton-cpu build):
+
+```bash
+TRITON_CPU_BACKEND=1 sandwich_fused_kernels/.venv-helion/bin/python \
+  sandwich_fused_kernels/autotune_sandwich.py \
+  --families triton_cpu_mt torch_compile_triton_mt --threading multi
+```
+
+On `glm_tall_skinny` f64 (320k×32, 4 threads) after autotune:
+
+| Kernel | median (ms) | vs tabmat |
+|---|---:|---:|
+| tabmat | 20.07 | 1.00× |
+| **torch_compile_triton_tuned** | **7.63** | **2.63×** |
+| triton_cpu_tuned | 15.54 | 1.29× |
+| torch_compile_triton_cpu (untuned einsum) | 18.34 | 1.09× |
+
+On `glm_small` f64 MT, the untuned `torch_compile_triton_cpu` (einsum path, **1.03× tabmat**) still beats the tiled autotuned variant; use `triton_cpu_tuned` / `torch_compile_triton_tuned` where the cache shows a win for your problem shape.
+
 ## Layout
 
 ```

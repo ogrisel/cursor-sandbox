@@ -144,11 +144,29 @@ def _iter_helion_tile_params(n_rows: int, n_cols: int, *, symmetric: bool = True
                 yield TuneParams(tile_m=tile_m, tile_n=tile_n, tile_k=tile_k)
 
 
+def _iter_torch_compile_triton_params(n_rows: int, n_cols: int) -> Iterator[TuneParams]:
+    """Smaller tile grid than generic Helion search (each point triggers Inductor compile)."""
+    del n_cols
+    tiles = [8, 16, 32]
+    row_tiles = [k for k in (4096, 8192, 16384, 32768) if k <= n_rows] or [4096]
+    for tile_m in tiles:
+        for tile_k in row_tiles:
+            yield TuneParams(tile_m=tile_m, tile_n=tile_m, tile_k=tile_k)
+
+
 def _iter_triton_cpu_params(n_rows: int, n_cols: int, num_threads: int) -> Iterator[TuneParams]:
-    for chunk in triton_row_chunk_candidates(n_rows, num_threads):
+    if num_threads <= 1:
+        chunks = [c for c in (512, 1024, 2048, 4096, 8192) if c <= n_rows]
+        n_chunks_list = [1]
+        block_ks = [64, 128]
+    else:
+        chunks = [c for c in (2048, 4096, 8192, 16384) if c <= n_rows] or [4096]
+        n_chunks_list = [num_threads * m for m in (1, 2, 4)]
+        block_ks = [64, 128, 256]
+    for chunk in chunks:
         for block_m in triton_block_m_candidates(n_cols):
-            for block_k in triton_block_k_candidates():
-                for n_chunks in triton_n_chunk_candidates(n_rows, num_threads):
+            for block_k in block_ks:
+                for n_chunks in n_chunks_list:
                     yield TuneParams(
                         triton_chunk=chunk,
                         triton_block_m=block_m,
@@ -175,8 +193,10 @@ def _param_grid(
         params = list(_iter_jax_params(n_rows, num_threads))
     elif family == "xsimd_mt":
         params = list(_iter_xsimd_params(n_cols, num_threads))
-    elif family in {"helion_tiled", "torch_tiled", "torch_compile_triton_mt"}:
+    elif family in {"helion_tiled", "torch_tiled"}:
         params = list(_iter_helion_tile_params(n_rows, n_cols))
+    elif family == "torch_compile_triton_mt":
+        params = list(_iter_torch_compile_triton_params(n_rows, n_cols))
     elif family == "triton_cpu_mt":
         params = list(_iter_triton_cpu_params(n_rows, n_cols, num_threads))
     else:
@@ -205,9 +225,10 @@ def _param_grid(
             ]
         if family == "triton_cpu_mt":
             return [
-                TuneParams(triton_chunk=2048, triton_block_m=8, triton_block_k=64, triton_n_chunks=num_threads),
+                TuneParams(triton_chunk=4096, triton_block_m=8, triton_block_k=64, triton_n_chunks=num_threads),
                 TuneParams(triton_chunk=4096, triton_block_m=8, triton_block_k=64, triton_n_chunks=num_threads * 2),
-                TuneParams(triton_chunk=4096, triton_block_m=8, triton_block_k=128, triton_n_chunks=num_threads * 4),
+                TuneParams(triton_chunk=4096, triton_block_m=8, triton_block_k=128, triton_n_chunks=num_threads * 2),
+                TuneParams(triton_chunk=8192, triton_block_m=16, triton_block_k=64, triton_n_chunks=num_threads * 2),
             ]
     return params
 
@@ -479,6 +500,7 @@ def run_autotune(
                 cache.set(spec.name, threading, num_threads, "torch_compile_tiled", row.params)
             if family == "torch_compile_triton_mt":
                 cache.set(spec.name, threading, num_threads, "torch_compile_triton_tuned", row.params)
+            cache.save(cache_path)
             results.append(row)
             print(
                 f"    best {row.params.to_dict()} -> {row.median_seconds * 1000:.2f} ms "

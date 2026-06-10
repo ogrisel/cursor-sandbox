@@ -1,16 +1,16 @@
 # Autotune report
 
-Threading: **single** (1 threads)
+Threading: **multi** (4 threads)
 
 | problem | family | params | median (ms) | vs tabmat | max rel err |
 |---|---|---|---:|---:|---:|
-| glm_medium | helion_tiled | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 64, "tile_n": 64, "tile_k": 16384}` | 55.70 | 1.63x | 2.52e-12 |
-| glm_medium | torch_tiled | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 64, "tile_n": 64, "tile_k": 4096}` | 69.54 | 1.30x | 4.13e-12 |
-| glm_small | helion_tiled | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 32, "tile_n": 32, "tile_k": 32768}` | 13.94 | 0.55x | 4.64e-13 |
-| glm_small | torch_tiled | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 32, "tile_n": 32, "tile_k": 50000}` | 12.89 | 0.60x | 1.83e-13 |
-| glm_small_f32 | helion_tiled | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 32, "tile_n": 32, "tile_k": 50000}` | 6.22 | 0.75x | 1.32e-04 |
-| glm_small_f32 | torch_tiled | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 32, "tile_n": 32, "tile_k": 50000}` | 4.88 | 0.96x | 1.32e-04 |
-| glm_square_cols | helion_tiled | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 64, "tile_n": 64, "tile_k": 16384}` | 59.64 | 1.23x | 4.62e-12 |
-| glm_square_cols | torch_tiled | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 64, "tile_n": 64, "tile_k": 32768}` | 49.35 | 1.48x | 8.77e-12 |
-| glm_tall_skinny | helion_tiled | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 32, "tile_n": 32, "tile_k": 32768}` | 24.73 | 2.62x | 6.10e-13 |
-| glm_tall_skinny | torch_tiled | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 32, "tile_n": 32, "tile_k": 32768}` | 19.29 | 3.36x | 6.10e-13 |
+| glm_medium | torch_compile_triton_mt | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 32, "tile_n": 32, "tile_k": 32768, "triton_chunk": 4096, "triton_block_m": 8, "triton_block_k": 64, "triton_n_chunks": 4}` | 28.08 | 0.66x | 3.18e-12 |
+| glm_medium | triton_cpu_mt | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 8, "tile_n": 8, "tile_k": 4096, "triton_chunk": 16384, "triton_block_m": 16, "triton_block_k": 128, "triton_n_chunks": 4}` | 28.16 | 0.65x | 1.94e-12 |
+| glm_small | torch_compile_triton_mt | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 16, "tile_n": 16, "tile_k": 8192, "triton_chunk": 4096, "triton_block_m": 8, "triton_block_k": 64, "triton_n_chunks": 4}` | 4.22 | 0.80x | 4.66e-13 |
+| glm_small | triton_cpu_mt | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 8, "tile_n": 8, "tile_k": 4096, "triton_chunk": 4096, "triton_block_m": 8, "triton_block_k": 64, "triton_n_chunks": 4}` | 4.14 | 0.81x | 1.87e-13 |
+| glm_small_f32 | torch_compile_triton_mt | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 32, "tile_n": 32, "tile_k": 32768, "triton_chunk": 4096, "triton_block_m": 8, "triton_block_k": 64, "triton_n_chunks": 4}` | 3.20 | 0.56x | 1.82e-04 |
+| glm_small_f32 | triton_cpu_mt | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 8, "tile_n": 8, "tile_k": 4096, "triton_chunk": 16384, "triton_block_m": 8, "triton_block_k": 64, "triton_n_chunks": 4}` | 4.70 | 0.38x | 1.89e-04 |
+| glm_square_cols | torch_compile_triton_mt | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 32, "tile_n": 32, "tile_k": 32768, "triton_chunk": 4096, "triton_block_m": 8, "triton_block_k": 64, "triton_n_chunks": 4}` | 32.94 | 0.62x | 2.57e-12 |
+| glm_square_cols | triton_cpu_mt | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 8, "tile_n": 8, "tile_k": 4096, "triton_chunk": 2048, "triton_block_m": 16, "triton_block_k": 64, "triton_n_chunks": 4}` | 37.03 | 0.55x | 3.51e-12 |
+| glm_tall_skinny | torch_compile_triton_mt | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 32, "tile_n": 32, "tile_k": 32768, "triton_chunk": 4096, "triton_block_m": 8, "triton_block_k": 64, "triton_n_chunks": 4}` | 8.23 | 2.00x | 3.43e-13 |
+| glm_tall_skinny | triton_cpu_mt | `{"block": 4, "n_chunks": 1, "jax_chunk": 4096, "xsimd_block": 4, "xsimd_chunk_factor": 4, "tile_m": 8, "tile_n": 8, "tile_k": 4096, "triton_chunk": 16384, "triton_block_m": 16, "triton_block_k": 64, "triton_n_chunks": 4}` | 12.71 | 1.30x | 3.38e-13 |
