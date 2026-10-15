@@ -153,6 +153,8 @@ jobs:
       - name: Save the published tree
         env:
           PR_NUMBER: ${{ github.event.number }}
+          # GITHUB_TOKEN is not a default environment variable. The script
+          # below uses set -u, so the step has to pass github.token itself.
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
