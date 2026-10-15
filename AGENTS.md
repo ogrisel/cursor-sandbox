@@ -1,44 +1,28 @@
-# AGENTS.md
+# AGENTS Instruction
 
-## Repository overview
+This file contains additional guidance for AI agents and other AI editors.
 
-This is a sandbox repo used by @ogrisel to conduct agent driven experimental work.
+## **REQUIRED: AI/Agent Disclosure**
 
-The main branch is expected to remain empty.
+**Every summary, pull request description, or work description MUST include this disclosure:**
 
-Experiments are expected to happen in dedicated branches, possibly with accompanying PRs
-but those PRs are never meant to be merged.
+**If human review has *not yet* occurred (use this initially):**
+> This pull request includes code written with the assistance of AI.
+> The code has **not yet been reviewed** by a human.
 
-## Environment setup
+This is a **mandatory requirement**, not optional. Include it at the end of every summary you generate.
 
-Configure pixi based environment to manage per-experiment dedicated environments with recent enough versions of Python and feel free to choose between conda-forge and pypi.org distribution channel based on the nature of the experiment.
+## Working on an issue
 
-## Cursor Cloud specific instructions
+Before working on any issue, run `gh issue view <number>` to check current labels. Do
+not open a PR against an issue labeled "Needs Triage" or another "Needs ..." label. Such
+PRs get closed without review until a maintainer clears the label. See
+https://scikit-learn.org/dev/developers/contributing.html#issues-tagged-needs-triage.
 
-- Use the ssh key information provided as Cursor Agent Secret to connect to remote machines if needed to conduct your experiments.
-- The ssh key is passphrase protected but the passphrase is also stored as a secret.
-- You can find lists of username and ip addresses to connect to hosts with CUDA GPUs on AWS also stored as secrets.
-- AWS machines are specified by private IP address. You need to set a proxyjump rule to reach them. Details provided as secret.
-- Those machines might not be reachable because they automatically shutdown when idling. Ask your human operator to put one back online when needed.
+## Generated Summaries
 
-## Running experiments
+When generating a summary of your work, consider these points:
 
-Try to be mindful of resource usage:
-
-- start with short running experiments that are likely to yield the most informative signal per amount of spent resources;
-- when benchmarking user facing API, focus on calls that individually last more than 1s to focus on case that actually matter for humans interacting with the software instead of only reporting microbenchmark results;
-- if possible run experiments that individually last for less than 10s so as to iterate faster;
-- progressively run longer experiments if needed but only if this justified;
-- be mindful of host and GPU memory usage (when applicable) and make sure the experiments do not fail or their results are not invalidated because of memory exhaustion. Plan experiment to always keep at least 20% of free headroom.
-
-## Reporting 
-
-Summarize experimental results with tables in markdown files.
-
-If those markdown files include plots, configure a CI to render the report as a small HTML website.
-
-Render those reports as a small browsable HTML websites hosted on cloudflare' pages.dev and post a link that includes the PR number as comment to the PR once renderedC by the CI.
-
-When iterating, keep a chronologically structured journal. Create subfolders to archive results from previous iterations and cross-links to individual subreports and make sure that the rendered website makes it easy to navigate to previous experiment reports from the rendered journal page.
-
-
+- Describe the "why" of the changes, why the proposed solution is the right one.
+- Highlight areas of the proposed changes that require careful review.
+- Reduce the verbosity of your comments, more text and detail is not always better. Avoid flattery, avoid stating the obvious, avoid filler phrases, prefer technical clarity over marketing tone.
