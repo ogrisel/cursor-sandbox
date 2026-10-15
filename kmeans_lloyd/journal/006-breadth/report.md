@@ -4,9 +4,9 @@ Same budget for every full fit: at most 12 Lloyd iterations, or stop when the ce
 
 Scikit-learn 1.7.2 is the stock build. The optimized build is scikit-learn 1.10.dev0 from [cakedev0/scikit-learn#23](https://github.com/cakedev0/scikit-learn/pull/23) at `7e26a5c`, which also contains the chunked Lloyd kernel from [cakedev0/scikit-learn#26](https://github.com/cakedev0/scikit-learn/pull/26). cuML is 26.10.00. cuML has no public k-means++ function, so that row is `KMeans(max_iter=0, init="k-means++")`, which leaves the initial centers in place and then assigns labels. That assignment is included in the cuML init time.
 
-Seeds are not a shared stream. The array-API draws use NumPy `Generator(0)`. Both scikit-learn builds use `random_state=0`. cuML uses `random_state=0` as well. CPU and CUDA array-API runs therefore match each other exactly, and the two scikit-learn builds match each other whenever the new sampler draws the same rows as the stock one.
+Seeds are not a shared stream. The array-API draws use NumPy `Generator(0)`. Both scikit-learn builds use `random_state=0`. cuML uses `random_state=0` as well. On the smaller matrices the CPU and CUDA array-API draws stay identical. On the two largest they diverge, because a float rounding difference changes a weighted sample and every later center follows.
 
-Peak memory is an increment. PyTorch reports allocator bytes above the input. Scikit-learn reports the rise in `VmHWM` on the first call. cuML reports nvidia-smi, whose step is 1 MiB; a 2.0 MiB increment is that step, not a measured workspace. The two largest shapes are still running and are not in these tables.
+Peak memory is an increment. PyTorch reports allocator bytes above the input. Scikit-learn reports the rise in `VmHWM` on the first call. cuML reports nvidia-smi, whose step is 1 MiB; a 2.0 MiB increment is that step, not a measured workspace.
 
 ## Cases
 
@@ -26,6 +26,8 @@ Blob data places `k` random centers, scales them by `separation`, and adds Gauss
 | wide | 40000 | 256 | 16 | separation 5, std 1 |
 | mixed | 80000 | 64 | 32 | separation 5, std 1 |
 | speed-m | 65536 | 512 | 64 | separation 5, std 1 |
+| speed-l | 131072 | 1024 | 128 | separation 5, std 1 |
+| speed-xl | 131072 | 2048 | 256 | separation 5, std 1 |
 
 ## Quality
 
@@ -49,6 +51,8 @@ Init, mean squared distance:
 | k128 | 75.60 | 70.06 | 70.06 | 75.60 | 62.65 |
 | mixed | 126.76 | 189.29 | 189.29 | 126.76 | 128.37 |
 | speed-m | 1335.12 | 1331.29 | 1336.85 | 1334.99 | 1016.84 |
+| speed-l | 2381.82 | 2704.90 | 2699.24 | 2381.82 | 2375.48 |
+| speed-xl | 4410.30 | 4722.77 | 5042.97 | 4736.51 | 4085.00 |
 
 Fit, mean squared distance and iterations actually run:
 
@@ -69,6 +73,8 @@ Fit, mean squared distance and iterations actually run:
 | wide | 255.97, 2 it | 255.97, 2 it | 255.97, 2 it | 255.97, 2 it | 255.97, 2 it |
 | mixed | 63.99, 2 it | 94.62, 12 it | 94.62, 12 it | 63.99, 2 it | 63.99, 2 it |
 | speed-m | 675.90, 12 it | 665.32, 11 it | 677.33, 7 it | 675.90, 12 it | 511.36, 2 it |
+| speed-l | 1199.17, 10 it | 1368.80, 10 it | 1359.15, 11 it | 1199.17, 12 it | 1188.53, 6 it |
+| speed-xl | 2214.23, 3 it | 2385.00, 4 it | 2380.32, 3 it | 2398.48, 4 it | 2043.96, 2 it |
 
 Where the table shows one inertia repeated across a row, the relative gap is under 0.1%. That happens for tight, mild, noise, tight-d128, noise-d128, k4, tall, and wide. On those, every implementation uses the same small iteration count when the blobs are separated, and the full budget of 12 when the data is noise.
 
@@ -79,6 +85,8 @@ Where the table shows one inertia repeated across a row, the relative gap is und
 - `mixed`: scikit-learn's init is 189 against about 127, and its fit stays at 94.62 while the array API and cuML reach 63.99 in 2 iterations.
 - `speed-m`: cuML's init is 1017 against about 1334, and its fit reaches 511 (the `512 * std²` floor) in 2 iterations. The others are still near 670 after 7 to 12 iterations.
 - `overlap`: cuML's fit is 84.63 against 81.77 for the other four, about 3.5% higher, after a full budget of 12 iterations.
+- `speed-l`: the array API and cuML land together (1199 and 1189). Both scikit-learn builds stay near 1360, about 14% higher, after a worse init (about 2700 against 2380).
+- `speed-xl`: cuML reaches 2044, next to the `2048 * std²` floor. The array-API CPU fit is 2214 and the CUDA fit is 2398; those two draws diverged. Both scikit-learn builds finish near 2382. The spread from the floor to the CUDA fit is about 17%.
 
 Empty clusters are not the cause of the `loose` gap: the array-API labeling at iteration 12 used every center. The implementation still does not relocate an empty center, which scikit-learn does. That difference did not appear on the rows where the inertias match.
 
@@ -99,6 +107,8 @@ k-means++, seconds and peak increment:
 | wide | 0.079 s, 43.7 MiB | 0.257 s, 10.4 MiB | 0.041 s, 4.1 MiB | 0.008 s, 40.2 MiB | 0.041 s, 44.0 MiB |
 | mixed | 0.149 s, 24.3 MiB | 0.284 s, 8.3 MiB | 0.038 s, 5.9 MiB | 0.015 s, 20.3 MiB | 0.040 s, 24.0 MiB |
 | speed-m | 1.256 s, 69.3 MiB | 2.696 s, 21.2 MiB | 0.620 s, 6.2 MiB | 0.066 s, 64.5 MiB | 0.163 s, 134.0 MiB |
+| speed-l | 8.863 s, 135.3 MiB | 24.113 s, 58.4 MiB | 5.609 s, 9.8 MiB | 0.370 s, 129.5 MiB | 1.067 s, 524.0 MiB |
+| speed-xl | 41.786 s, 135.3 MiB | 118.235 s, 135.0 MiB | 24.074 s, 12.7 MiB | 1.345 s, 129.5 MiB | 3.944 s, 1042.0 MiB |
 
 One Lloyd iteration from the first `k` rows:
 
@@ -107,6 +117,8 @@ One Lloyd iteration from the first `k` rows:
 | k128 | 0.017 s, 27.3 MiB | 0.010 s, 4.8 MiB | 0.010 s, 4.8 MiB | 0.002 s, 19.9 MiB | 0.040 s, 2.0 MiB |
 | wide | 0.016 s, 11.3 MiB | 0.038 s, 77.8 MiB | 0.037 s, 78.0 MiB | 0.002 s, 5.6 MiB | 0.040 s, 2.0 MiB |
 | speed-m | 0.090 s, 38.7 MiB | 0.141 s, 255.9 MiB | 0.142 s, 255.9 MiB | 0.003 s, 33.3 MiB | 0.040 s, 130.0 MiB |
+| speed-l | 0.592 s, 136.2 MiB | 0.701 s, 1023.9 MiB | 0.700 s, 1024.0 MiB | 0.008 s, 130.5 MiB | 0.162 s, 518.0 MiB |
+| speed-xl | 1.855 s, 164.2 MiB | 2.029 s, 2048.0 MiB | 2.035 s, 2048.0 MiB | 0.026 s, 130.6 MiB | 0.285 s, 1036.1 MiB |
 
 Full fit:
 
@@ -116,7 +128,11 @@ Full fit:
 | wide | 0.135 s, 49.9 MiB | 0.335 s, 78.0 MiB | 0.077 s, 78.0 MiB | 0.013 s, 59.5 MiB | 0.040 s, 44.0 MiB |
 | mixed | 0.188 s, 52.5 MiB | 0.342 s, 38.9 MiB | 0.096 s, 39.0 MiB | 0.023 s, 40.0 MiB | 0.040 s, 24.0 MiB |
 | speed-m | 2.414 s, 74.9 MiB | 3.174 s, 255.7 MiB | 0.882 s, 255.9 MiB | 0.099 s, 76.1 MiB | 0.163 s, 134.0 MiB |
+| speed-l | 15.240 s, 160.7 MiB | 27.135 s, 1023.9 MiB | 7.912 s, 1023.9 MiB | 0.509 s, 132.0 MiB | 1.141 s, 524.0 MiB |
+| speed-xl | 49.614 s, 175.0 MiB | 122.993 s, 2048.0 MiB | 30.310 s, 2048.1 MiB | 1.517 s, 133.6 MiB | 4.000 s, 1042.0 MiB |
 
-On speed-m the array-API CUDA fit is 0.099 s and one Lloyd step is 3 ms. cuML's fit is 0.163 s and reaches a better inertia, as noted above. On CPU, the PR 23 initializer is about twice as fast as the array API (0.620 s against 1.256 s) and about four times as fast as stock scikit-learn (2.696 s). The array-API Lloyd step is faster than both scikit-learn builds on that shape (90 ms against 141 ms) and uses less memory (39 MiB against 256 MiB). The PR builds' Lloyd step is the same code, so those two columns match.
+On speed-xl (131072 samples, 2048 features, 256 clusters, a 1.00 GiB matrix) one Lloyd step is 0.026 s on CUDA, 0.285 s in cuML, 1.855 s for the array API on CPU, and 2.03 s for both scikit-learn builds. The scikit-learn step peaks 2.00 GiB above the input, two extra copies of the matrix. The array-API CPU step peaks at 164 MiB and the CUDA step at 131 MiB. cuML peaks about 1.02 GiB above the memory already in use.
 
-A PyTorch CPU run on the next shape, 131072×1024×128, has already finished: init 8.86 s, one Lloyd step 0.59 s, fit 15.2 s for 10 iterations, peak increment about 160 MiB. The other implementations on that shape, and on 131072×2048×256, are still running.
+The full fit on that shape is 1.52 s for array-API CUDA, 4.00 s for cuML, 30.3 s for the patched scikit-learn, 49.6 s for array-API CPU, and 123 s for stock scikit-learn. cuML's fit is the one that sits on the blob floor. The patched initializer is the fastest of the CPU inits (24.1 s against 41.8 s for the array API and 118 s for stock scikit-learn) and its draw is the worst of the five.
+
+A PyTorch CPU matmul of this width uses the MKL build with 4 threads. The per-center product is a short N dimension, and the CPU initializer remains slower than the patched scikit-learn kernel. No further rewrite beat that gap inside the array API.
