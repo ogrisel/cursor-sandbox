@@ -61,7 +61,7 @@ Each schedule is one function on branch `cursor/kmeans-lloyd-fusion-8896`. `torc
 - [001 — fusion probe](001-fusion-probe/index.html) on a problem small enough that the naive broadcast tensor fits.
 - [002 — large shape, eager out of memory](002-large-shape-oom/index.html). Compiled GEMM still runs; a compiled running tile of 32 centroids does not allocate the distance matrix.
 - [003 — three shapes](003-resized-shapes/index.html) that vary samples, centroids, and features. `torch.compile` writes the Gram distance matrix and folds argmin into its epilogue. A running tile is the schedule that drops that matrix. `cupy.fuse` still stops at `argmin`.
-- [004 — tile sizes, Cython Lloyd, k-means++](004-tile-tradeoff/index.html). On feature-heavy, a Gram tile stays near 0.93–1.3 s and the extra memory tracks the centroid tile. A compiled running tile is fastest at 32 centroids (5.98 s, 2.56 MiB) and materializes the distance tile again at 64. The Cython Lloyd step takes 1.53 s on a smaller shape.
+- [004 — tile sizes, Cython Lloyd, k-means++](004-tile-tradeoff/index.html). A Gram tile of 4096 by 1024 plus a tiled mean update finishes a feature-heavy Lloyd step in 1.70 s, with assignment peak 64.5 MiB and update peak 432 MiB. The compiled running tile is fastest at 32 centroids (5.98 s, 2.56 MiB). On 65536×1024×2048 the L4 step takes 0.071 s and the 4-thread Cython Lloyd step takes 1.53 s, with 1 label differing. k-means++ on 65536×1024×8192 takes 10.3 s after the sample norm is computed once.
 
 ## Cases
 

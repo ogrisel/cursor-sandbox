@@ -17,7 +17,7 @@ The core functions stay in Python array-API syntax and run without `torch.compil
 | mean update with a `(n, tile_k)` one-hot | [`update_centroids_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L288-L309) |
 | one Lloyd step using those two tiles | [`lloyd_step`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L311-L329) |
 | running tile that also merges the best distance | [`running_tile_update`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L331-L342) |
-| k-means++ | [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L365-L403) |
+| k-means++ | [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L365-L406) |
 
 `||x||²` is omitted inside a tile because it does not change the argmin. That is the same reduction the Cython kernel uses. Centroid norms are computed once per centroid tile, then reused for every sample tile.
 
@@ -60,7 +60,49 @@ Same feature-heavy problem. One `torch.compile` block covers `tile_k` centroids,
 
 At 16 and 32 the stateful peak is 1.50 MiB, two copies of the `n * 12` byte label-and-distance state. At 64 and 128 the peak jumps to the `(n, tile_k)` distance tile (16 MiB and 32 MiB) plus about 2 MiB, and the assignment gets slower. The fastest running schedule is the outside merge at 32 centroids: 5.98 s and 2.56 MiB. The fastest Gram tile, 0.928 s and 64.5 MiB, is still about six times faster.
 
-Putting the merge inside the compiled block saves the extra copy at 16 and 32 and does not make the assignment faster. The kernel profile of these two schedules, the tiled centroid update, and k-means++ are still running.
+Putting the merge inside the compiled block saves the extra copy at 16 and 32 and does not make the assignment faster.
+
+## Kernels
+
+One compiled Gram tile of 4096 samples by 1024 centroids is `ampere_sgemm_128x128_tn` for 10.3 ms, then `triton_per_fused_amin_argmin_mul_sub_unsqueeze` for 0.01 ms. The argmin reads the GEMM output in a second kernel.
+
+One compiled running tile of 32 centroids, merge included, is a single kernel, `triton_red_fused_add_full_lift_fresh_lt_mul_select_sub_sum_where_zeros`, for 49.5 ms. Distance, comparison, and the running-minimum update are in that kernel. Covering all 4096 centroids takes 128 of those launches, which is the 6.6 s stateful row above.
+
+## Lloyd step
+
+Feature-heavy, eager, float32. The assignment and the update are timed separately. Each phase resets the device peak counter.
+
+| schedule | total | assignment | update |
+| --- | --- | --- | --- |
+| full Gram, one-hot update | 1.72 s | 1.042 s, 4.00 GiB | 0.678 s, 1.75 GiB |
+| Gram tile 4096 x 1024, update tile 256 | 1.70 s | 0.982 s, 64.5 MiB | 0.721 s, 432 MiB |
+| Gram tile 256 x 4096, update tile 256 | 1.89 s | 1.169 s, 256.5 MiB | 0.717 s, 432 MiB |
+
+The tiled mean update matches the one-hot update in time and lowers the update peak from 1.75 GiB to 432 MiB. The 4096 x 1024 assignment is the schedule to keep: the whole iteration is 1.70 s, and neither phase allocates the 4 GiB Gram temporary.
+
+## Same arrays as the Cython iteration
+
+65536 samples, 1024 centroids, 2048 features, float32, on this host. The GPU call is an eager `lloyd_step` with a 256 by 1024 Gram tile and an update tile of 256. The CPU call is `lloyd_iter_chunked_dense` with 4 threads.
+
+| implementation | median | memory |
+| --- | --- | --- |
+| Cython Lloyd | 1.526 s | 36.0 MiB of thread buffers; process RSS 1.63 GiB |
+| array-API Lloyd step on the L4 | 0.071 s | assignment peak 8.5 MiB, update peak 156 MiB |
+
+The labels differ in 1 of 65536 rows. The GPU step is short because this shape was sized so the 4-thread CPU iteration would last more than a second. On the feature-heavy problem the same array-API step is the 1.70 s row above.
+
+## k-means++
+
+65536 samples, 1024 centers, 8192 features, float32. The trial count is `2 + log(n_clusters)`.
+
+The first version recomputed `X * X` for every new center and pulled candidate indices back to the host. That took 37.5 s and peaked at 4.00 GiB above the inputs.
+
+The version in the tree computes the sample norm once and gathers candidate rows with `take`. It takes 10.3 s and peaks at 2.00 GiB, which is one `X * X` the size of the sample matrix.
+
+## Progress
+
+- Tile grid, running-tile sweep, kernel names, Lloyd step, Cython comparison, and both k-means++ timings are recorded. `results.json` and `cython.json` in this folder are the sources.
+- The Gram tile of 4096 by 1024 plus an update tile of 256 is the Lloyd step that keeps the feature-heavy iteration at 1.70 s without the 4 GiB assignment temporary.
 
 ## Cython timing
 

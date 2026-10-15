@@ -687,5 +687,300 @@
         "error": null
       }
     }
-  ]
+  ],
+  "profiles": [
+    {
+      "name": "compiled-gemm-tile-4096x1024",
+      "compile": {
+        "compile_seconds": 0.905613830999755,
+        "error": null
+      },
+      "kernels": [
+        {
+          "name": "ampere_sgemm_128x128_tn",
+          "count": 1,
+          "device_time_us": 10250.516
+        },
+        {
+          "name": "triton_per_fused_amin_argmin_mul_sub_unsqueeze_0",
+          "count": 1,
+          "device_time_us": 13.855999999999767
+        },
+        {
+          "name": "Memset (Device)",
+          "count": 1,
+          "device_time_us": 0.5119999999997162
+        }
+      ]
+    },
+    {
+      "name": "compiled-running-stateful-k32",
+      "compile": {
+        "compile_seconds": 1.046922171999995,
+        "error": null
+      },
+      "kernels": [
+        {
+          "name": "triton_red_fused_add_full_lift_fresh_lt_mul_select_sub_sum_where_zeros_0",
+          "count": 1,
+          "device_time_us": 49473.279
+        }
+      ]
+    }
+  ],
+  "lloyd": [
+    {
+      "status": "ok",
+      "median_seconds": 1.72010595703125,
+      "median_peak_extra_bytes": 1879642112,
+      "profiles": [
+        {
+          "seconds": 1.8546483154296876,
+          "peak_extra_bytes": 1888161792,
+          "warmup": true
+        },
+        {
+          "seconds": 1.72010595703125,
+          "peak_extra_bytes": 1879642112,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-one-hot",
+      "phases": [
+        {
+          "backend": "torch",
+          "seconds": 1.1028961181640624,
+          "peak_extra_bytes": 4303765504,
+          "retained_extra_bytes": 9043968,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.7509227294921875,
+          "peak_extra_bytes": 1879117824,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        },
+        {
+          "backend": "torch",
+          "seconds": 1.0415574951171875,
+          "peak_extra_bytes": 4295245824,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.6776483764648438,
+          "peak_extra_bytes": 1879117824,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 1.7035048828125,
+      "median_peak_extra_bytes": 453513728,
+      "profiles": [
+        {
+          "seconds": 1.6514693603515624,
+          "peak_extra_bytes": 453513728,
+          "warmup": true
+        },
+        {
+          "seconds": 1.7035048828125,
+          "peak_extra_bytes": 453513728,
+          "warmup": false
+        }
+      ],
+      "name": "tiled-4096x1024",
+      "phases": [
+        {
+          "backend": "torch",
+          "seconds": 0.9472296752929688,
+          "peak_extra_bytes": 67649536,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.7032545166015625,
+          "peak_extra_bytes": 452989440,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.9816770629882813,
+          "peak_extra_bytes": 67649536,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.7209891967773437,
+          "peak_extra_bytes": 452989440,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 1.8870118408203125,
+      "median_peak_extra_bytes": 453513728,
+      "profiles": [
+        {
+          "seconds": 1.837877197265625,
+          "peak_extra_bytes": 453513728,
+          "warmup": true
+        },
+        {
+          "seconds": 1.8870118408203125,
+          "peak_extra_bytes": 453513728,
+          "warmup": false
+        }
+      ],
+      "name": "tiled-256x4096",
+      "phases": [
+        {
+          "backend": "torch",
+          "seconds": 1.119193115234375,
+          "peak_extra_bytes": 268976128,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.7177769165039063,
+          "peak_extra_bytes": 452989440,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        },
+        {
+          "backend": "torch",
+          "seconds": 1.168689208984375,
+          "peak_extra_bytes": 268976128,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.7174348754882812,
+          "peak_extra_bytes": 452989440,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.07126623916625976,
+      "median_peak_extra_bytes": 164106752,
+      "profiles": [
+        {
+          "seconds": 0.06982844543457031,
+          "peak_extra_bytes": 164106752,
+          "warmup": true
+        },
+        {
+          "seconds": 0.07101631927490235,
+          "peak_extra_bytes": 164106752,
+          "warmup": false
+        },
+        {
+          "seconds": 0.07151615905761718,
+          "peak_extra_bytes": 164106752,
+          "warmup": false
+        }
+      ],
+      "name": "compare-lloyd-step",
+      "case": {
+        "name": "cython-compare",
+        "n_samples": 65536,
+        "n_clusters": 1024,
+        "n_features": 2048
+      },
+      "phases": [
+        {
+          "backend": "torch",
+          "seconds": 0.05092784118652344,
+          "peak_extra_bytes": 8916992,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.01821900749206543,
+          "peak_extra_bytes": 163582464,
+          "retained_extra_bytes": 8388608,
+          "phase": "update"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.050508800506591796,
+          "peak_extra_bytes": 8916992,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.019911680221557617,
+          "peak_extra_bytes": 163582464,
+          "retained_extra_bytes": 8388608,
+          "phase": "update"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.05034188842773438,
+          "peak_extra_bytes": 8916992,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.020617216110229493,
+          "peak_extra_bytes": 163582464,
+          "retained_extra_bytes": 8388608,
+          "phase": "update"
+        }
+      ],
+      "labels": "compare-labels-torch.npy"
+    }
+  ],
+  "compare_case": {
+    "name": "cython-compare",
+    "n_samples": 65536,
+    "n_clusters": 1024,
+    "n_features": 2048
+  },
+  "plusplus": {
+    "status": "ok",
+    "median_seconds": 10.3426845703125,
+    "median_peak_extra_bytes": 2147745792,
+    "profiles": [
+      {
+        "seconds": 10.5412451171875,
+        "peak_extra_bytes": 2147745792,
+        "warmup": true
+      },
+      {
+        "seconds": 10.3426845703125,
+        "peak_extra_bytes": 2147745792,
+        "warmup": false
+      }
+    ],
+    "name": "kmeans-plusplus",
+    "case": {
+      "name": "kmeans-plusplus",
+      "n_samples": 65536,
+      "n_clusters": 1024,
+      "n_features": 8192
+    }
+  },
+  "plusplus_before_norm_hoist": {
+    "median_seconds": 37.52251953125,
+    "median_peak_extra_bytes": 4295229440,
+    "note": "Recomputed X*X and copied candidate indices to the host for every center."
+  }
 }
