@@ -285,22 +285,37 @@ def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
     return labels
 
 
-def update_centroids_tiled(X, labels, centroids, tile_k):
+def update_centroids_tiled(X, labels, centroids, tile_k, tile_n=None):
     """Mean update one centroid tile at a time.
 
     The one-hot membership for a tile has shape ``(n_samples, tile_k)``
-    instead of ``(n_samples, n_clusters)``. An empty cluster keeps its
-    previous centroid.
+    instead of ``(n_samples, n_clusters)``. ``tile_n`` also splits the
+    samples, so that membership has shape ``(tile_n, tile_k)`` and the
+    sums are accumulated. An empty cluster keeps its previous centroid.
     """
     xp = array_namespace(X, labels, centroids)
+    n_samples = int(X.shape[0])
     n_clusters = int(centroids.shape[0])
+    n_features = int(X.shape[1])
+    if tile_n is None:
+        tile_n = n_samples
     updated = xp.empty_like(centroids)
     for k0 in range(0, n_clusters, tile_k):
         k1 = min(k0 + tile_k, n_clusters)
         ids = xp.arange(k1 - k0, dtype=labels.dtype, device=_device(X)) + k0
-        membership = xp.astype(labels[:, None] == ids[None, :], X.dtype)
-        counts = xp.sum(membership, axis=0)
-        sums = xp.matmul(xp.matrix_transpose(membership), X)
+        width = k1 - k0
+        if tile_n >= n_samples:
+            membership = xp.astype(labels[:, None] == ids[None, :], X.dtype)
+            counts = xp.sum(membership, axis=0)
+            sums = xp.matmul(xp.matrix_transpose(membership), X)
+        else:
+            counts = xp.zeros(width, dtype=X.dtype, device=_device(X))
+            sums = xp.zeros((width, n_features), dtype=X.dtype, device=_device(X))
+            for n0 in range(0, n_samples, tile_n):
+                n1 = min(n0 + tile_n, n_samples)
+                membership = xp.astype(labels[n0:n1, None] == ids[None, :], X.dtype)
+                counts = counts + xp.sum(membership, axis=0)
+                sums = sums + xp.matmul(xp.matrix_transpose(membership), X[n0:n1])
         counts_safe = xp.where(counts == 0, xp.ones_like(counts), counts)
         means = sums / counts_safe[:, None]
         empty = counts[:, None] == 0
@@ -308,23 +323,33 @@ def update_centroids_tiled(X, labels, centroids, tile_k):
     return updated
 
 
-def lloyd_step(X, centroids, tile_n, tile_k, update_tile_k=None, step=None, recorder=None):
+def lloyd_step(
+    X,
+    centroids,
+    tile_n,
+    tile_k,
+    update_tile_k=None,
+    update_tile_n=None,
+    step=None,
+    recorder=None,
+):
     """One Lloyd iteration with a tiled Gram assignment and a tiled update.
 
     ``tile_n`` and ``tile_k`` select the assignment tiles. The update uses
     ``update_tile_k`` centroid columns of the one-hot at a time, defaulting
-    to ``tile_k``.
+    to ``tile_k``. ``update_tile_n`` splits the sample axis of that one-hot.
+    The default keeps every sample in one membership matrix.
     """
     if update_tile_k is None:
         update_tile_k = tile_k
     if recorder is None:
         labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
-        updated = update_centroids_tiled(X, labels, centroids, update_tile_k)
+        updated = update_centroids_tiled(X, labels, centroids, update_tile_k, tile_n=update_tile_n)
     else:
         with recorder.phase("assign"):
             labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
         with recorder.phase("update"):
-            updated = update_centroids_tiled(X, labels, centroids, update_tile_k)
+            updated = update_centroids_tiled(X, labels, centroids, update_tile_k, tile_n=update_tile_n)
     return updated, labels
 
 
@@ -362,7 +387,7 @@ def assign_running_stateful(X, centroids, tile_k, block=None):
     return labels
 
 
-def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None):
+def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None, distance=None):
     """k-means++ initialization in the array API.
 
     The first center is a uniform draw from ``rng`` (a
@@ -384,17 +409,19 @@ def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None):
     if n_local_trials is None:
         n_local_trials = 2 + int(math.log(n_clusters))
     n_local_trials = max(1, min(int(n_local_trials), n_samples))
+    if distance is None:
+        distance = _distances_to_candidates
     chosen = [int(rng.integers(n_samples))]
     # One reduction of X * X. Repeating it inside every trial materializes a
     # full copy of the samples for each new center.
-    x_norm = xp.sum(X * X, axis=1)
+    x_norm = _row_squared_norm(xp, X)
     first = X[chosen[0]]
     closest = x_norm + xp.sum(first * first) - 2 * xp.matmul(X, first)
     closest = xp.maximum(closest, xp.zeros_like(closest))
     for _ in range(1, n_clusters):
         picks = _weighted_draw(xp, closest, rng, n_local_trials)
         candidates = xp.take(X, picks, axis=0)
-        distances = _distances_to_candidates(xp, X, x_norm, candidates)
+        distances = distance(xp, X, x_norm, candidates)
         updated = xp.minimum(closest[:, None], distances)
         potentials = xp.sum(updated, axis=0)
         best = int(xp.argmin(potentials))
@@ -403,6 +430,108 @@ def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None):
     centers = xp.stack([X[index] for index in chosen])
     indices = xp.asarray(chosen, dtype=xp.int64, device=_device(X))
     return centers, indices
+
+
+def inertia(X, labels, centers, tile_n=8192):
+    """Sum of squared distances from each sample to its assigned center.
+
+    Samples are visited in blocks of ``tile_n`` so the difference tensor
+    stays at ``(tile_n, n_features)`` rather than a second copy of ``X``.
+    """
+    xp = array_namespace(X, labels, centers)
+    n_samples = int(X.shape[0])
+    total = None
+    for n0 in range(0, n_samples, tile_n):
+        n1 = min(n0 + tile_n, n_samples)
+        assigned = xp.take(centers, labels[n0:n1], axis=0)
+        diff = X[n0:n1] - assigned
+        part = xp.sum(diff * diff)
+        total = part if total is None else total + part
+    return total
+
+
+def fit_kmeans(
+    X,
+    n_clusters,
+    rng,
+    max_iter=300,
+    tol=1e-4,
+    tile_n=4096,
+    tile_k=1024,
+    update_tile_k=256,
+    step=None,
+    distance=None,
+):
+    """k-means++ initialization followed by Lloyd iterations until convergence.
+
+    ``tol`` is scaled by the mean feature variance, matching scikit-learn.
+    An empty cluster keeps its center. The returned inertia is the sum of
+    squared distances to the centers of the last iteration. ``step`` and
+    ``distance`` are optional callables a benchmark may wrap with
+    ``torch.compile``; both default to the array-API implementations.
+    """
+    xp = array_namespace(X)
+    centers, indices = kmeans_plusplus(X, n_clusters, rng, distance=distance)
+    # ``mean(var(X, axis=0))`` with the library reduction allocates a large
+    # workspace (512 MiB on the timing shape). Feature tiles compute the same
+    # scalar, which is the scikit-learn scale for ``tol``.
+    variance = _mean_feature_variance(xp, X)
+    threshold = float(tol) * _item(variance)
+    labels = None
+    n_iter = 0
+    for n_iter in range(1, int(max_iter) + 1):
+        updated, labels = lloyd_step(
+            X,
+            centers,
+            tile_n,
+            tile_k,
+            update_tile_k=update_tile_k,
+            update_tile_n=tile_n,
+            step=step,
+        )
+        shift = _item(xp.sum((updated - centers) ** 2))
+        centers = updated
+        if shift <= threshold:
+            break
+    value = inertia(X, labels, centers, tile_n=min(tile_n, 4096))
+    return {
+        "centers": centers,
+        "labels": labels,
+        "indices": indices,
+        "inertia": _item(value),
+        "n_iter": n_iter,
+        "shift": shift,
+        "threshold": threshold,
+    }
+
+
+def _mean_feature_variance(xp, X, tile_d=128):
+    """Mean over features of the population variance, one feature tile at a time."""
+    n_samples = int(X.shape[0])
+    n_features = int(X.shape[1])
+    n = xp.asarray(n_samples, dtype=X.dtype, device=_device(X))
+    total = xp.asarray(0, dtype=X.dtype, device=_device(X))
+    for d0 in range(0, n_features, tile_d):
+        block = X[:, d0 : d0 + tile_d]
+        mean = xp.mean(block, axis=0)
+        centered = block - mean[None, :]
+        total = total + xp.sum(centered * centered) / n
+    return total / xp.asarray(n_features, dtype=X.dtype, device=_device(X))
+
+
+def _row_squared_norm(xp, X, tile_d=256):
+    """Squared row norm, one feature tile at a time.
+
+    ``sum(X * X, axis=1)`` materializes a tensor the size of ``X``. A
+    feature tile keeps that product at ``(n_samples, tile_d)``.
+    """
+    n_features = int(X.shape[1])
+    total = None
+    for d0 in range(0, n_features, tile_d):
+        block = X[:, d0 : d0 + tile_d]
+        part = xp.sum(block * block, axis=1)
+        total = part if total is None else total + part
+    return total
 
 
 def _distances_to_candidates(xp, X, x_norm, candidates):

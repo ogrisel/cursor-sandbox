@@ -14,6 +14,8 @@ from kmeans_lloyd.iteration import (
     assign_running_stateful,
     assign_running_tiled,
     assign_tiled,
+    fit_kmeans,
+    inertia,
     kmeans_plusplus,
     lloyd_iteration,
     lloyd_step,
@@ -131,7 +133,9 @@ def test_tiled_update_matches_one_hot_update():
     c = _as_numpy_namespace(c_np)
     full = _to_numpy(update_centroids(x, labels, c))
     tiled = _to_numpy(update_centroids_tiled(x, labels, c, tile_k=3))
+    chunked = _to_numpy(update_centroids_tiled(x, labels, c, tile_k=3, tile_n=3))
     np.testing.assert_allclose(tiled, full)
+    np.testing.assert_allclose(chunked, full)
     np.testing.assert_allclose(tiled[3], c_np[3])
 
 
@@ -172,6 +176,49 @@ def test_kmeans_plusplus_is_deterministic_for_a_generator():
     second = _to_numpy(kmeans_plusplus(x, 3, np.random.default_rng(4))[1])
     np.testing.assert_array_equal(first, second)
     assert len(set(first.tolist())) == 3
+
+
+def test_mean_feature_variance_matches_library_var():
+    from kmeans_lloyd.iteration import _mean_feature_variance
+
+    rng = np.random.default_rng(0)
+    x_np = rng.standard_normal((40, 17)).astype(np.float64)
+    x = _as_numpy_namespace(x_np)
+    xp = array_namespace(x)
+    got = float(_to_numpy(_mean_feature_variance(xp, x, tile_d=5)))
+    expected = float(np.var(x_np, axis=0).mean())
+    np.testing.assert_allclose(got, expected, rtol=1e-10, atol=1e-12)
+
+
+def test_fit_kmeans_converges_on_separated_blobs():
+    rng = np.random.default_rng(0)
+    centers = np.array([[0.0, 0.0, 0.0, 0.0], [8.0, 0.0, 0.0, 0.0], [0.0, 8.0, 0.0, 0.0]])
+    pieces = [center + 0.05 * rng.standard_normal((25, 4)) for center in centers]
+    x_np = np.concatenate(pieces).astype(np.float64)
+    x = _as_numpy_namespace(x_np)
+    fitted = fit_kmeans(
+        x,
+        3,
+        np.random.default_rng(1),
+        max_iter=30,
+        tile_n=9,
+        tile_k=2,
+        update_tile_k=2,
+    )
+    assert fitted["n_iter"] < 30
+    assert fitted["shift"] <= fitted["threshold"]
+    labels = _to_numpy(fitted["labels"])
+    assert len(set(labels.tolist())) == 3
+    manual = 0.0
+    centers_np = _to_numpy(fitted["centers"])
+    for row, label in zip(x_np, labels):
+        manual += np.sum((row - centers_np[label]) ** 2)
+    np.testing.assert_allclose(fitted["inertia"], manual)
+    np.testing.assert_allclose(fitted["inertia"], float(_to_numpy(inertia(x, fitted["labels"], fitted["centers"]))))
+    np.testing.assert_allclose(
+        fitted["inertia"],
+        float(_to_numpy(inertia(x, fitted["labels"], fitted["centers"], tile_n=7))),
+    )
 
 
 def _gpu_pairs():
