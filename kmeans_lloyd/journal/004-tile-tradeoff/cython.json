@@ -1,0 +1,30 @@
+{
+  "sklearn": "1.10.dev0",
+  "chunk_size": 256,
+  "n_threads": 4,
+  "cpu_count": 4,
+  "host": "ip-10-3-84-61",
+  "case": {
+    "name": "cython-compare",
+    "n_samples": 65536,
+    "n_clusters": 1024,
+    "n_features": 2048
+  },
+  "assign_median_seconds": 1.4370718709999437,
+  "assign_samples": [
+    1.4427171420002196,
+    1.4299954610000896,
+    1.4370718709999437
+  ],
+  "lloyd_median_seconds": 1.5260390819998975,
+  "lloyd_samples": [
+    1.5260390819998975,
+    1.5265761020000355,
+    1.5209512450001057
+  ],
+  "label_mismatch_vs_numpy_scores": 2,
+  "n_labels": 65536,
+  "theoretical_thread_bytes": 37748736,
+  "ru_maxrss_kb": 1712936,
+  "compiler_note": "Built with the host g++. The PR reports dense Lloyd is in the same range on GCC 13 as on newer GCC for the laptop table."
+}
