@@ -14,18 +14,39 @@ Eager calls of both libraries are the baseline in every row. The full running as
 
 | schedule | what remains allocated | sample-heavy | centroid-heavy | feature-heavy |
 | --- | --- | --- | --- | --- |
-| eager Gram, PyTorch | `X * X`, the `(n, k)` product, and the epilogue | 2.18 s, 16.00 GiB | 2.18 s inside the Lloyd step, 16.00 GiB | 1.07 s, 4.00 GiB |
-| `torch.compile` Gram | the `(n, k)` GEMM output | 2.04 s, 4.00 GiB | 2.01 s, 4.00 GiB | 1.02 s, 1.00 GiB |
-| eager Gram, CuPy | same buffers as eager PyTorch | out of memory | out of memory | 1.06 s, 4.00 GiB |
-| `cupy.fuse` Gram | call rejected: `sum(..., keepdims=True)` is unsupported | | | |
-| eager running tile, 32 centroids | an `(n, d)` difference | 2.88 s, 8.00 GiB | 1.45 s, 4.00 GiB | 2.89 s, 8.00 GiB |
-| `torch.compile` running tile | labels and winning distances, `n * 12` bytes | 49 ms, 1.50 MiB | 25 ms, 768 KiB | 49 ms, 768 KiB |
-| `torch.compile` running tile, every centroid | the same per-tile kernel, plus a small Python merge | 12.75 s, 5.13 MiB | 12.78 s, 2.56 MiB | 6.13 s, 2.56 MiB |
-| `cupy.fuse` one centroid | one `(n, d)` difference; `argmin` is unavailable | 606 ms, 4.00 GiB | 293 ms, 2.00 GiB | 585 ms, 4.00 GiB |
+| [eager Gram, PyTorch](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197) | `X * X`, the `(n, k)` product, and the epilogue | 2.18 s, 16.00 GiB | 2.18 s inside the Lloyd step, 16.00 GiB | 1.07 s, 4.00 GiB |
+| [`torch.compile` Gram](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197) | the `(n, k)` GEMM output | 2.04 s, 4.00 GiB | 2.01 s, 4.00 GiB | 1.02 s, 1.00 GiB |
+| [eager Gram, CuPy](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197) | same buffers as eager PyTorch | out of memory | out of memory | 1.06 s, 4.00 GiB |
+| [`cupy.fuse` Gram](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L180-L185) | call rejected: `sum(..., keepdims=True)` is unsupported | | | |
+| [eager running tile, 32 centroids](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L130-L136) | an `(n, d)` difference | 2.88 s, 8.00 GiB | 1.45 s, 4.00 GiB | 2.89 s, 8.00 GiB |
+| [`torch.compile` running tile](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L130-L136) | labels and winning distances, `n * 12` bytes | 49 ms, 1.50 MiB | 25 ms, 768 KiB | 49 ms, 768 KiB |
+| [`torch.compile` running tile, every centroid](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L139-L157) | the same per-tile kernel, plus a small Python merge | 12.75 s, 5.13 MiB | 12.78 s, 2.56 MiB | 6.13 s, 2.56 MiB |
+| [`cupy.fuse` one centroid](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232) | one `(n, d)` difference; `argmin` is unavailable | 606 ms, 4.00 GiB | 293 ms, 2.00 GiB | 585 ms, 4.00 GiB |
 
 The one-centroid CuPy times are a single fused step. The matching eager measurement is four steps: 360 ms, 180 ms, and 360 ms, with peaks of 8 GiB, 4 GiB, and 8 GiB. The fused step is slower than those four eager steps.
 
 Host: NVIDIA L4, 23 GiB. PyTorch 2.14.1+cu130, CuPy 14.2.0, array-api-compat 1.15.0. Float32, TF32 off. The assignment is written with the Python array API (`array_api_compat`). Peak memory is bytes allocated above the inputs.
+
+## Implementations
+
+Each schedule is one function on branch `cursor/kmeans-lloyd-fusion-8896`. `torch.compile` is applied in [`_compile_torch`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/scripts/run_experiments.py#L255-L276). `cupy.fuse` is applied in [`_try_cupy_fuse`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/scripts/run_experiments.py#L303-L330).
+
+| solution | source |
+| --- | --- |
+| one Lloyd iteration | [`lloyd_iteration`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L21-L53) |
+| centroid update | [`update_centroids`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L160-L171) |
+| naive broadcast distance | [`squared_distances_broadcast`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L174-L177) |
+| naive broadcast and `argmin` | [`broadcast_distance_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L188-L191) |
+| broadcast distance only | [`broadcast_distance_only`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L235-L237) |
+| Gram distance | [`squared_distances_gemm`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L180-L185) |
+| Gram distance and `argmin` | [`gemm_distance_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197) |
+| broadcast tile | [`tile_broadcast_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L200-L203) |
+| Gram tile | [`tile_gemm_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L206-L209) |
+| one-centroid distance | [`centroid_squared_distance`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L212-L219) |
+| running `argmin` step | [`running_argmin_step`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232) |
+| running assignment | [`assign_running`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L106-L127) |
+| running tile of 32 centroids | [`running_tile_distances`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L130-L136) |
+| running tile over every centroid | [`assign_running_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L139-L157) |
 
 ## Iterations
 
