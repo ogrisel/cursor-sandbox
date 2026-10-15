@@ -1,0 +1,20 @@
+{
+  "sklearn": "1.10.dev0",
+  "commit": "7e26a5c37e1fa8031bef7da0ee43b633b07c8b9b",
+  "pull_request": "https://github.com/cakedev0/scikit-learn/pull/23",
+  "case": {
+    "name": "timing",
+    "n_samples": 131072,
+    "n_features": 2048,
+    "n_clusters": 256,
+    "seed": 0
+  },
+  "median_seconds": 24.157016755999848,
+  "samples": [
+    24.157526541999687,
+    24.15650697000001
+  ],
+  "ru_maxrss_kb": 3283844,
+  "init_inertia": 490031100.0,
+  "blob_init_inertia": 339266.43359375
+}

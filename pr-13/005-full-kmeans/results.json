@@ -1,0 +1,449 @@
+{
+  "gpu": "NVIDIA L4",
+  "torch": "2.14.1+cu130",
+  "runs": [
+    {
+      "median_seconds": 0.03558595085144043,
+      "median_peak_extra_bytes": 183504384,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.1944537353515625,
+          "peak_extra_bytes": 192024064,
+          "retained_extra_bytes": 11665408,
+          "warmup": true
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03548364639282227,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03568825531005859,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        }
+      ],
+      "name": "lloyd-1024x256",
+      "tile_n": 1024,
+      "tile_k": 256,
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      }
+    },
+    {
+      "median_seconds": 0.03033548831939697,
+      "median_peak_extra_bytes": 183504384,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.025847808837890625,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": true
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.029805568695068358,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.030865407943725585,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        }
+      ],
+      "name": "lloyd-4096x256",
+      "tile_n": 4096,
+      "tile_k": 256,
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      }
+    },
+    {
+      "median_seconds": 0.029590528488159178,
+      "median_peak_extra_bytes": 183504384,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.028778495788574218,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": true
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.029663232803344725,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.029517824172973633,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        }
+      ],
+      "name": "lloyd-16384x256",
+      "tile_n": 16384,
+      "tile_k": 256,
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      }
+    },
+    {
+      "median_seconds": 0.029462016105651856,
+      "median_peak_extra_bytes": 183504384,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.030448640823364258,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": true
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.029616128921508788,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.02930790328979492,
+          "peak_extra_bytes": 183504384,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        }
+      ],
+      "name": "lloyd-65536x256",
+      "tile_n": 65536,
+      "tile_k": 256,
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      }
+    },
+    {
+      "median_seconds": 0.0314967041015625,
+      "median_peak_extra_bytes": 271057920,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.02934886360168457,
+          "peak_extra_bytes": 271057920,
+          "retained_extra_bytes": 3145728,
+          "warmup": true
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03128832054138184,
+          "peak_extra_bytes": 271057920,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03170508766174317,
+          "peak_extra_bytes": 271057920,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        }
+      ],
+      "name": "lloyd-131072x256",
+      "tile_n": 131072,
+      "tile_k": 256,
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      }
+    },
+    {
+      "median_seconds": 0.0316559362411499,
+      "median_peak_extra_bytes": 156240384,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.03294003295898437,
+          "peak_extra_bytes": 156240384,
+          "retained_extra_bytes": 3145728,
+          "warmup": true
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.031849472045898435,
+          "peak_extra_bytes": 156240384,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03146240043640137,
+          "peak_extra_bytes": 156240384,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        }
+      ],
+      "name": "lloyd-4096x128",
+      "tile_n": 4096,
+      "tile_k": 128,
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      }
+    },
+    {
+      "median_seconds": 0.04392294502258301,
+      "median_peak_extra_bytes": 79693824,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.04537753677368164,
+          "peak_extra_bytes": 79693824,
+          "retained_extra_bytes": 3145728,
+          "warmup": true
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.044058624267578124,
+          "peak_extra_bytes": 79693824,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.04378726577758789,
+          "peak_extra_bytes": 79693824,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        }
+      ],
+      "name": "lloyd-4096x64",
+      "tile_n": 4096,
+      "tile_k": 64,
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      }
+    },
+    {
+      "median_seconds": 0.0735134735107422,
+      "median_peak_extra_bytes": 41420800,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.07360409545898437,
+          "peak_extra_bytes": 41420800,
+          "retained_extra_bytes": 3145728,
+          "warmup": true
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0739788818359375,
+          "peak_extra_bytes": 41420800,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.07304806518554688,
+          "peak_extra_bytes": 41420800,
+          "retained_extra_bytes": 3145728,
+          "warmup": false
+        }
+      ],
+      "name": "lloyd-4096x32",
+      "tile_n": 4096,
+      "tile_k": 32,
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      }
+    },
+    {
+      "median_seconds": 1.3455186157226562,
+      "median_peak_extra_bytes": 1074266112,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 1.4168402099609374,
+          "peak_extra_bytes": 1074266112,
+          "retained_extra_bytes": 2099200,
+          "warmup": true
+        },
+        {
+          "backend": "torch",
+          "seconds": 1.3460255126953125,
+          "peak_extra_bytes": 1074266112,
+          "retained_extra_bytes": 2099200,
+          "warmup": false
+        },
+        {
+          "backend": "torch",
+          "seconds": 1.34501171875,
+          "peak_extra_bytes": 1074266112,
+          "retained_extra_bytes": 2099200,
+          "warmup": false
+        }
+      ],
+      "name": "plusplus-eager",
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      }
+    },
+    {
+      "median_seconds": 1.3262371826171875,
+      "median_peak_extra_bytes": 1074266112,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 1.983910888671875,
+          "peak_extra_bytes": 1074266112,
+          "retained_extra_bytes": 2099200,
+          "warmup": true
+        },
+        {
+          "backend": "torch",
+          "seconds": 1.3268736572265625,
+          "peak_extra_bytes": 1074266112,
+          "retained_extra_bytes": 2099200,
+          "warmup": false
+        },
+        {
+          "backend": "torch",
+          "seconds": 1.3256007080078125,
+          "peak_extra_bytes": 1074266112,
+          "retained_extra_bytes": 2099200,
+          "warmup": false
+        }
+      ],
+      "name": "plusplus-compiled",
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      }
+    },
+    {
+      "median_seconds": 2.35661181640625,
+      "median_peak_extra_bytes": 3224382976,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 2.35661181640625,
+          "peak_extra_bytes": 3224382976,
+          "retained_extra_bytes": 3147776,
+          "warmup": false
+        }
+      ],
+      "name": "fit-eager",
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      },
+      "inertia": 266492016.0,
+      "n_iter": 30,
+      "shift": 0.19929614663124084,
+      "threshold": 0.00010000989437103272
+    },
+    {
+      "median_seconds": 2.31400634765625,
+      "median_peak_extra_bytes": 3224382976,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 2.31400634765625,
+          "peak_extra_bytes": 3224382976,
+          "retained_extra_bytes": 3147776,
+          "warmup": false
+        }
+      ],
+      "name": "fit-compiled",
+      "case": {
+        "name": "timing",
+        "n_samples": 131072,
+        "n_features": 2048,
+        "n_clusters": 256,
+        "seed": 0
+      },
+      "inertia": 266495104.0,
+      "n_iter": 30,
+      "shift": 0.1336238980293274,
+      "threshold": 0.00010000989437103272
+    },
+    {
+      "median_seconds": 0.009874208450317383,
+      "median_peak_extra_bytes": 12848640,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.009874208450317383,
+          "peak_extra_bytes": 12848640,
+          "retained_extra_bytes": 263680,
+          "warmup": false
+        }
+      ],
+      "name": "fit-blobs",
+      "case": {
+        "name": "blobs",
+        "n_samples": 32768,
+        "n_features": 32,
+        "n_clusters": 8,
+        "seed": 1,
+        "separation": 12.0,
+        "noise": 0.4
+      },
+      "inertia": 167259.875,
+      "n_iter": 2,
+      "shift": 0.0,
+      "threshold": 0.011035914611816407
+    }
+  ]
+}
