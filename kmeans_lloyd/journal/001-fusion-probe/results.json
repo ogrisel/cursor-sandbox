@@ -1,0 +1,2443 @@
+{
+  "meta": {
+    "python": "3.12.15",
+    "platform": "Linux-7.0.0-1014-aws-x86_64-with-glibc2.39",
+    "numpy": "2.5.4",
+    "array_api_compat": "1.15.0",
+    "torch": "2.14.1+cu130",
+    "torch_cuda": "13.0",
+    "torch_gpu": "NVIDIA L4",
+    "gpu_total_bytes": 23661248512,
+    "tf32_matmul": false,
+    "cupy": "14.2.0",
+    "cupy_runtime": 13020,
+    "cupy_gpu": "NVIDIA L4"
+  },
+  "cases": [
+    {
+      "name": "sample-heavy",
+      "n_samples": 524288,
+      "n_clusters": 2048,
+      "n_features": 4096
+    },
+    {
+      "name": "centroid-heavy",
+      "n_samples": 131072,
+      "n_clusters": 16384,
+      "n_features": 4096
+    },
+    {
+      "name": "feature-heavy",
+      "n_samples": 65536,
+      "n_clusters": 4096,
+      "n_features": 16384
+    }
+  ],
+  "probe": {
+    "name": "probe-broadcast",
+    "n_samples": 4096,
+    "n_clusters": 256,
+    "n_features": 512
+  },
+  "runs": [
+    {
+      "name": "memory-self-test",
+      "backend": "torch",
+      "case": "self-test",
+      "mode": "eager",
+      "status": "ok",
+      "median_seconds": 0.00922214412689209,
+      "median_peak_extra_bytes": 33554432,
+      "median_retained_extra_bytes": 33554432,
+      "expected_bytes": 33554432,
+      "ratio": 1.0,
+      "fusion": "n/a",
+      "array_api_compat": "1.15.0"
+    },
+    {
+      "name": "elementwise-sqdiff",
+      "backend": "torch",
+      "case": "elementwise-control",
+      "mode": "eager",
+      "status": "ok",
+      "median_seconds": 0.018827199935913086,
+      "median_peak_extra_bytes": 134217728,
+      "median_retained_extra_bytes": 67108864,
+      "output_bytes": 67108864,
+      "fusion": "materialized_broadcast"
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.0010432959794998168,
+      "min_seconds": 0.00104038405418396,
+      "median_peak_extra_bytes": 67108864,
+      "median_retained_extra_bytes": 67108864,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.0011439679861068727,
+          "peak_extra_bytes": 67108864,
+          "retained_extra_bytes": 67108864,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0010432959794998168,
+          "peak_extra_bytes": 67108864,
+          "retained_extra_bytes": 67108864,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00104038405418396,
+          "peak_extra_bytes": 67108864,
+          "retained_extra_bytes": 67108864,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0010444799661636353,
+          "peak_extra_bytes": 67108864,
+          "retained_extra_bytes": 67108864,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "elementwise-sqdiff",
+      "backend": "torch",
+      "case": "elementwise-control",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.5753401269998903,
+        "error": null
+      },
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 134217728,
+        "distance_bytes": 67108864,
+        "labels_bytes": 8388608,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 128,
+        "gemm_flops": 67108864
+      },
+      "kernels": [
+        {
+          "name": "triton_poi_fused_mul_sub_0",
+          "count": 1,
+          "device_time_us": 831.6790000000001
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.03588211059570313,
+      "min_seconds": 0.03567763137817383,
+      "median_peak_extra_bytes": 4299161600,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.03686502456665039,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.035947135925292965,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03588211059570313,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03567763137817383,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "naive-argmin",
+      "backend": "torch",
+      "case": "probe-broadcast",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      },
+      "kernels": [
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 18550.746
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 8632.543999999998
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 8572.928
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4> >(at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4>)",
+          "count": 1,
+          "device_time_us": 20.606999999996333
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.001131872057914734,
+      "min_seconds": 0.0011261119842529298,
+      "median_peak_extra_bytes": 4227072,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.0011890239715576171,
+          "peak_extra_bytes": 4227072,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.001131872057914734,
+          "peak_extra_bytes": 4227072,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0011261119842529298,
+          "peak_extra_bytes": 4227072,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0011572480201721192,
+          "peak_extra_bytes": 4227072,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "naive-argmin",
+      "backend": "torch",
+      "case": "probe-broadcast",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.19226975999981732,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      },
+      "kernels": [
+        {
+          "name": "triton_red_fused_mul_sub_sum_unsqueeze_0",
+          "count": 1,
+          "device_time_us": 967.5779999999997
+        },
+        {
+          "name": "triton_per_fused_argmin_1",
+          "count": 1,
+          "device_time_us": 4.128000000000156
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.03565343856811523,
+      "min_seconds": 0.03532246398925781,
+      "median_peak_extra_bytes": 4299161600,
+      "median_retained_extra_bytes": 4194304,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.035413921356201174,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 4194304,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03532246398925781,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03565343856811523,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03590959930419922,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "distance-only",
+      "backend": "torch",
+      "case": "probe-broadcast",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      },
+      "kernels": [
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 18561.193
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 8628.407
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 8563.224
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.001136896014213562,
+      "min_seconds": 0.0011265599727630616,
+      "median_peak_extra_bytes": 4194304,
+      "median_retained_extra_bytes": 4194304,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.0011688319444656372,
+          "peak_extra_bytes": 4194304,
+          "retained_extra_bytes": 4194304,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0011265599727630616,
+          "peak_extra_bytes": 4194304,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.001136896014213562,
+          "peak_extra_bytes": 4194304,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0011421120166778564,
+          "peak_extra_bytes": 4194304,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "distance-only",
+      "backend": "torch",
+      "case": "probe-broadcast",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.04882658199994694,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      },
+      "kernels": [
+        {
+          "name": "triton_red_fused_mul_sub_sum_unsqueeze_0",
+          "count": 1,
+          "device_time_us": 965.8889999999999
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.0003357119858264923,
+      "min_seconds": 0.0003172160089015961,
+      "median_peak_extra_bytes": 16794624,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.05154867172241211,
+          "peak_extra_bytes": 25314304,
+          "retained_extra_bytes": 8552448,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00039849600195884707,
+          "peak_extra_bytes": 16794624,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0003172160089015961,
+          "peak_extra_bytes": 16794624,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0003357119858264923,
+          "peak_extra_bytes": 16794624,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "gemm-argmin",
+      "backend": "torch",
+      "case": "probe-broadcast",
+      "mode": "eager",
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      },
+      "kernels": [
+        {
+          "name": "ampere_sgemm_128x64_tn",
+          "count": 1,
+          "device_time_us": 88.03200000000015
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 2,
+          "device_time_us": 11.135999999999967
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 2,
+          "device_time_us": 11.135999999999967
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4> >(at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4>)",
+          "count": 1,
+          "device_time_us": 8.960000000000036
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 6.975999999999658
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul>, false>(int, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 6.8159999999998035
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul>, false>(int, at::native::AUnaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul>)",
+          "count": 1,
+          "device_time_us": 5.248000000000047
+        },
+        {
+          "name": "Memset (Device)",
+          "count": 1,
+          "device_time_us": 0.41600000000016735
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.000301472008228302,
+      "min_seconds": 0.0002948159873485565,
+      "median_peak_extra_bytes": 4244480,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.0003826560080051422,
+          "peak_extra_bytes": 4244480,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0003070400059223175,
+          "peak_extra_bytes": 4244480,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.000301472008228302,
+          "peak_extra_bytes": 4244480,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0002948159873485565,
+          "peak_extra_bytes": 4244480,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "gemm-argmin",
+      "backend": "torch",
+      "case": "probe-broadcast",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.07940031199996156,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      },
+      "kernels": [
+        {
+          "name": "ampere_sgemm_128x64_tn",
+          "count": 1,
+          "device_time_us": 86.97399999999993
+        },
+        {
+          "name": "triton_per_fused_mul_sum_0",
+          "count": 1,
+          "device_time_us": 5.440000000000055
+        },
+        {
+          "name": "triton_per_fused_add_argmin_mul_sub_transpose_2",
+          "count": 1,
+          "device_time_us": 5.375
+        },
+        {
+          "name": "triton_per_fused_mul_sum_1",
+          "count": 1,
+          "device_time_us": 1.6319999999999482
+        },
+        {
+          "name": "Memset (Device)",
+          "count": 1,
+          "device_time_us": 0.41600000000005366
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.00017056000232696533,
+      "min_seconds": 0.00016025599837303162,
+      "median_peak_extra_bytes": 16793600,
+      "median_retained_extra_bytes": 16384,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.000270112007856369,
+          "peak_extra_bytes": 16793600,
+          "retained_extra_bytes": 16384,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00017056000232696533,
+          "peak_extra_bytes": 16793600,
+          "retained_extra_bytes": 16384,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00016025599837303162,
+          "peak_extra_bytes": 16793600,
+          "retained_extra_bytes": 16384,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00017718400061130524,
+          "peak_extra_bytes": 16793600,
+          "retained_extra_bytes": 16384,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "one-centroid-distance",
+      "backend": "torch",
+      "case": "probe-one-centroid",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 8388608,
+        "distance_bytes": 16384,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 2048,
+        "gemm_flops": 4194304
+      },
+      "kernels": [
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 11.872000000000298
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 10.016000000000076
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 7.839999999999691
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.00019699199497699737,
+      "min_seconds": 0.0001881600022315979,
+      "median_peak_extra_bytes": 16384,
+      "median_retained_extra_bytes": 16384,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.000257856011390686,
+          "peak_extra_bytes": 16384,
+          "retained_extra_bytes": 16384,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00020153599977493287,
+          "peak_extra_bytes": 16384,
+          "retained_extra_bytes": 16384,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00019699199497699737,
+          "peak_extra_bytes": 16384,
+          "retained_extra_bytes": 16384,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0001881600022315979,
+          "peak_extra_bytes": 16384,
+          "retained_extra_bytes": 16384,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "one-centroid-distance",
+      "backend": "torch",
+      "case": "probe-one-centroid",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.6406815099999221,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 8388608,
+        "distance_bytes": 16384,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 2048,
+        "gemm_flops": 4194304
+      },
+      "kernels": [
+        {
+          "name": "triton_per_fused_mul_sub_sum_0",
+          "count": 1,
+          "device_time_us": 5.439000000000078
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.0002654080092906952,
+      "min_seconds": 0.0002562560141086578,
+      "median_peak_extra_bytes": 16793600,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.015032352447509766,
+          "peak_extra_bytes": 16793600,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0002767359912395477,
+          "peak_extra_bytes": 16793600,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0002562560141086578,
+          "peak_extra_bytes": 16793600,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0002654080092906952,
+          "peak_extra_bytes": 16793600,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "running-step",
+      "backend": "torch",
+      "case": "probe-one-centroid",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 8388608,
+        "distance_bytes": 16384,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 2048,
+        "gemm_flops": 4194304
+      },
+      "kernels": [
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 11.583999999999833
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 9.983999999999924
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 7.77599999999984
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1}>(at::TensorIteratorBase&, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1} const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1}>(at::TensorIteratorBase&, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1} const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 1.6640000000002146
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(bool, unsigned int, unsigned int)#1}, std::array<char*, 4ul>, false>(int, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(bool, unsigned int, unsigned int)#1}, std::array<char*, 4ul>)",
+          "count": 1,
+          "device_time_us": 1.344000000000051
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::CompareFunctor<float>, std::array<char*, 3ul>, false>(int, at::native::(anonymous namespace)::CompareFunctor<float>, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 1.2800000000002
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.00020473599433898926,
+      "min_seconds": 0.00019996799528598785,
+      "median_peak_extra_bytes": 49152,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.0002535040080547333,
+          "peak_extra_bytes": 49152,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00021423999965190888,
+          "peak_extra_bytes": 49152,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00019996799528598785,
+          "peak_extra_bytes": 49152,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00020473599433898926,
+          "peak_extra_bytes": 49152,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "running-step",
+      "backend": "torch",
+      "case": "probe-one-centroid",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.06406606100017598,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 8388608,
+        "distance_bytes": 16384,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 2048,
+        "gemm_flops": 4194304
+      },
+      "kernels": [
+        {
+          "name": "triton_per_fused_lt_mul_sub_sum_where_0",
+          "count": 1,
+          "device_time_us": 5.727999999999952
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.0023991360664367676,
+      "min_seconds": 0.002384416103363037,
+      "median_peak_extra_bytes": 268697600,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.009432543754577636,
+          "peak_extra_bytes": 268697600,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0024274559020996092,
+          "peak_extra_bytes": 268697600,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0023991360664367676,
+          "peak_extra_bytes": 268697600,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.002384416103363037,
+          "peak_extra_bytes": 268697600,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "tile-broadcast-k16",
+      "backend": "torch",
+      "case": "probe-tile-k16",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 134217728,
+        "distance_bytes": 262144,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 32768,
+        "gemm_flops": 67108864
+      },
+      "kernels": [
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 1161.8160000000003
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 672.2199999999998
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 423.5809999999997
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4> >(at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4>)",
+          "count": 1,
+          "device_time_us": 5.599999999999454
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::MinNanFunctor<float> >, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::MinNanFunctor<float> >, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 3.6480000000001382
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.00022649599611759185,
+      "min_seconds": 0.0002200639992952347,
+      "median_peak_extra_bytes": 311296,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.0003102079927921295,
+          "peak_extra_bytes": 311296,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00024297599494457246,
+          "peak_extra_bytes": 311296,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0002200639992952347,
+          "peak_extra_bytes": 311296,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00022649599611759185,
+          "peak_extra_bytes": 311296,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "tile-broadcast-k16",
+      "backend": "torch",
+      "case": "probe-tile-k16",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.05445929999996224,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 134217728,
+        "distance_bytes": 262144,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 32768,
+        "gemm_flops": 67108864
+      },
+      "kernels": [
+        {
+          "name": "triton_per_fused_mul_sub_sum_unsqueeze_0",
+          "count": 1,
+          "device_time_us": 37.72799999999995
+        },
+        {
+          "name": "triton_per_fused_amin_argmin_1",
+          "count": 1,
+          "device_time_us": 1.504000000000019
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.009044480323791505,
+      "min_seconds": 0.009044320106506347,
+      "median_peak_extra_bytes": 1074790400,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.009103679656982422,
+          "peak_extra_bytes": 1074790400,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.009044480323791505,
+          "peak_extra_bytes": 1074790400,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.009044320106506347,
+          "peak_extra_bytes": 1074790400,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.009063520431518556,
+          "peak_extra_bytes": 1074790400,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "tile-broadcast-k64",
+      "backend": "torch",
+      "case": "probe-tile-k64",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 536870912,
+        "distance_bytes": 1048576,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 131072,
+        "gemm_flops": 268435456
+      },
+      "kernels": [
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 4618.482
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 2258.2650000000003
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 2015.2580000000003
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4> >(at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4>)",
+          "count": 1,
+          "device_time_us": 9.727999999999156
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::MinNanFunctor<float> >, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::MinNanFunctor<float> >, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 5.119999999998981
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.00028329598903656004,
+      "min_seconds": 0.00028121599555015563,
+      "median_peak_extra_bytes": 1097728,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.00038937601447105406,
+          "peak_extra_bytes": 1097728,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00028329598903656004,
+          "peak_extra_bytes": 1097728,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0003036159873008728,
+          "peak_extra_bytes": 1097728,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00028121599555015563,
+          "peak_extra_bytes": 1097728,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "tile-broadcast-k64",
+      "backend": "torch",
+      "case": "probe-tile-k64",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.0546451039999738,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 536870912,
+        "distance_bytes": 1048576,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 131072,
+        "gemm_flops": 268435456
+      },
+      "kernels": [
+        {
+          "name": "triton_red_fused_mul_sub_sum_unsqueeze_0",
+          "count": 1,
+          "device_time_us": 114.947
+        },
+        {
+          "name": "triton_per_fused_amin_argmin_1",
+          "count": 1,
+          "device_time_us": 2.3039999999999736
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.035871040344238284,
+      "min_seconds": 0.035671550750732424,
+      "median_peak_extra_bytes": 4299161600,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.035614559173583984,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.035932895660400394,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.035871040344238284,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.035671550750732424,
+          "peak_extra_bytes": 4299161600,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "tile-broadcast-k256",
+      "backend": "torch",
+      "case": "probe-tile-k256",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      },
+      "kernels": [
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 18562.869
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 8623.997000000003
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 8578.59
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4> >(at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4>)",
+          "count": 1,
+          "device_time_us": 22.463999999999942
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::MinNanFunctor<float> >, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::MinNanFunctor<float> >, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 7.071000000003551
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.0011360000371932984,
+      "min_seconds": 0.0011282559633255004,
+      "median_peak_extra_bytes": 4243456,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.001213215947151184,
+          "peak_extra_bytes": 4243456,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0011467839479446411,
+          "peak_extra_bytes": 4243456,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0011282559633255004,
+          "peak_extra_bytes": 4243456,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0011360000371932984,
+          "peak_extra_bytes": 4243456,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "tile-broadcast-k256",
+      "backend": "torch",
+      "case": "probe-tile-k256",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.05469358500022281,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      },
+      "kernels": [
+        {
+          "name": "triton_red_fused_mul_sub_sum_unsqueeze_0",
+          "count": 1,
+          "device_time_us": 968.0620000000004
+        },
+        {
+          "name": "triton_per_fused_amin_argmin_1",
+          "count": 1,
+          "device_time_us": 4.544999999999618
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.001378208041191101,
+      "min_seconds": 0.0013572160005569458,
+      "median_peak_extra_bytes": 16843264,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.0017866239547729493,
+          "peak_extra_bytes": 16843264,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0013816640377044677,
+          "peak_extra_bytes": 16843264,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.001378208041191101,
+          "peak_extra_bytes": 16843264,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0013572160005569458,
+          "peak_extra_bytes": 16843264,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "running-loop-k8",
+      "backend": "torch",
+      "case": "probe-running-loop-k8",
+      "mode": "eager",
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 67108864,
+        "distance_bytes": 131072,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 16384,
+        "gemm_flops": 33554432
+      },
+      "kernels": [
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 8,
+          "device_time_us": 95.16800000000057
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 8,
+          "device_time_us": 72.73500000000013
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 8,
+          "device_time_us": 68.80100000000084
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1}>(at::TensorIteratorBase&, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1} const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1}>(at::TensorIteratorBase&, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1} const&)::{lambda(int)#1})",
+          "count": 8,
+          "device_time_us": 13.441000000000258
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(bool, unsigned int, unsigned int)#1}, std::array<char*, 4ul>, false>(int, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(bool, unsigned int, unsigned int)#1}, std::array<char*, 4ul>)",
+          "count": 8,
+          "device_time_us": 10.495000000000346
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::CompareFunctor<float>, std::array<char*, 3ul>, false>(int, at::native::(anonymous namespace)::CompareFunctor<float>, std::array<char*, 3ul>)",
+          "count": 8,
+          "device_time_us": 10.27200000000039
+        },
+        {
+          "name": "Memcpy HtoD (Pageable -> Device)",
+          "count": 8,
+          "device_time_us": 2.8170000000009168
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<2, at::native::FillFunctor<long>, std::array<char*, 1ul>, false>(int, at::native::FillFunctor<long>, std::array<char*, 1ul>)",
+          "count": 1,
+          "device_time_us": 1.05600000000004
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>, std::array<char*, 1ul>, false>(int, at::native::FillFunctor<float>, std::array<char*, 1ul>)",
+          "count": 1,
+          "device_time_us": 1.0239999999998872
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.00020774400234222412,
+      "min_seconds": 0.00020416000485420227,
+      "median_peak_extra_bytes": 32768,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.0002582719922065735,
+          "peak_extra_bytes": 32768,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00021273599565029144,
+          "peak_extra_bytes": 32768,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00020416000485420227,
+          "peak_extra_bytes": 32768,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00020774400234222412,
+          "peak_extra_bytes": 32768,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "running-loop-k8",
+      "backend": "torch",
+      "case": "probe-running-loop-k8",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 1.1824716440000884,
+        "error": null
+      },
+      "fusion": "no_distance_matrix",
+      "theory": {
+        "broadcast_bytes": 67108864,
+        "distance_bytes": 131072,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 16384,
+        "gemm_flops": 33554432
+      },
+      "kernels": [
+        {
+          "name": "triton_per_fused_full_lift_fresh_lt_mul_select_sub_sum_where_zeros_0",
+          "count": 1,
+          "device_time_us": 9.663999999999987
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.004720895767211914,
+      "min_seconds": 0.004711999893188477,
+      "median_peak_extra_bytes": 16843264,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.005710432052612305,
+          "peak_extra_bytes": 16843264,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.004711999893188477,
+          "peak_extra_bytes": 16843264,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.004725376129150391,
+          "peak_extra_bytes": 16843264,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.004720895767211914,
+          "peak_extra_bytes": 16843264,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "running-loop-k32",
+      "backend": "torch",
+      "case": "probe-running-loop-k32",
+      "mode": "eager",
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 268435456,
+        "distance_bytes": 524288,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 65536,
+        "gemm_flops": 134217728
+      },
+      "kernels": [
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 32,
+          "device_time_us": 376.7070000000035
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 32,
+          "device_time_us": 301.2800000000011
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 32,
+          "device_time_us": 275.42299999999705
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1}>(at::TensorIteratorBase&, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1} const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1}>(at::TensorIteratorBase&, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(bool, unsigned long, unsigned long)#1} const&)::{lambda(int)#1})",
+          "count": 32,
+          "device_time_us": 52.98900000000003
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(bool, unsigned int, unsigned int)#1}, std::array<char*, 4ul>, false>(int, at::native::(anonymous namespace)::where_kernel_impl(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(bool, unsigned int, unsigned int)#1}, std::array<char*, 4ul>)",
+          "count": 32,
+          "device_time_us": 42.07700000000068
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::CompareFunctor<float>, std::array<char*, 3ul>, false>(int, at::native::(anonymous namespace)::CompareFunctor<float>, std::array<char*, 3ul>)",
+          "count": 32,
+          "device_time_us": 41.92199999999957
+        },
+        {
+          "name": "Memcpy HtoD (Pageable -> Device)",
+          "count": 32,
+          "device_time_us": 11.938999999998487
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<2, at::native::FillFunctor<long>, std::array<char*, 1ul>, false>(int, at::native::FillFunctor<long>, std::array<char*, 1ul>)",
+          "count": 1,
+          "device_time_us": 1.0559999999995853
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>, std::array<char*, 1ul>, false>(int, at::native::FillFunctor<float>, std::array<char*, 1ul>)",
+          "count": 1,
+          "device_time_us": 0.9920000000001892
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.00022902399301528932,
+      "min_seconds": 0.00020732800662517548,
+      "median_peak_extra_bytes": 32768,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.00025587201118469237,
+          "peak_extra_bytes": 32768,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00024163199961185454,
+          "peak_extra_bytes": 32768,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00020732800662517548,
+          "peak_extra_bytes": 32768,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00022902399301528932,
+          "peak_extra_bytes": 32768,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "running-loop-k32",
+      "backend": "torch",
+      "case": "probe-running-loop-k32",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 4.143580069000109,
+        "error": null
+      },
+      "fusion": "no_distance_matrix",
+      "theory": {
+        "broadcast_bytes": 268435456,
+        "distance_bytes": 524288,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 65536,
+        "gemm_flops": 134217728
+      },
+      "kernels": [
+        {
+          "name": "triton_per_fused_full_lift_fresh_lt_mul_select_sub_sum_where_zeros_0",
+          "count": 1,
+          "device_time_us": 26.656000000000063
+        }
+      ]
+    },
+    {
+      "name": "memory-self-test",
+      "backend": "cupy",
+      "case": "self-test",
+      "mode": "eager",
+      "status": "ok",
+      "median_seconds": 0.00022416000068187713,
+      "median_peak_extra_bytes": 33554432,
+      "median_retained_extra_bytes": 33554432,
+      "expected_bytes": 33554432,
+      "ratio": 1.0,
+      "fusion": "n/a",
+      "array_api_compat": "1.15.0"
+    },
+    {
+      "name": "elementwise-sqdiff",
+      "backend": "cupy",
+      "case": "elementwise-control",
+      "mode": "eager",
+      "status": "ok",
+      "median_seconds": 0.016742496490478515,
+      "median_peak_extra_bytes": 134217728,
+      "median_retained_extra_bytes": 67108864,
+      "output_bytes": 67108864,
+      "fusion": "materialized_broadcast"
+    },
+    {
+      "status": "ok",
+      "compile_seconds": 0.0024951949999376666,
+      "median_seconds": 0.000898688018321991,
+      "median_peak_extra_bytes": 67108864,
+      "median_retained_extra_bytes": 67108864,
+      "error": null,
+      "name": "elementwise-sqdiff",
+      "backend": "cupy",
+      "case": "elementwise-control",
+      "mode": "cupy.fuse",
+      "output_bytes": 67108864,
+      "fusion": "materialized_broadcast"
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.03462531280517578,
+      "min_seconds": 0.03425894546508789,
+      "median_peak_extra_bytes": 4299162112,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "cupy",
+          "seconds": 0.045294303894042966,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.03462531280517578,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.03425894546508789,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0347239990234375,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "naive-argmin",
+      "backend": "cupy",
+      "case": "probe-broadcast",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      }
+    },
+    {
+      "status": "error",
+      "error": "AttributeError: '_ArrayProxy' object has no attribute 'argmin'",
+      "traceback": "Traceback (most recent call last):\n  File \"cupy/_core/fusion.pyx\", line 866, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/fusion.pyx\", line 702, in cupy._core.fusion._FusionHistory.get_fusion\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 164, in wrapped\n    return fn(xp, *args)\n           ^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 157, in broadcast_distance_argmin\n    distances = squared_distances_broadcast(xp, X, centroids)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 143, in squared_distances_broadcast\n    diff = X[:, None, :] - centroids[None, :, :]\n           ~^^^^^^^^^^^^\nTypeError: '_FusionVarArray' object is not subscriptable\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 303, in _try_cupy_fuse\n    out, profile = measure_call(fused, args, example)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/instrument.py\", line 49, in measure_call\n    output = fn(*args)\n             ^^^^^^^^^\n  File \"cupy/_core/fusion.pyx\", line 872, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 157, in cupy._core.new_fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 28, in cupy._core.new_fusion._get_fused_kernel\n  File \"cupy/_core/_fusion_trace.pyx\", line 600, in cupy._core._fusion_trace.trace\n  File \"cupy/_core/_fusion_trace.pyx\", line 542, in cupy._core._fusion_trace.TraceImpl.trace\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 164, in wrapped\n    return fn(xp, *args)\n           ^^^^^^^^^^^^^\nAttributeError: '_ArrayProxy' object has no attribute 'argmin'\n",
+      "name": "naive-argmin",
+      "backend": "cupy",
+      "case": "probe-broadcast",
+      "mode": "cupy.fuse",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.039459903717041014,
+      "min_seconds": 0.0351616325378418,
+      "median_peak_extra_bytes": 4299162112,
+      "median_retained_extra_bytes": 4194304,
+      "profiles": [
+        {
+          "backend": "cupy",
+          "seconds": 0.041545375823974606,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 4194304,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.03951923370361328,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.039459903717041014,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0351616325378418,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "distance-only",
+      "backend": "cupy",
+      "case": "probe-broadcast",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      }
+    },
+    {
+      "status": "ok",
+      "compile_seconds": 2.1268437630001245,
+      "median_seconds": 0.5027716369628906,
+      "median_peak_extra_bytes": 2151677952,
+      "median_retained_extra_bytes": 4194304,
+      "error": null,
+      "name": "distance-only",
+      "backend": "cupy",
+      "case": "probe-broadcast",
+      "mode": "cupy.fuse",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      },
+      "fusion": "materialized_broadcast"
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.0003561600148677826,
+      "min_seconds": 0.0003234879970550537,
+      "median_peak_extra_bytes": 16794624,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "cupy",
+          "seconds": 0.002498496055603027,
+          "peak_extra_bytes": 16794624,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0003633599877357483,
+          "peak_extra_bytes": 16794624,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0003561600148677826,
+          "peak_extra_bytes": 16794624,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0003234879970550537,
+          "peak_extra_bytes": 16794624,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "gemm-argmin",
+      "backend": "cupy",
+      "case": "probe-broadcast",
+      "mode": "eager",
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      }
+    },
+    {
+      "status": "error",
+      "error": "NotImplementedError: cupy.sum does not support `keepdims` in fusion yet.",
+      "traceback": "Traceback (most recent call last):\n  File \"cupy/_core/fusion.pyx\", line 866, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/fusion.pyx\", line 702, in cupy._core.fusion._FusionHistory.get_fusion\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 164, in wrapped\n    return fn(xp, *args)\n           ^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 163, in gemm_distance_argmin\n    distances = squared_distances_gemm(xp, X, centroids)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 149, in squared_distances_gemm\n    x_norm = xp.sum(X * X, axis=1, keepdims=True)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/.pixi/envs/default/lib/python3.12/site-packages/cupy/_math/sumprod.py\", line 32, in sum\n    raise NotImplementedError(\nNotImplementedError: cupy.sum does not support `keepdims` in fusion yet.\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 303, in _try_cupy_fuse\n    out, profile = measure_call(fused, args, example)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/instrument.py\", line 49, in measure_call\n    output = fn(*args)\n             ^^^^^^^^^\n  File \"cupy/_core/fusion.pyx\", line 872, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 157, in cupy._core.new_fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 28, in cupy._core.new_fusion._get_fused_kernel\n  File \"cupy/_core/_fusion_trace.pyx\", line 600, in cupy._core._fusion_trace.trace\n  File \"cupy/_core/_fusion_trace.pyx\", line 542, in cupy._core._fusion_trace.TraceImpl.trace\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 164, in wrapped\n    return fn(xp, *args)\n           ^^^^^^^^^^^^^\nNotImplementedError: cupy.sum does not support `keepdims` in fusion yet.\n",
+      "name": "gemm-argmin",
+      "backend": "cupy",
+      "case": "probe-broadcast",
+      "mode": "cupy.fuse",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.00010012800246477127,
+      "min_seconds": 9.775999933481216e-05,
+      "median_peak_extra_bytes": 16794112,
+      "median_retained_extra_bytes": 16384,
+      "profiles": [
+        {
+          "backend": "cupy",
+          "seconds": 0.00048108801245689393,
+          "peak_extra_bytes": 16794112,
+          "retained_extra_bytes": 16384,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.00010707200318574905,
+          "peak_extra_bytes": 16794112,
+          "retained_extra_bytes": 16384,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.00010012800246477127,
+          "peak_extra_bytes": 16794112,
+          "retained_extra_bytes": 16384,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "cupy",
+          "seconds": 9.775999933481216e-05,
+          "peak_extra_bytes": 16794112,
+          "retained_extra_bytes": 16384,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "one-centroid-distance",
+      "backend": "cupy",
+      "case": "probe-one-centroid",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 8388608,
+        "distance_bytes": 16384,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 2048,
+        "gemm_flops": 4194304
+      }
+    },
+    {
+      "status": "ok",
+      "compile_seconds": 0.09665148000021873,
+      "median_seconds": 0.0001483519971370697,
+      "median_peak_extra_bytes": 16384,
+      "median_retained_extra_bytes": 16384,
+      "error": null,
+      "name": "one-centroid-distance",
+      "backend": "cupy",
+      "case": "probe-one-centroid",
+      "mode": "cupy.fuse",
+      "theory": {
+        "broadcast_bytes": 8388608,
+        "distance_bytes": 16384,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 2048,
+        "gemm_flops": 4194304
+      },
+      "fusion": "materialized_distance"
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.0001701440066099167,
+      "min_seconds": 0.0001650879979133606,
+      "median_peak_extra_bytes": 16794112,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "cupy",
+          "seconds": 0.0013688960075378418,
+          "peak_extra_bytes": 16794112,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0002186879962682724,
+          "peak_extra_bytes": 16794112,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0001701440066099167,
+          "peak_extra_bytes": 16794112,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0001650879979133606,
+          "peak_extra_bytes": 16794112,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "running-step",
+      "backend": "cupy",
+      "case": "probe-one-centroid",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 8388608,
+        "distance_bytes": 16384,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 2048,
+        "gemm_flops": 4194304
+      }
+    },
+    {
+      "status": "ok",
+      "compile_seconds": 1.0813626170001953,
+      "median_seconds": 0.001731295943260193,
+      "median_peak_extra_bytes": 8454144,
+      "median_retained_extra_bytes": 49152,
+      "error": null,
+      "name": "running-step",
+      "backend": "cupy",
+      "case": "probe-one-centroid",
+      "mode": "cupy.fuse",
+      "theory": {
+        "broadcast_bytes": 8388608,
+        "distance_bytes": 16384,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 2048,
+        "gemm_flops": 4194304
+      },
+      "fusion": "materialized_broadcast"
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.002349855899810791,
+      "min_seconds": 0.0023311679363250733,
+      "median_peak_extra_bytes": 268698112,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "cupy",
+          "seconds": 0.00432803201675415,
+          "peak_extra_bytes": 268698112,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.002349855899810791,
+          "peak_extra_bytes": 268698112,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0023595519065856933,
+          "peak_extra_bytes": 268698112,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0023311679363250733,
+          "peak_extra_bytes": 268698112,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "tile-broadcast-k16",
+      "backend": "cupy",
+      "case": "probe-tile-k16",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 134217728,
+        "distance_bytes": 262144,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 32768,
+        "gemm_flops": 67108864
+      }
+    },
+    {
+      "status": "error",
+      "error": "AttributeError: '_ArrayProxy' object has no attribute 'argmin'",
+      "traceback": "Traceback (most recent call last):\n  File \"cupy/_core/fusion.pyx\", line 866, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/fusion.pyx\", line 702, in cupy._core.fusion._FusionHistory.get_fusion\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 164, in wrapped\n    return fn(xp, *args)\n           ^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 169, in tile_broadcast_argmin\n    distances = squared_distances_broadcast(xp, X, centroids)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 143, in squared_distances_broadcast\n    diff = X[:, None, :] - centroids[None, :, :]\n           ~^^^^^^^^^^^^\nTypeError: '_FusionVarArray' object is not subscriptable\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 303, in _try_cupy_fuse\n    out, profile = measure_call(fused, args, example)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/instrument.py\", line 49, in measure_call\n    output = fn(*args)\n             ^^^^^^^^^\n  File \"cupy/_core/fusion.pyx\", line 872, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 157, in cupy._core.new_fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 28, in cupy._core.new_fusion._get_fused_kernel\n  File \"cupy/_core/_fusion_trace.pyx\", line 600, in cupy._core._fusion_trace.trace\n  File \"cupy/_core/_fusion_trace.pyx\", line 542, in cupy._core._fusion_trace.TraceImpl.trace\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 164, in wrapped\n    return fn(xp, *args)\n           ^^^^^^^^^^^^^\nAttributeError: '_ArrayProxy' object has no attribute 'argmin'\n",
+      "name": "tile-broadcast-k16",
+      "backend": "cupy",
+      "case": "probe-tile-k16",
+      "mode": "cupy.fuse",
+      "theory": {
+        "broadcast_bytes": 134217728,
+        "distance_bytes": 262144,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 32768,
+        "gemm_flops": 67108864
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.008900896072387695,
+      "min_seconds": 0.00889635181427002,
+      "median_peak_extra_bytes": 1074790912,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "cupy",
+          "seconds": 0.011031328201293945,
+          "peak_extra_bytes": 1074790912,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.00889635181427002,
+          "peak_extra_bytes": 1074790912,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.008900896072387695,
+          "peak_extra_bytes": 1074790912,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.008912416458129882,
+          "peak_extra_bytes": 1074790912,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "tile-broadcast-k64",
+      "backend": "cupy",
+      "case": "probe-tile-k64",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 536870912,
+        "distance_bytes": 1048576,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 131072,
+        "gemm_flops": 268435456
+      }
+    },
+    {
+      "status": "error",
+      "error": "AttributeError: '_ArrayProxy' object has no attribute 'argmin'",
+      "traceback": "Traceback (most recent call last):\n  File \"cupy/_core/fusion.pyx\", line 866, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/fusion.pyx\", line 702, in cupy._core.fusion._FusionHistory.get_fusion\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 164, in wrapped\n    return fn(xp, *args)\n           ^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 169, in tile_broadcast_argmin\n    distances = squared_distances_broadcast(xp, X, centroids)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 143, in squared_distances_broadcast\n    diff = X[:, None, :] - centroids[None, :, :]\n           ~^^^^^^^^^^^^\nTypeError: '_FusionVarArray' object is not subscriptable\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 303, in _try_cupy_fuse\n    out, profile = measure_call(fused, args, example)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/instrument.py\", line 49, in measure_call\n    output = fn(*args)\n             ^^^^^^^^^\n  File \"cupy/_core/fusion.pyx\", line 872, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 157, in cupy._core.new_fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 28, in cupy._core.new_fusion._get_fused_kernel\n  File \"cupy/_core/_fusion_trace.pyx\", line 600, in cupy._core._fusion_trace.trace\n  File \"cupy/_core/_fusion_trace.pyx\", line 542, in cupy._core._fusion_trace.TraceImpl.trace\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 164, in wrapped\n    return fn(xp, *args)\n           ^^^^^^^^^^^^^\nAttributeError: '_ArrayProxy' object has no attribute 'argmin'\n",
+      "name": "tile-broadcast-k64",
+      "backend": "cupy",
+      "case": "probe-tile-k64",
+      "mode": "cupy.fuse",
+      "theory": {
+        "broadcast_bytes": 536870912,
+        "distance_bytes": 1048576,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 131072,
+        "gemm_flops": 268435456
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.035026241302490234,
+      "min_seconds": 0.03495753479003906,
+      "median_peak_extra_bytes": 4299162112,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "cupy",
+          "seconds": 0.039570240020751955,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.03495753479003906,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.035026241302490234,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.035028289794921875,
+          "peak_extra_bytes": 4299162112,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "tile-broadcast-k256",
+      "backend": "cupy",
+      "case": "probe-tile-k256",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      }
+    },
+    {
+      "status": "error",
+      "error": "AttributeError: '_ArrayProxy' object has no attribute 'argmin'",
+      "traceback": "Traceback (most recent call last):\n  File \"cupy/_core/fusion.pyx\", line 866, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/fusion.pyx\", line 702, in cupy._core.fusion._FusionHistory.get_fusion\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 164, in wrapped\n    return fn(xp, *args)\n           ^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 169, in tile_broadcast_argmin\n    distances = squared_distances_broadcast(xp, X, centroids)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 143, in squared_distances_broadcast\n    diff = X[:, None, :] - centroids[None, :, :]\n           ~^^^^^^^^^^^^\nTypeError: '_FusionVarArray' object is not subscriptable\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 303, in _try_cupy_fuse\n    out, profile = measure_call(fused, args, example)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/instrument.py\", line 49, in measure_call\n    output = fn(*args)\n             ^^^^^^^^^\n  File \"cupy/_core/fusion.pyx\", line 872, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 157, in cupy._core.new_fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 28, in cupy._core.new_fusion._get_fused_kernel\n  File \"cupy/_core/_fusion_trace.pyx\", line 600, in cupy._core._fusion_trace.trace\n  File \"cupy/_core/_fusion_trace.pyx\", line 542, in cupy._core._fusion_trace.TraceImpl.trace\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 164, in wrapped\n    return fn(xp, *args)\n           ^^^^^^^^^^^^^\nAttributeError: '_ArrayProxy' object has no attribute 'argmin'\n",
+      "name": "tile-broadcast-k256",
+      "backend": "cupy",
+      "case": "probe-tile-k256",
+      "mode": "cupy.fuse",
+      "theory": {
+        "broadcast_bytes": 2147483648,
+        "distance_bytes": 4194304,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 1073741824
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.0017087999582290649,
+      "min_seconds": 0.0017079999446868897,
+      "median_peak_extra_bytes": 16843776,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "cupy",
+          "seconds": 0.002918623924255371,
+          "peak_extra_bytes": 16843776,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0017867519855499267,
+          "peak_extra_bytes": 16843776,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0017079999446868897,
+          "peak_extra_bytes": 16843776,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0017087999582290649,
+          "peak_extra_bytes": 16843776,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "running-loop-k8",
+      "backend": "cupy",
+      "case": "probe-running-loop-k8",
+      "mode": "eager",
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 67108864,
+        "distance_bytes": 131072,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 16384,
+        "gemm_flops": 33554432
+      }
+    },
+    {
+      "status": "error",
+      "error": "TypeError: _ArrayProxy is not a supported array type",
+      "traceback": "Traceback (most recent call last):\n  File \"cupy/_core/fusion.pyx\", line 866, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/fusion.pyx\", line 702, in cupy._core.fusion._FusionHistory.get_fusion\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 114, in assign_running\n    xp = array_namespace(X, centroids)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/.pixi/envs/default/lib/python3.12/site-packages/array_api_compat/common/_helpers.py\", line 665, in array_namespace\n    raise TypeError(f\"{type(x).__name__} is not a supported array type\")\nTypeError: _FusionVarArray is not a supported array type\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 303, in _try_cupy_fuse\n    out, profile = measure_call(fused, args, example)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/instrument.py\", line 49, in measure_call\n    output = fn(*args)\n             ^^^^^^^^^\n  File \"cupy/_core/fusion.pyx\", line 872, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 157, in cupy._core.new_fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 28, in cupy._core.new_fusion._get_fused_kernel\n  File \"cupy/_core/_fusion_trace.pyx\", line 600, in cupy._core._fusion_trace.trace\n  File \"cupy/_core/_fusion_trace.pyx\", line 542, in cupy._core._fusion_trace.TraceImpl.trace\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 114, in assign_running\n    xp = array_namespace(X, centroids)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: _ArrayProxy is not a supported array type\n",
+      "name": "running-loop-k8",
+      "backend": "cupy",
+      "case": "probe-running-loop-k8",
+      "mode": "cupy.fuse",
+      "theory": {
+        "broadcast_bytes": 67108864,
+        "distance_bytes": 131072,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 16384,
+        "gemm_flops": 33554432
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.006477536201477051,
+      "min_seconds": 0.0064453759193420414,
+      "median_peak_extra_bytes": 16843776,
+      "median_retained_extra_bytes": 32768,
+      "profiles": [
+        {
+          "backend": "cupy",
+          "seconds": 0.007666592121124268,
+          "peak_extra_bytes": 16843776,
+          "retained_extra_bytes": 32768,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.006508287906646729,
+          "peak_extra_bytes": 16843776,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.0064453759193420414,
+          "peak_extra_bytes": 16843776,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "cupy",
+          "seconds": 0.006477536201477051,
+          "peak_extra_bytes": 16843776,
+          "retained_extra_bytes": 32768,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "running-loop-k32",
+      "backend": "cupy",
+      "case": "probe-running-loop-k32",
+      "mode": "eager",
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 268435456,
+        "distance_bytes": 524288,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 65536,
+        "gemm_flops": 134217728
+      }
+    },
+    {
+      "status": "error",
+      "error": "TypeError: _ArrayProxy is not a supported array type",
+      "traceback": "Traceback (most recent call last):\n  File \"cupy/_core/fusion.pyx\", line 866, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/fusion.pyx\", line 702, in cupy._core.fusion._FusionHistory.get_fusion\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 114, in assign_running\n    xp = array_namespace(X, centroids)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/.pixi/envs/default/lib/python3.12/site-packages/array_api_compat/common/_helpers.py\", line 665, in array_namespace\n    raise TypeError(f\"{type(x).__name__} is not a supported array type\")\nTypeError: _FusionVarArray is not a supported array type\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/ubuntu/kmeans_lloyd/scripts/run_experiments.py\", line 303, in _try_cupy_fuse\n    out, profile = measure_call(fused, args, example)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/instrument.py\", line 49, in measure_call\n    output = fn(*args)\n             ^^^^^^^^^\n  File \"cupy/_core/fusion.pyx\", line 872, in cupy._core.fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 157, in cupy._core.new_fusion.Fusion.__call__\n  File \"cupy/_core/new_fusion.pyx\", line 28, in cupy._core.new_fusion._get_fused_kernel\n  File \"cupy/_core/_fusion_trace.pyx\", line 600, in cupy._core._fusion_trace.trace\n  File \"cupy/_core/_fusion_trace.pyx\", line 542, in cupy._core._fusion_trace.TraceImpl.trace\n  File \"/home/ubuntu/kmeans_lloyd/src/kmeans_lloyd/iteration.py\", line 114, in assign_running\n    xp = array_namespace(X, centroids)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: _ArrayProxy is not a supported array type\n",
+      "name": "running-loop-k32",
+      "backend": "cupy",
+      "case": "probe-running-loop-k32",
+      "mode": "cupy.fuse",
+      "theory": {
+        "broadcast_bytes": 268435456,
+        "distance_bytes": 524288,
+        "labels_bytes": 32768,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 65536,
+        "gemm_flops": 134217728
+      }
+    }
+  ]
+}
