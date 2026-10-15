@@ -385,21 +385,32 @@ def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None):
         n_local_trials = 2 + int(math.log(n_clusters))
     n_local_trials = max(1, min(int(n_local_trials), n_samples))
     chosen = [int(rng.integers(n_samples))]
-    closest = centroid_squared_distance(xp, X, X[chosen[0]])
+    # One reduction of X * X. Repeating it inside every trial materializes a
+    # full copy of the samples for each new center.
+    x_norm = xp.sum(X * X, axis=1)
+    first = X[chosen[0]]
+    closest = x_norm + xp.sum(first * first) - 2 * xp.matmul(X, first)
     closest = xp.maximum(closest, xp.zeros_like(closest))
     for _ in range(1, n_clusters):
         picks = _weighted_draw(xp, closest, rng, n_local_trials)
-        candidates = xp.stack([X[index] for index in picks])
-        distances = squared_distances_gemm(xp, X, candidates)
-        distances = xp.maximum(distances, xp.zeros_like(distances))
+        candidates = xp.take(X, picks, axis=0)
+        distances = _distances_to_candidates(xp, X, x_norm, candidates)
         updated = xp.minimum(closest[:, None], distances)
         potentials = xp.sum(updated, axis=0)
         best = int(xp.argmin(potentials))
         closest = updated[:, best]
-        chosen.append(picks[best])
+        chosen.append(int(picks[best]))
     centers = xp.stack([X[index] for index in chosen])
     indices = xp.asarray(chosen, dtype=xp.int64, device=_device(X))
     return centers, indices
+
+
+def _distances_to_candidates(xp, X, x_norm, candidates):
+    """Squared distances from every sample to a handful of candidate rows."""
+    centroid_norm = xp.sum(candidates * candidates, axis=1)
+    dots = xp.matmul(X, xp.matrix_transpose(candidates))
+    distances = x_norm[:, None] + centroid_norm[None, :] - 2 * dots
+    return xp.maximum(distances, xp.zeros_like(distances))
 
 
 def _item(array):
@@ -410,20 +421,15 @@ def _item(array):
 
 def _weighted_draw(xp, weights, rng, n_draws):
     """Draw ``n_draws`` indices with probability proportional to ``weights``."""
-    total = _item(xp.sum(weights))
+    cumulative = xp.cumulative_sum(weights)
+    total = _item(cumulative[-1])
     n_samples = int(weights.shape[0])
     if not total > 0:
-        return [int(index) for index in rng.integers(n_samples, size=n_draws)]
-    cumulative = xp.cumulative_sum(weights)
-    draws = xp.asarray(
-        rng.random(n_draws) * total,
-        dtype=weights.dtype,
-        device=_device(weights),
-    )
+        return xp.asarray(rng.integers(n_samples, size=n_draws), dtype=xp.int64, device=_device(weights))
+    draws = xp.asarray(rng.random(n_draws), dtype=weights.dtype, device=_device(weights)) * cumulative[-1]
     found = xp.searchsorted(cumulative, draws, side="left")
     last = xp.asarray(n_samples - 1, dtype=found.dtype, device=_device(found))
-    found = xp.minimum(found, last)
-    return [int(found[index]) for index in range(n_draws)]
+    return xp.minimum(found, last)
 
 
 def _assign(X, centroids, assign, recorder=None, **assign_kwargs):
