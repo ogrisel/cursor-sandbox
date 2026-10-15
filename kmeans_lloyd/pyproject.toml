@@ -1,0 +1,13 @@
+[project]
+name = "kmeans-lloyd-fusion"
+version = "0.1.0"
+description = "One Lloyd k-means iteration in the Python array API, and fusion experiments on CUDA."
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
