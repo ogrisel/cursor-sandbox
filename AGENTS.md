@@ -19,7 +19,7 @@ Configure pixi based environment to manage per-experiment dedicated environments
 - The ssh key is passphrase protected but the passphrase is also stored as a secret.
 - You can find lists of username and ip addresses to connect to hosts with CUDA GPUs on AWS also stored as secrets.
 - AWS machines are specified by private IP address. You need to set a proxyjump rule to reach them. Details provided as secret.
-- Those machines might not be reachable because they automatically shutdown when idling. Ask human operator to one back on if needed.
+- Those machines might not be reachable because they automatically shutdown when idling. Ask your human operator to put one back online when needed.
 
 ## Running experiments
 
