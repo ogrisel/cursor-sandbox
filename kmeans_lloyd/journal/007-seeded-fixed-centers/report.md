@@ -22,4 +22,4 @@ The CPU test suite passes with 14 tests and one optional-GPU skip. A five-backen
 
 That particular random-row start is deliberately not presented as a good initializer: it misses blobs and all implementations spend the 12-iteration budget in the same poorer basin. It is useful precisely because it confirms that, after removing initializer differences, the five Lloyd paths agree on the resulting objective.
 
-The complete 17-case, 5-seed run is in progress. This page will be replaced with the plots, aggregate tables, and quality disclaimers when it finishes.
+Progress checkpoint: 1,195 of 1,700 rows have completed with no worker failures, covering the structure and centroid-count sweeps plus most of `tall`. The largest five shapes remain. This page will be replaced with the plots, aggregate tables, and quality disclaimers when the run finishes.
