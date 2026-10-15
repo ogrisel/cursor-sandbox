@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>007-seeded-fixed-centers</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+<a href="../index.html#cases">Cases</a>
+</nav>
+</header>
+<main>
+<h1 id="007-repeated-seeds-and-shared-fixed-centers">007 — repeated seeds and shared fixed centers</h1>
+<p>The breadth comparison is being repeated with initializer seeds 0 through 4. Error bars will show one sample standard deviation across those five independent runs.</p>
+<p>This iteration separates two questions:</p>
+<p>1. How much do k-means++ basin selection, fit quality, duration, and memory vary with the random seed? 2. When every implementation receives exactly the same starting centers, how do the Lloyd implementations compare?</p>
+<p>For the second question, NumPy selects <code>k</code> rows from each dataset without replacement for each seed. The selected float32 rows are saved once and passed unchanged to eager array-API PyTorch on CPU and CUDA, stock scikit-learn, scikit-learn with PRs 23 and 26, and cuML. Each implementation runs both one Lloyd step and a full Lloyd-only fit from those centers. The full fit uses the same 12-iteration budget and variance-scaled tolerance as <a href="../006-breadth/index.html">006</a>.</p>
+<p>The array-API entry point for this path is <code>fit_lloyd</code>. <code>fit_kmeans</code> now composes k-means++ with that same function, so the fixed-center and initialized tracks do not maintain separate iteration loops.</p>
+<h2 id="validation-before-the-full-run">Validation before the full run</h2>
+<p>The CPU test suite passes with 14 tests and one optional-GPU skip. A five-backend smoke run on <code>tight</code>, seed 0, produced the same fixed-center quality within float32 accumulation noise:</p>
+<table><thead><tr><th>phase</th><th>API CPU</th><th>sklearn 1.7</th><th>sklearn PRs</th><th>API CUDA</th><th>cuML</th></tr></thead><tbody><tr><td>after one shared-center step</td><td>277.56446</td><td>277.56443</td><td>277.56445</td><td>277.56438</td><td>277.56449</td></tr><tr><td>after the shared-center fit</td><td>248.89027</td><td>248.89024</td><td>248.89024</td><td>248.89030</td><td>248.89027</td></tr></tbody></table>
+<p>That particular random-row start is deliberately not presented as a good initializer: it misses blobs and all implementations spend the 12-iteration budget in the same poorer basin. It is useful precisely because it confirms that, after removing initializer differences, the five Lloyd paths agree on the resulting objective.</p>
+<p>The complete 17-case, 5-seed run is in progress. This page will be replaced with the plots, aggregate tables, and quality disclaimers when it finishes.</p>
+</main>
+</body>
+</html>
