@@ -47,7 +47,20 @@ For every tile whose distance matrix is smaller than the centroid tile, the meas
 
 The distance matrix exceeds that copy only for the full 65536 by 4096 product, which is 1.00 GiB. Eager execution peaks at 2.00 GiB there. `torch.compile` leaves the 1.00 GiB product and drops the extra gigabyte. It does not change the steady time of the tiled products. The fastest compiled tile in this grid is 4096 by 1024: 0.928 s and 64.5 MiB, against 1.042 s and 4.00 GiB for the eager full Gram.
 
-A running-tile sweep, a kernel profile, the tiled Lloyd update, and k-means++ are the next measurements on this shape.
+## Compiled running tiles
+
+Same feature-heavy problem. One `torch.compile` block covers `tile_k` centroids, then the driver walks every centroid. Steady time excludes compile. `tiled` merges the running minimum outside the compiled block. `stateful` merges inside it. `tile_k` 256 was not run: at 128 the compile was already 28 s and the distance tile was back.
+
+| tile centroids | tiled | stateful |
+| --- | --- | --- |
+| 16 | 6.84 s, 2.56 MiB, compile 4.0 s | 6.83 s, 1.50 MiB, compile 2.9 s |
+| 32 | 5.98 s, 2.56 MiB, compile 6.1 s | 6.60 s, 1.50 MiB, compile 6.0 s |
+| 64 | 10.10 s, 18.3 MiB, compile 13.0 s | 10.16 s, 17.5 MiB, compile 9.6 s |
+| 128 | 10.19 s, 34.1 MiB, compile 27.7 s | 10.18 s, 33.3 MiB, compile 21.7 s |
+
+At 16 and 32 the stateful peak is 1.50 MiB, two copies of the `n * 12` byte label-and-distance state. At 64 and 128 the peak jumps to the `(n, tile_k)` distance tile (16 MiB and 32 MiB) plus about 2 MiB, and the assignment gets slower. The fastest running schedule is the outside merge at 32 centroids: 5.98 s and 2.56 MiB. The fastest Gram tile, 0.928 s and 64.5 MiB, is still about six times faster.
+
+Putting the merge inside the compiled block saves the extra copy at 16 and 32 and does not make the assignment faster. The kernel profile of these two schedules, the tiled centroid update, and k-means++ are still running.
 
 ## Cython timing
 
@@ -62,6 +75,6 @@ The thread-local distance tiles and center buffers are 36.0 MiB together (`4` th
 
 ## Progress
 
-- Gram tile grid on feature-heavy is in the table above. `results.json` in this folder is the source.
+- Gram tiles and compiled running tiles are both in the tables above. `results.json` in this folder is the source.
 - Cython Lloyd on 65536×1024×2048 is in. The same shape has not been timed with `lloyd_step` yet.
-- Running tiles, the kernel profile, the tiled Lloyd update, and k-means++ are running on the L4.
+- The kernel profile, the tiled Lloyd update, and k-means++ are running on the L4.

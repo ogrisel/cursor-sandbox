@@ -493,5 +493,199 @@
       "name": "gemm-eager-full",
       "mode": "eager"
     }
+  ],
+  "running": [
+    {
+      "status": "ok",
+      "median_seconds": 6.84079736328125,
+      "median_peak_extra_bytes": 2686976,
+      "profiles": [
+        {
+          "seconds": 6.79889599609375,
+          "peak_extra_bytes": 2686976,
+          "warmup": true
+        },
+        {
+          "seconds": 6.84079736328125,
+          "peak_extra_bytes": 2686976,
+          "warmup": false
+        }
+      ],
+      "name": "running-tiled-k16",
+      "tile_k": 16,
+      "kind": "tiled",
+      "compile": {
+        "compile_seconds": 4.0275635870000315,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 6.8304853515625,
+      "median_peak_extra_bytes": 1573376,
+      "profiles": [
+        {
+          "seconds": 6.78411669921875,
+          "peak_extra_bytes": 1573376,
+          "warmup": true
+        },
+        {
+          "seconds": 6.8304853515625,
+          "peak_extra_bytes": 1573376,
+          "warmup": false
+        }
+      ],
+      "name": "running-stateful-k16",
+      "tile_k": 16,
+      "kind": "stateful",
+      "compile": {
+        "compile_seconds": 2.9346561929999098,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 5.98447705078125,
+      "median_peak_extra_bytes": 2686976,
+      "profiles": [
+        {
+          "seconds": 5.95344482421875,
+          "peak_extra_bytes": 2686976,
+          "warmup": true
+        },
+        {
+          "seconds": 5.98447705078125,
+          "peak_extra_bytes": 2686976,
+          "warmup": false
+        }
+      ],
+      "name": "running-tiled-k32",
+      "tile_k": 32,
+      "kind": "tiled",
+      "compile": {
+        "compile_seconds": 6.063690677000068,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 6.60387548828125,
+      "median_peak_extra_bytes": 1573376,
+      "profiles": [
+        {
+          "seconds": 6.62918017578125,
+          "peak_extra_bytes": 1573376,
+          "warmup": true
+        },
+        {
+          "seconds": 6.60387548828125,
+          "peak_extra_bytes": 1573376,
+          "warmup": false
+        }
+      ],
+      "name": "running-stateful-k32",
+      "tile_k": 32,
+      "kind": "stateful",
+      "compile": {
+        "compile_seconds": 6.014820923000116,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 10.104646484375,
+      "median_peak_extra_bytes": 19202048,
+      "profiles": [
+        {
+          "seconds": 10.033439453125,
+          "peak_extra_bytes": 19202048,
+          "warmup": true
+        },
+        {
+          "seconds": 10.104646484375,
+          "peak_extra_bytes": 19202048,
+          "warmup": false
+        }
+      ],
+      "name": "running-tiled-k64",
+      "tile_k": 64,
+      "kind": "tiled",
+      "compile": {
+        "compile_seconds": 13.027621861999933,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 10.15725,
+      "median_peak_extra_bytes": 18350592,
+      "profiles": [
+        {
+          "seconds": 10.088330078125,
+          "peak_extra_bytes": 18350592,
+          "warmup": true
+        },
+        {
+          "seconds": 10.15725,
+          "peak_extra_bytes": 18350592,
+          "warmup": false
+        }
+      ],
+      "name": "running-stateful-k64",
+      "tile_k": 64,
+      "kind": "stateful",
+      "compile": {
+        "compile_seconds": 9.62482779700008,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 10.1913115234375,
+      "median_peak_extra_bytes": 35717120,
+      "profiles": [
+        {
+          "seconds": 10.11248828125,
+          "peak_extra_bytes": 35717120,
+          "warmup": true
+        },
+        {
+          "seconds": 10.1913115234375,
+          "peak_extra_bytes": 35717120,
+          "warmup": false
+        }
+      ],
+      "name": "running-tiled-k128",
+      "tile_k": 128,
+      "kind": "tiled",
+      "compile": {
+        "compile_seconds": 27.711695971999916,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 10.1843623046875,
+      "median_peak_extra_bytes": 34865664,
+      "profiles": [
+        {
+          "seconds": 10.131779296875,
+          "peak_extra_bytes": 34865664,
+          "warmup": true
+        },
+        {
+          "seconds": 10.1843623046875,
+          "peak_extra_bytes": 34865664,
+          "warmup": false
+        }
+      ],
+      "name": "running-stateful-k128",
+      "tile_k": 128,
+      "kind": "stateful",
+      "compile": {
+        "compile_seconds": 21.693368631999874,
+        "error": null
+      }
+    }
   ]
 }
