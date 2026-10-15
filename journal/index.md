@@ -2,7 +2,7 @@
 
 Bfloat16 input storage helps three Array API estimators, and float32 accumulation is required to keep their predictions intact. On CPU and on a shared NVIDIA L4, peak memory falls and predictive scores stay put. Fit does not get faster.
 
-The estimator changes are the experimental branch `cursor/bfloat16-array-api-experimental-f5d4` on [ogrisel/scikit-learn](https://github.com/ogrisel/scikit-learn), based on main `d0e22aee7bbef7b310a2f08227c214ff6df9a526`. That branch has no pull request. This repository keeps the benchmarks and these reports.
+The estimator patch is prepared as branch `cursor/bfloat16-array-api-experimental-f5d4` on [ogrisel/scikit-learn](https://github.com/ogrisel/scikit-learn), based on main `d0e22aee7bbef7b310a2f08227c214ff6df9a526`, and it should be pushed with no pull request. The sandbox GitHub app cannot write to that repository, so the remote branch is not published yet. This repository keeps the benchmarks and these reports. The patched sources are still in sandbox commit `3242a51`.
 
 ## Cases
 

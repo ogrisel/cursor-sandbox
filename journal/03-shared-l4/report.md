@@ -31,7 +31,7 @@ CPU measurements and the ten-candidate ranking are in the [CPU report](../02-cpu
 
 ## Reproduce
 
-Install this environment, then install scikit-learn from `cursor/bfloat16-array-api-experimental-f5d4` on `github.com/ogrisel/scikit-learn` before running either benchmark. CuPy was not measured.
+Install this environment, then install scikit-learn from branch `cursor/bfloat16-array-api-experimental-f5d4` once that branch is on `github.com/ogrisel/scikit-learn`. Until the push is possible, the same sources are in sandbox commit `3242a51`. CuPy was not measured.
 
 ```bash
 export SCIPY_ARRAY_API=1

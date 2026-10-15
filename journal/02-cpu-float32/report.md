@@ -38,7 +38,7 @@ This ranking includes inference-like `transform` workloads for transformers. The
 
 ## Implementation
 
-The changes live on scikit-learn branch `cursor/bfloat16-array-api-experimental-f5d4`, not in this repository.
+The changes are the unpublished branch `cursor/bfloat16-array-api-experimental-f5d4` of ogrisel/scikit-learn, not files in this repository. Sandbox commit `3242a51` still has the patched sources.
 
 - NumPy arrays backed by `ml_dtypes.bfloat16` are recognized as numeric and finite-checkable despite NumPy exposing their dtype kind as `V`.
 - `LogisticRegression` and `Ridge` promote bfloat16 input to float32 rather than the previous accidental float64 conversion. Prediction aligns bfloat16 input with the fitted float32 coefficients.
