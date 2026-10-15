@@ -4,10 +4,9 @@
 
 This is a sandbox repo used by @ogrisel to conduct agent driven experimental work.
 
-The main branch is expected to remain empty.
+The main branch holds these instructions and the shared report publisher in `tools/` and `.github/workflows/publish-report.yml`.
 
-Experiments are expected to happen in dedicated branches, possibly with accompanying PRs
-but those PRs are never meant to be merged.
+Experiment code stays on dedicated branches, possibly with accompanying pull requests. Those experiment pull requests are not meant to be merged.
 
 ## Environment setup
 
@@ -31,14 +30,46 @@ Try to be mindful of resource usage:
 - progressively run longer experiments if needed but only if this justified;
 - be mindful of host and GPU memory usage (when applicable) and make sure the experiments do not fail or their results are not invalidated because of memory exhaustion. Plan experiment to always keep at least 20% of free headroom.
 
-## Reporting 
+## Reporting
 
 Summarize experimental results with tables in markdown files.
 
-If those markdown files include plots, configure a CI to render the report as a small HTML website.
+Keep a chronological journal inside the experiment:
 
-Render those reports as a small browsable HTML websites hosted on cloudflare' pages.dev and post a link that includes the PR number as comment to the PR once renderedC by the CI.
+- `journal/index.md` is the entry page.
+- `journal/<iteration>/report.md` is one iteration. Put plots and data (`svg`, `png`, `json`) next to that report.
+- Link earlier iterations from the index. The renderer rewrites links that end in `report.md` or `index.md` to `index.html`.
 
-When iterating, keep a chronologically structured journal. Create subfolders to archive results from previous iterations and cross-links to individual subreports and make sure that the rendered website makes it easy to navigate to previous experiment reports from the rendered journal page.
+Render it locally with the shared tool:
+
+```bash
+python tools/render_journal.py --journal path/to/journal --site path/to/site --title "Experiment name"
+```
+
+Publish the journal from a pull request by calling `.github/workflows/publish-report.yml`. The repository Pages setting is GitHub Actions, and the `github-pages` environment must allow pull-request refs (`refs/pull/*/merge`, or no deployment-branch restriction). The workflow renders the journal, publishes it at `https://<owner>.github.io/<repo>/pr-<number>/`, prints that URL in the job summary, and creates or updates a pull request comment with the same URL. A later deployment keeps the `pr-*` directories of other pull requests.
+
+```yaml
+name: Publish experiment report
+
+on:
+  pull_request:
+    paths:
+      - "my_experiment/**"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  report:
+    uses: ogrisel/cursor-sandbox/.github/workflows/publish-report.yml@main
+    with:
+      journal-path: my_experiment/journal
+      site-title: My experiment
+```
+
+Use `@main` after this workflow is on the default branch. Until then, call it with the ref that contains `.github/workflows/publish-report.yml`.
 
 
