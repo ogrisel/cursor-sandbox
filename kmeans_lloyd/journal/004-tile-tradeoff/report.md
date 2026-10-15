@@ -27,22 +27,27 @@ The comparison target is [`lloyd_iter_chunked_dense`](https://github.com/cakedev
 
 The branch is built on the L4 host as scikit-learn `1.10.dev0` (g++ 13.3). The host has 4 CPUs, so the iteration uses 4 threads.
 
-## What is being measured
+## Gram tiles on feature-heavy
 
-Feature-heavy, the shape from 003: 65536 samples, 4096 centroids, 16384 features, float32, TF32 off. Eager and `torch.compile` Gram tiles:
+65536 samples, 4096 centroids, 16384 features, float32, TF32 off. Median of two calls after one warmup. Compile time is not included in the steady median. The first compiled tile took 9.0 s to compile; the others took 0.4–1.4 s.
 
-| tile samples | tile centroids |
-| --- | --- |
-| 256 | 4096 |
-| 1024 | 4096 |
-| 4096 | 4096 |
-| 65536 | 4096 |
-| 4096 | 1024 |
-| 4096 | 256 |
-| 1024 | 1024 |
-| 1024 | 256 |
+| tile (samples x centroids) | eager | compiled |
+| --- | --- | --- |
+| 256 x 4096 | 1.078 s, 256.5 MiB | 1.091 s, 256.5 MiB |
+| 1024 x 4096 | 0.918 s, 256.5 MiB | 0.940 s, 256.5 MiB |
+| 4096 x 4096 | 0.940 s, 256.5 MiB | 0.939 s, 256.5 MiB |
+| 65536 x 4096 | 0.967 s, 2.00 GiB | 0.950 s, 1.00 GiB |
+| 4096 x 1024 | 0.946 s, 64.5 MiB | 0.928 s, 64.5 MiB |
+| 4096 x 256 | 1.098 s, 16.5 MiB | 1.107 s, 16.5 MiB |
+| 1024 x 1024 | 0.963 s, 64.5 MiB | 0.967 s, 64.5 MiB |
+| 1024 x 256 | 1.302 s, 16.5 MiB | 1.333 s, 16.5 MiB |
+| full Gram, including x norm | 1.042 s, 4.00 GiB | |
 
-256 is the Cython chunk length. 65536×4096 is one GEMM for the whole problem. A running-tile sweep (`tile_k` 16, 32, 64, 128, 256), a profile of the kernels, one tiled Lloyd step, k-means++, and the Cython iteration on a smaller shared problem (65536×1024×2048) follow the tile table.
+For every tile whose distance matrix is smaller than the centroid tile, the measured peak is `tile_k * 16384 * 4` bytes plus 528 KiB. That is one float32 copy of the centroid tile, the buffer a transposed GEMM needs, plus a fixed half megabyte. It does not grow with the sample tile. The 256-sample chunk used by the Cython kernel is the same 256.5 MiB as a 4096-sample tile when every centroid is in the product, and it is slightly slower (1.08 s against 0.92 s).
+
+The distance matrix exceeds that copy only for the full 65536 by 4096 product, which is 1.00 GiB. Eager execution peaks at 2.00 GiB there. `torch.compile` leaves the 1.00 GiB product and drops the extra gigabyte. It does not change the steady time of the tiled products. The fastest compiled tile in this grid is 4096 by 1024: 0.928 s and 64.5 MiB, against 1.042 s and 4.00 GiB for the eager full Gram.
+
+A running-tile sweep, a kernel profile, the tiled Lloyd update, and k-means++ are the next measurements on this shape.
 
 ## Cython timing
 
@@ -57,5 +62,6 @@ The thread-local distance tiles and center buffers are 36.0 MiB together (`4` th
 
 ## Progress
 
-- Array-API tile assignment, tiled update, and k-means++ are in the tree. CPU tests cover tiles that do not divide the problem, the tiled mean, and a k-means++ draw that must pick the far cluster.
-- Cython numbers above are in. The feature-heavy Gram tile sweep on the L4 is running.
+- Gram tile grid on feature-heavy is in the table above. `results.json` in this folder is the source.
+- Cython Lloyd on 65536×1024×2048 is in. The same shape has not been timed with `lloyd_step` yet.
+- Running tiles, the kernel profile, the tiled Lloyd update, and k-means++ are running on the L4.
