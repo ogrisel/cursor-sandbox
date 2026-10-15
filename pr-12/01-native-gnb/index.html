@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>01-native-gnb</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+<a href="../index.html#cases">Cases</a>
+</nav>
+</header>
+<main>
+<h1 id="iteration-1-native-gaussiannb-bfloat16-statistics">Iteration 1: native GaussianNB bfloat16 statistics</h1>
+<p>The first implementation retained bfloat16 means and variances. On a synthetic 120,000 × 128 classification problem with three-fold cross-validation:</p>
+<table><thead><tr><th>Backend</th><th>dtype</th><th>Input MiB</th><th>Fit s</th><th>Predict s</th><th>Accuracy</th></tr></thead><tbody><tr><td>NumPy</td><td>float32</td><td>58.6</td><td>0.164</td><td>0.059</td><td>0.9950</td></tr><tr><td>NumPy + ml_dtypes</td><td>bfloat16</td><td>29.3</td><td>0.544</td><td>0.346</td><td>0.6255</td></tr><tr><td>PyTorch CPU</td><td>float32</td><td>58.6</td><td>0.140</td><td>0.076</td><td>0.9950</td></tr><tr><td>PyTorch CPU</td><td>bfloat16</td><td>29.3</td><td>0.155</td><td>0.034</td><td>0.9945</td></tr></tbody></table>
+<p>NumPy/<code>ml_dtypes</code> showed that direct low-precision variance accumulation is not portable or numerically acceptable. The final implementation promotes <code>GaussianNB</code> computation to float32, matching the policy used for the linear estimators.</p>
+<p>Return to the <a href="../index.html">journal</a>.</p>
+</main>
+</body>
+</html>

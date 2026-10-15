@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bfloat16 Array API</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="index.html">Journal</a>
+<a href="index.html#cases">Cases</a>
+</nav>
+</header>
+<main>
+<h1 id="bfloat16-array-api-journal">Bfloat16 Array API journal</h1>
+<p>Bfloat16 input storage helps three Array API estimators, and float32 accumulation is required to keep their predictions intact. On CPU and on a shared NVIDIA L4, peak memory falls and predictive scores stay put. Fit does not get faster.</p>
+<p>The estimator patch is prepared as branch <code>cursor/bfloat16-array-api-experimental-f5d4</code> on <a href="https://github.com/ogrisel/scikit-learn">ogrisel/scikit-learn</a>, based on main <code>d0e22aee7bbef7b310a2f08227c214ff6df9a526</code>, and it should be pushed with no pull request. The sandbox GitHub app cannot write to that repository, so the remote branch is not published yet. This repository keeps the benchmarks and these reports. The patched sources are still in sandbox commit <code>3242a51</code>.</p>
+<h2 id="cases">Cases</h2>
+<ul><li><a href="01-native-gnb/index.html">Native GaussianNB statistics</a></li><li><a href="02-cpu-float32/index.html">Float32 accumulation on CPU</a></li><li><a href="03-shared-l4/index.html">Shared NVIDIA L4</a></li></ul>
+<h2 id="2026-10-15-candidate-inventory">2026-10-15 — Candidate inventory</h2>
+<p>Reviewed the estimator inventory on scikit-learn main and selected <code>LogisticRegression</code>, <code>GaussianNB</code>, and <code>Ridge</code>. The selection favors matrix products and bandwidth-bound reductions while avoiding estimators whose primary kernel is an unsupported bfloat16 eigendecomposition or Cholesky factorization.</p>
+<p>The <a href="02-cpu-float32/index.html">CPU report</a> expands the same review to ten candidates.</p>
+<h2 id="2026-10-15-native-bfloat16-statistics">2026-10-15 — Native bfloat16 statistics</h2>
+<p>The initial implementation kept <code>GaussianNB</code> statistics in bfloat16. It reduced memory and allowed both PyTorch and NumPy/<code>ml_dtypes</code> execution, but variance rounding destroyed predictive performance on the benchmark.</p>
+<p>See <a href="01-native-gnb/index.html">iteration 1</a>.</p>
+<h2 id="2026-10-15-float32-accumulation">2026-10-15 — Float32 accumulation</h2>
+<p>All three candidates now accept bfloat16 storage but use float32 solver state and prediction arithmetic. This keeps the input-memory benefit while recovering predictive performance.</p>
+<p>See the <a href="02-cpu-float32/index.html">CPU report</a> and the <a href="02-cpu-float32/results.json">CPU measurements</a>.</p>
+<h2 id="2026-10-15-shared-nvidia-l4">2026-10-15 — Shared NVIDIA L4</h2>
+<p>Prepared <code>/tmp/cursor-bfloat16-f5d4</code> on the remote host and waited through two periods of 100% utilization by another process. A quick calibration established stable timings, then three scaled repeats were collected only after three consecutive idle samples. All accepted runs retained at least 14,093 MiB free under the conservative peak estimate.</p>
+<p>The GPU confirms a memory-only benefit for most workloads: peak allocations fall 7–16%, scores remain stable, and only <code>GaussianNB.predict</code> becomes faster.</p>
+<p>See the <a href="03-shared-l4/index.html">L4 report</a>, the <a href="03-shared-l4/gpu_smoke.json">GPU calibration</a>, and the <a href="03-shared-l4/gpu_results.json">scaled GPU results</a>.</p>
+</main>
+</body>
+</html>
