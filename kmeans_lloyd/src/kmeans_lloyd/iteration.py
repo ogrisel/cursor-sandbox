@@ -459,18 +459,23 @@ def fit_kmeans(
     tile_n=4096,
     tile_k=1024,
     update_tile_k=256,
+    update_tile_n=None,
     step=None,
     distance=None,
 ):
     """k-means++ initialization followed by Lloyd iterations until convergence.
 
     ``tol`` is scaled by the mean feature variance, matching scikit-learn.
-    An empty cluster keeps its center. The returned inertia is the sum of
+    ``update_tile_n`` splits the sample axis of the one-hot update. The
+    default is ``min(tile_n, 4096)``, which keeps that matrix off the full
+    sample count. An empty cluster keeps its center. The returned inertia is the sum of
     squared distances to the centers of the last iteration. ``step`` and
     ``distance`` are optional callables a benchmark may wrap with
     ``torch.compile``; both default to the array-API implementations.
     """
     xp = array_namespace(X)
+    if update_tile_n is None:
+        update_tile_n = min(int(tile_n), 4096)
     centers, indices = kmeans_plusplus(X, n_clusters, rng, distance=distance)
     # ``mean(var(X, axis=0))`` with the library reduction allocates a large
     # workspace (512 MiB on the timing shape). Feature tiles compute the same
@@ -486,7 +491,7 @@ def fit_kmeans(
             tile_n,
             tile_k,
             update_tile_k=update_tile_k,
-            update_tile_n=tile_n,
+            update_tile_n=update_tile_n,
             step=step,
         )
         shift = _item(xp.sum((updated - centers) ** 2))
