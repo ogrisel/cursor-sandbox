@@ -153,6 +153,7 @@ jobs:
       - name: Save the published tree
         env:
           PR_NUMBER: ${{ github.event.number }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
