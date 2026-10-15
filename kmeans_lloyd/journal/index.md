@@ -61,6 +61,7 @@ Each schedule is one function on branch `cursor/kmeans-lloyd-fusion-8896`. `torc
 - [001 — fusion probe](001-fusion-probe/index.html) on a problem small enough that the naive broadcast tensor fits.
 - [002 — large shape, eager out of memory](002-large-shape-oom/index.html). Compiled GEMM still runs; a compiled running tile of 32 centroids does not allocate the distance matrix.
 - [003 — three shapes](003-resized-shapes/index.html) that vary samples, centroids, and features. `torch.compile` writes the Gram distance matrix and folds argmin into its epilogue. A running tile is the schedule that drops that matrix. `cupy.fuse` still stops at `argmin`.
+- [004 — tile sizes, Cython Lloyd, k-means++](004-tile-tradeoff/index.html). Gram tiles and a tiled mean update are in the array API. The L4 sweep and the comparison with [scikit-learn#26](https://github.com/cakedev0/scikit-learn/pull/26) are still running.
 
 ## Cases
 
