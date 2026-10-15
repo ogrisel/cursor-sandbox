@@ -68,6 +68,14 @@ class PagesTreeTest(unittest.TestCase):
             self.assertTrue((pages / "pr-2" / "index.html").is_file())
             self.assertFalse((pages / "README.md").exists())
 
+    def test_save_step_passes_github_token(self):
+        workflow = (
+            Path(__file__).resolve().parents[1] / ".github" / "workflows" / "publish-report.yml"
+        )
+        step = workflow.read_text().split("name: Save the published tree", 1)[1]
+        self.assertIn("GITHUB_TOKEN: ${{ github.token }}", step)
+        self.assertIn("${GITHUB_TOKEN}", step)
+
     def test_relative_link_stays_inside_the_pull_request_prefix(self):
         page = "https://example.github.io/repo/pr-4/index.html"
         base = "https://example.github.io/repo/"
