@@ -1,5 +1,9 @@
 # Lloyd k-means, one iteration, kernel fusion
 
+## Latest
+
+[006](006-breadth/index.html) compares an eager array-API fit with stock scikit-learn 1.7.2, scikit-learn carrying both cakedev0 k-means patches, and cuML 26.10, across blob structure and centroid count. Where the blobs are separated, every implementation reaches the same inertia in 2 iterations. Where the k-means++ draws differ, the fit inertia follows the draw: the gap can go either way, and running more Lloyd steps does not close it. On 65536×512×64 the CUDA fit takes 0.099 s, cuML 0.163 s, the patched scikit-learn 0.88 s, PyTorch CPU 2.41 s, and stock scikit-learn 3.17 s. Two larger shapes are still running.
+
 Does `torch.compile` or `cupy.fuse` fuse nearest-centroid `argmin` into the squared Euclidean distance?
 
 ## Answer
@@ -63,6 +67,7 @@ Each schedule is one function on branch `cursor/kmeans-lloyd-fusion-8896`. `torc
 - [003 — three shapes](003-resized-shapes/index.html) that vary samples, centroids, and features. `torch.compile` writes the Gram distance matrix and folds argmin into its epilogue. A running tile is the schedule that drops that matrix. `cupy.fuse` still stops at `argmin`.
 - [004 — tile sizes, Cython Lloyd, k-means++](004-tile-tradeoff/index.html). A Gram tile of 4096 by 1024 plus a tiled mean update finishes a feature-heavy Lloyd step in 1.70 s, with assignment peak 64.5 MiB and update peak 432 MiB. The compiled running tile is fastest at 32 centroids (5.98 s, 2.56 MiB). On 65536×1024×2048 the L4 step takes 0.071 s and the 4-thread Cython Lloyd step takes 1.53 s, with 1 label differing. k-means++ on 65536×1024×8192 takes 10.3 s after the sample norm is computed once.
 - [005 — full fit, Cython k-means++, cuML](005-full-kmeans/index.html). On 131072×256×2048 the tiled fit takes 2.33 s and 152 MiB above the input (30 iterations). The same k-means++ on 4 CPU threads takes 24.2 s. cuML's k-means++ fit takes 3.98 s and stops at iteration 6. Inertia agrees within 0.02% on that problem, with an explicit note that our center shift has not reached the scikit-learn tolerance. On separated blobs the labels match exactly. `torch.compile` does not shorten the fit.
+- [006 — structure, centroid count, five implementations](006-breadth/index.html). Eager array API, stock scikit-learn, both cakedev0 patches, and cuML. Separated blobs match. Init draws that differ leave a fit gap that further Lloyd steps do not close. On 65536×512×64 the CUDA fit is 0.099 s and the patched CPU fit is 0.88 s.
 
 ## Cases
 
