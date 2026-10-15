@@ -1,0 +1,172 @@
+name: Publish experiment report
+
+on:
+  workflow_call:
+    inputs:
+      journal-path:
+        description: Directory containing index.md and one report.md per iteration
+        required: true
+        type: string
+      site-title:
+        description: Title of the rendered journal index
+        required: false
+        type: string
+        default: Experiment journal
+      comment-marker:
+        description: HTML comment used to update the same pull request comment
+        required: false
+        type: string
+        default: "<!-- experiment-report -->"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: publish-report
+  cancel-in-progress: false
+
+jobs:
+  render:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      base_url: ${{ steps.base.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch previously published reports
+        id: seed
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: report-site
+          path: _pages_seed
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Render journal
+        run: python tools/render_journal.py --journal "${{ inputs.journal-path }}" --site _site --title "${{ inputs.site-title }}"
+      - name: Pages base URL
+        id: base
+        run: |
+          owner="${GITHUB_REPOSITORY%%/*}"
+          repo="${GITHUB_REPOSITORY#*/}"
+          if [ "$repo" = "$owner.github.io" ]; then
+            echo "url=https://${owner}.github.io/" >> "$GITHUB_OUTPUT"
+          else
+            echo "url=https://${owner}.github.io/${repo}/" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Start from the published tree
+        if: steps.seed.outcome == 'success'
+        run: python tools/pages_tree.py seed --seed _pages_seed --pages _pages
+      - name: Recover reports from the live site
+        if: steps.seed.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/pages_tree.py recover-live --pages _pages --base-url "${{ steps.base.outputs.url }}"
+      - name: Stage this pull request
+        run: python tools/pages_tree.py stage --site _site --pages _pages --pr "${{ github.event.number }}"
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _pages
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pages-tree
+          path: _pages
+
+  deploy:
+    if: github.event_name == 'pull_request'
+    needs: render
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}pr-${{ github.event.number }}/
+    steps:
+      - name: Enable GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Deploy report to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Display report URL
+        env:
+          REPORT_URL: ${{ steps.deployment.outputs.page_url }}pr-${{ github.event.number }}/
+        run: |
+          {
+            echo "## Rendered experiment journal"
+            echo
+            echo "[$REPORT_URL]($REPORT_URL)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Rendered experiment journal::$REPORT_URL"
+      - name: Add report URL to the pull request
+        uses: actions/github-script@v8
+        env:
+          REPORT_URL: ${{ steps.deployment.outputs.page_url }}pr-${{ github.event.number }}/
+          COMMENT_MARKER: ${{ inputs.comment-marker }}
+        with:
+          script: |
+            const marker = process.env.COMMENT_MARKER;
+            const body = [
+              marker,
+              "The rendered experiment journal is available at:",
+              "",
+              `**${process.env.REPORT_URL}**`,
+              "",
+              "This comment is updated after each successful deployment.",
+            ].join("\n");
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+            const previous = comments.find(
+              (comment) => comment.user.type === "Bot" && comment.body.includes(marker),
+            );
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: previous.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: pages-tree
+          path: _pages
+      - name: Save the published tree
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          rm -rf /tmp/report-site
+          if git ls-remote --exit-code --heads "$remote" report-site >/dev/null 2>&1; then
+            git clone --branch report-site --depth 1 "$remote" /tmp/report-site
+            find /tmp/report-site -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          else
+            git init -b report-site /tmp/report-site
+          fi
+          cp -a _pages/. /tmp/report-site/
+          git -C /tmp/report-site add -A
+          git -C /tmp/report-site \
+            -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Publish report for pull request #${PR_NUMBER}" || exit 0
+          git -C /tmp/report-site push "$remote" HEAD:report-site

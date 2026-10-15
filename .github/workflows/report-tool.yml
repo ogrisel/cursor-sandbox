@@ -1,0 +1,26 @@
+name: Report tool tests
+
+on:
+  pull_request:
+    paths:
+      - "tools/**"
+      - ".github/workflows/publish-report.yml"
+      - ".github/workflows/report-tool.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "tools/**"
+      - ".github/workflows/publish-report.yml"
+      - ".github/workflows/report-tool.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test the journal renderer and Pages tree
+        run: python tools/test_report_tools.py
