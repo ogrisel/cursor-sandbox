@@ -34,3 +34,7 @@ both run IEEE float32 matmuls.
 
 Results land in `journal/*/results.json`. The narrative is the journal.
 `python scripts/render_site.py` builds `site/`.
+
+For pull requests, CI publishes the rendered site to GitHub Pages under
+`pr-<number>/`, displays the URL in the deployment summary, and maintains a
+pull-request comment with the same URL.
