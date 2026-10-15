@@ -26,15 +26,16 @@ pixi install
 pixi run test
 pixi run probe
 pixi run bench
-python scripts/render_site.py
+python ../tools/render_journal.py \
+  --journal journal \
+  --site site \
+  --title "Lloyd k-means fusion journal"
 ```
 
 `NVIDIA_TF32_OVERRIDE=0` is set in the pixi environment so PyTorch and CuPy
 both run IEEE float32 matmuls.
 
 Results land in `journal/*/results.json`. The narrative is the journal.
-`python scripts/render_site.py` builds `site/`.
-
-For pull requests, CI publishes the rendered site to GitHub Pages under
-`pr-<number>/`, displays the URL in the deployment summary, and maintains a
-pull-request comment with the same URL.
+The shared renderer builds `site/`. Pull request CI calls
+`.github/workflows/publish-report.yml`, which publishes that journal at
+`pr-<number>/` and updates the pull request comment with the URL.

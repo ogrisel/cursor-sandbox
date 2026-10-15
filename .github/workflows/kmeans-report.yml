@@ -5,17 +5,19 @@ on:
     paths:
       - "kmeans_lloyd/**"
       - ".github/workflows/kmeans-report.yml"
-  workflow_dispatch:
 
 concurrency:
-  group: pages
+  group: kmeans-report-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
 
 jobs:
-  test-and-render:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,95 +30,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "numpy>=2.0" "array-api-compat>=1.11" pytest
           python -m pytest tests
-      - name: Render HTML journal
-        working-directory: kmeans_lloyd
-        run: python scripts/render_site.py
-      - uses: actions/upload-artifact@v4
-        with:
-          name: kmeans-report
-          path: kmeans_lloyd/site
-      - name: Stage PR-specific Pages path
-        if: github.event_name == 'pull_request'
-        working-directory: kmeans_lloyd
-        env:
-          PR_NUMBER: ${{ github.event.number }}
-        run: |
-          mkdir -p "_pages/pr-${PR_NUMBER}"
-          cp -a site/. "_pages/pr-${PR_NUMBER}/"
-      - uses: actions/upload-pages-artifact@v4
-        if: github.event_name == 'pull_request'
-        with:
-          path: kmeans_lloyd/_pages
 
-  deploy-pages:
-    if: github.event_name == 'pull_request'
-    needs: test-and-render
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-      pull-requests: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}pr-${{ github.event.number }}/
-    steps:
-      - name: Enable GitHub Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - name: Deploy report to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-      - name: Display report URL
-        env:
-          REPORT_URL: ${{ steps.deployment.outputs.page_url }}pr-${{ github.event.number }}/
-        run: |
-          {
-            echo "## Rendered experiment journal"
-            echo
-            echo "[$REPORT_URL]($REPORT_URL)"
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo "::notice title=Rendered experiment journal::$REPORT_URL"
-      - name: Add report URL to the pull request
-        uses: actions/github-script@v8
-        env:
-          REPORT_URL: ${{ steps.deployment.outputs.page_url }}pr-${{ github.event.number }}/
-        with:
-          script: |
-            const marker = "<!-- kmeans-lloyd-report -->";
-            const body = `${marker}
-            The rendered experiment journal is available at:
-
-            **${process.env.REPORT_URL}**
-
-            This comment is updated after each successful deployment.`;
-            const comments = await github.paginate(
-              github.rest.issues.listComments,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                per_page: 100,
-              },
-            );
-            const previous = comments.find(
-              (comment) =>
-                comment.user.type === "Bot" &&
-                comment.body.includes(marker),
-            );
-            if (previous) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: previous.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
+  report:
+    needs: test
+    uses: ogrisel/cursor-sandbox/.github/workflows/publish-report.yml@main
+    with:
+      journal-path: kmeans_lloyd/journal
+      site-title: Lloyd k-means fusion journal
+      comment-marker: "<!-- kmeans-lloyd-report -->"
