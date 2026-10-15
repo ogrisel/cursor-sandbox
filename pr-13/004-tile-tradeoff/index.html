@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>004-tile-tradeoff</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+<a href="../index.html#cases">Cases</a>
+</nav>
+</header>
+<main>
+<h1 id="004-tile-sizes-a-cython-lloyd-step-and-k-means">004 — tile sizes, a Cython Lloyd step, and k-means++</h1>
+<p>The compiled running tile from <a href="../003-resized-shapes/index.html">003</a> removes the distance matrix and is slower than the Gram GEMM. This iteration asks three things:</p>
+<ul><li>How sample-tile and centroid-tile sizes move the speed and memory of a Gram assignment.</li><li>Whether that tiled Gram step, after profiling, gets closer to a chunked GEMM Lloyd iteration.</li><li>What k-means++ initialization costs in the same array-API code.</li></ul>
+<p>The core functions stay in Python array-API syntax and run without <code>torch.compile</code>. The compiler, when used, is wrapped around those functions by the benchmark driver.</p>
+<h2 id="schedules-added">Schedules added</h2>
+<table><thead><tr><th>piece</th><th>source</th></tr></thead><tbody><tr><td>centroid-norm scores, then argmin</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L240-L251"><code>gemm_scores_argmin</code></a></td></tr><tr><td>Gram assignment over sample and centroid tiles</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L253-L286"><code>assign_gemm_tiled</code></a></td></tr><tr><td>mean update with a <code>(n, tile_k)</code> one-hot</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L288-L309"><code>update_centroids_tiled</code></a></td></tr><tr><td>one Lloyd step using those two tiles</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L311-L329"><code>lloyd_step</code></a></td></tr><tr><td>running tile that also merges the best distance</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L331-L342"><code>running_tile_update</code></a></td></tr><tr><td>k-means++</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L365-L403"><code>kmeans_plusplus</code></a></td></tr></tbody></table>
+<p><code>||x||²</code> is omitted inside a tile because it does not change the argmin. That is the same reduction the Cython kernel uses. Centroid norms are computed once per centroid tile, then reused for every sample tile.</p>
+<h2 id="cython-reference">Cython reference</h2>
+<p>The comparison target is <a href="https://github.com/cakedev0/scikit-learn/blob/kmeans/lloyd_no_blocking_sync/sklearn/cluster/_k_means_lloyd.pyx"><code>lloyd_iter_chunked_dense</code></a> from <a href="https://github.com/cakedev0/scikit-learn/pull/26">cakedev0/scikit-learn#26</a>. Each chunk has 256 samples. The chunk computes <code>||c||² - 2 X Cᵀ</code> with a GEMM, takes argmin, and scatters the samples into per-thread center buffers. Those buffers are reduced after the parallel region.</p>
+<p>The branch is built on the L4 host as scikit-learn <code>1.10.dev0</code> (g++ 13.3, 4 threads). Timing has not been recorded yet.</p>
+<h2 id="what-is-being-measured">What is being measured</h2>
+<p>Feature-heavy, the shape from 003: 65536 samples, 4096 centroids, 16384 features, float32, TF32 off. Eager and <code>torch.compile</code> Gram tiles:</p>
+<table><thead><tr><th>tile samples</th><th>tile centroids</th></tr></thead><tbody><tr><td>256</td><td>4096</td></tr><tr><td>1024</td><td>4096</td></tr><tr><td>4096</td><td>4096</td></tr><tr><td>65536</td><td>4096</td></tr><tr><td>4096</td><td>1024</td></tr><tr><td>4096</td><td>256</td></tr><tr><td>1024</td><td>1024</td></tr><tr><td>1024</td><td>256</td></tr></tbody></table>
+<p>256 is the Cython chunk length. 65536×4096 is one GEMM for the whole problem. A running-tile sweep (<code>tile_k</code> 16, 32, 64, 128, 256), a profile of the kernels, one tiled Lloyd step, k-means++, and the Cython iteration on a smaller shared problem (65536×1024×2048) follow the tile table.</p>
+<h2 id="progress">Progress</h2>
+<ul><li>Array-API tile assignment, tiled update, and k-means++ are in the tree. CPU tests cover tiles that do not divide the problem, the tiled mean, and a k-means++ draw that must pick the far cluster.</li><li>The L4 tile sweep has not written timings into this page yet.</li></ul>
+</main>
+</body>
+</html>
