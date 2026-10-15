@@ -8,12 +8,17 @@ from array_api_compat import array_namespace
 
 from kmeans_lloyd.iteration import (
     assign_gemm,
+    assign_gemm_tiled,
     assign_naive,
     assign_running,
+    assign_running_stateful,
     assign_running_tiled,
     assign_tiled,
+    kmeans_plusplus,
     lloyd_iteration,
+    lloyd_step,
     update_centroids,
+    update_centroids_tiled,
 )
 
 
@@ -106,6 +111,69 @@ def test_update_centroids_mean():
     np.testing.assert_allclose(_to_numpy(updated)[1], [10.0, 0.0])
 
 
+def test_gemm_tiled_matches_naive_when_tiles_do_not_divide():
+    x_np, c_np = _blobs(n_per=9, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    reference = _to_numpy(assign_naive(x, c))
+    tiled = _to_numpy(assign_gemm_tiled(x, c, tile_n=5, tile_k=2))
+    stateful = _to_numpy(assign_running_stateful(x, c, tile_k=2))
+    np.testing.assert_array_equal(tiled, reference)
+    np.testing.assert_array_equal(stateful, reference)
+
+
+def test_tiled_update_matches_one_hot_update():
+    x_np = np.array([[0.0, 0.0], [2.0, 4.0], [10.0, 0.0], [11.0, 1.0]], dtype=np.float64)
+    labels_np = np.array([0, 0, 1, 2], dtype=np.int64)
+    c_np = np.array([[9.0, 9.0], [8.0, 8.0], [7.0, 7.0], [6.0, 6.0]], dtype=np.float64)
+    x = _as_numpy_namespace(x_np)
+    labels = array_namespace(x).asarray(labels_np)
+    c = _as_numpy_namespace(c_np)
+    full = _to_numpy(update_centroids(x, labels, c))
+    tiled = _to_numpy(update_centroids_tiled(x, labels, c, tile_k=3))
+    np.testing.assert_allclose(tiled, full)
+    np.testing.assert_allclose(tiled[3], c_np[3])
+
+
+def test_lloyd_step_matches_naive_iteration():
+    x_np, c_np = _blobs(n_per=8, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    reference, reference_labels = lloyd_iteration(x, c, assign="naive")
+    updated, labels = lloyd_step(x, c, tile_n=5, tile_k=2, update_tile_k=2)
+    np.testing.assert_array_equal(_to_numpy(labels), _to_numpy(reference_labels))
+    np.testing.assert_allclose(_to_numpy(updated), _to_numpy(reference))
+
+
+def test_kmeans_plusplus_second_center_is_far_from_the_first():
+    x_np = np.array([[0.0, 0.0], [0.1, 0.0], [10.0, 10.0], [10.2, 9.8]], dtype=np.float64)
+    x = _as_numpy_namespace(x_np)
+
+    class _Rng:
+        def integers(self, n, size=None):
+            if size is None:
+                return 0
+            return np.zeros(size, dtype=np.int64)
+
+        def random(self, size):
+            return np.full(size, 0.99)
+
+    centers, indices = kmeans_plusplus(x, 2, _Rng(), n_local_trials=1)
+    indices = _to_numpy(indices)
+    assert indices[0] == 0
+    assert indices[1] in (2, 3)
+    np.testing.assert_allclose(_to_numpy(centers), x_np[indices])
+
+
+def test_kmeans_plusplus_is_deterministic_for_a_generator():
+    x_np, _ = _blobs(n_per=6, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    first = _to_numpy(kmeans_plusplus(x, 3, np.random.default_rng(4))[1])
+    second = _to_numpy(kmeans_plusplus(x, 3, np.random.default_rng(4))[1])
+    np.testing.assert_array_equal(first, second)
+    assert len(set(first.tolist())) == 3
+
+
 def _gpu_pairs():
     pairs = []
     try:
@@ -140,8 +208,15 @@ def test_gpu_assignment_matches_numpy(backend):
     labels = _to_numpy(assign_naive(x, c))
     tiled = _to_numpy(assign_tiled(x, c, tile_n=8, tile_k=2, distance="broadcast"))
     running = _to_numpy(assign_running(x, c))
+    gemm_tiled = _to_numpy(assign_gemm_tiled(x, c, tile_n=8, tile_k=2))
+    stateful = _to_numpy(assign_running_stateful(x, c, tile_k=2))
     np.testing.assert_array_equal(labels, reference)
     np.testing.assert_array_equal(tiled, reference)
     np.testing.assert_array_equal(running, reference)
+    np.testing.assert_array_equal(gemm_tiled, reference)
+    np.testing.assert_array_equal(stateful, reference)
+    centers, plus_index = kmeans_plusplus(x, c_np.shape[0], np.random.default_rng(2))
+    assert _to_numpy(centers).shape == c_np.shape
+    assert _to_numpy(plus_index).shape == (c_np.shape[0],)
     updated, _ = lloyd_iteration(x, c, assign="gemm")
     assert _to_numpy(updated).shape == c_np.shape

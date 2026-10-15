@@ -2,24 +2,34 @@
 
 from kmeans_lloyd.iteration import (
     assign_gemm,
+    assign_gemm_tiled,
     assign_naive,
     assign_running,
+    assign_running_stateful,
     assign_running_tiled,
     assign_tiled,
+    kmeans_plusplus,
     lloyd_iteration,
+    lloyd_step,
     squared_distances_broadcast,
     squared_distances_gemm,
     update_centroids,
+    update_centroids_tiled,
 )
 
 __all__ = [
     "assign_gemm",
+    "assign_gemm_tiled",
     "assign_naive",
     "assign_running",
+    "assign_running_stateful",
     "assign_running_tiled",
     "assign_tiled",
+    "kmeans_plusplus",
     "lloyd_iteration",
+    "lloyd_step",
     "squared_distances_broadcast",
     "squared_distances_gemm",
     "update_centroids",
+    "update_centroids_tiled",
 ]

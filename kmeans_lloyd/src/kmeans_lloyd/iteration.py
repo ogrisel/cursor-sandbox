@@ -237,12 +237,204 @@ def broadcast_distance_only(xp, X, centroids):
     return squared_distances_broadcast(xp, X, centroids)
 
 
+def gemm_scores_argmin(xp, X, centroids, c_norm):
+    """Argmin of ``||c||^2 - 2 x·c`` for one centroid tile.
+
+    ``||x||^2`` does not depend on the centroid, so it cannot change the
+    nearest-centroid index. Dropping it matches the dense Lloyd kernel in
+    scikit-learn and avoids a reduction over the sample tile. ``c_norm``
+    has shape ``(n_clusters,)`` and is the squared norm of each row of
+    ``centroids``. Ties keep the smallest index.
+    """
+    scores = c_norm[None, :] - 2 * xp.matmul(X, xp.matrix_transpose(centroids))
+    return xp.argmin(scores, axis=1), xp.min(scores, axis=1)
+
+
+def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
+    """Gram assignment over sample tiles and centroid tiles.
+
+    Each tile is one matrix product of shape ``(tile_n, n_features)`` by
+    ``(n_features, tile_k)`` plus an argmin. A running minimum combines
+    tiles. Strict ``<`` keeps the smallest index on ties. ``step``, when
+    given, replaces ``gemm_scores_argmin`` and is the function a caller
+    may wrap with ``torch.compile``. It is called as
+    ``step(X_tile, centroid_tile, centroid_squared_norm)``.
+    """
+    xp = array_namespace(X, centroids)
+    if step is None:
+        step = lambda x_tile, c_tile, c_norm: gemm_scores_argmin(xp, x_tile, c_tile, c_norm)
+    n_samples = int(X.shape[0])
+    n_clusters = int(centroids.shape[0])
+    labels = xp.zeros(n_samples, dtype=xp.int64, device=_device(X))
+    tiles = []
+    for k0 in range(0, n_clusters, tile_k):
+        k1 = min(k0 + tile_k, n_clusters)
+        c_tile = centroids[k0:k1]
+        tiles.append((k0, c_tile, xp.sum(c_tile * c_tile, axis=1)))
+    for n0 in range(0, n_samples, tile_n):
+        n1 = min(n0 + tile_n, n_samples)
+        x_tile = X[n0:n1]
+        best = xp.full((n1 - n0,), xp.inf, dtype=X.dtype, device=_device(X))
+        local = xp.zeros(n1 - n0, dtype=xp.int64, device=_device(X))
+        for k0, c_tile, c_norm in tiles:
+            tile_labels, tile_scores = step(x_tile, c_tile, c_norm)
+            better = tile_scores < best
+            best = xp.where(better, tile_scores, best)
+            local = xp.where(better, tile_labels + k0, local)
+        labels[n0:n1] = local
+    return labels
+
+
+def update_centroids_tiled(X, labels, centroids, tile_k):
+    """Mean update one centroid tile at a time.
+
+    The one-hot membership for a tile has shape ``(n_samples, tile_k)``
+    instead of ``(n_samples, n_clusters)``. An empty cluster keeps its
+    previous centroid.
+    """
+    xp = array_namespace(X, labels, centroids)
+    n_clusters = int(centroids.shape[0])
+    updated = xp.empty_like(centroids)
+    for k0 in range(0, n_clusters, tile_k):
+        k1 = min(k0 + tile_k, n_clusters)
+        ids = xp.arange(k1 - k0, dtype=labels.dtype, device=_device(X)) + k0
+        membership = xp.astype(labels[:, None] == ids[None, :], X.dtype)
+        counts = xp.sum(membership, axis=0)
+        sums = xp.matmul(xp.matrix_transpose(membership), X)
+        counts_safe = xp.where(counts == 0, xp.ones_like(counts), counts)
+        means = sums / counts_safe[:, None]
+        empty = counts[:, None] == 0
+        updated[k0:k1] = xp.where(empty, centroids[k0:k1], means)
+    return updated
+
+
+def lloyd_step(X, centroids, tile_n, tile_k, update_tile_k=None, step=None, recorder=None):
+    """One Lloyd iteration with a tiled Gram assignment and a tiled update.
+
+    ``tile_n`` and ``tile_k`` select the assignment tiles. The update uses
+    ``update_tile_k`` centroid columns of the one-hot at a time, defaulting
+    to ``tile_k``.
+    """
+    if update_tile_k is None:
+        update_tile_k = tile_k
+    if recorder is None:
+        labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
+        updated = update_centroids_tiled(X, labels, centroids, update_tile_k)
+    else:
+        with recorder.phase("assign"):
+            labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
+        with recorder.phase("update"):
+            updated = update_centroids_tiled(X, labels, centroids, update_tile_k)
+    return updated, labels
+
+
+def running_tile_update(X, centroids, best_dist, best_idx, offset):
+    """Running argmin for one centroid tile, merged into the caller state.
+
+    ``offset`` is a 0-d integer array holding the first centroid index of
+    this tile. Passing it as an array keeps a compiled caller from
+    specializing on each tile's Python index.
+    """
+    xp = array_namespace(X, centroids, best_dist, best_idx, offset)
+    local_idx, local_dist = assign_running(X, centroids, return_distance=True)
+    better = local_dist < best_dist
+    return xp.where(better, local_dist, best_dist), xp.where(better, local_idx + offset, best_idx)
+
+
+def assign_running_stateful(X, centroids, tile_k, block=None):
+    """Running assignment whose compiled block also merges the running state.
+
+    ``block(X, centroid_tile, best_dist, best_idx, offset)`` returns the
+    updated distance and index. Without ``block`` this is the same labels
+    as ``assign_running_tiled``.
+    """
+    xp = array_namespace(X, centroids)
+    if block is None:
+        block = running_tile_update
+    n_samples = int(X.shape[0])
+    n_clusters = int(centroids.shape[0])
+    labels = xp.zeros(n_samples, dtype=xp.int64, device=_device(X))
+    best = xp.full((n_samples,), xp.inf, dtype=X.dtype, device=_device(X))
+    for k0 in range(0, n_clusters, tile_k):
+        k1 = min(k0 + tile_k, n_clusters)
+        offset = xp.asarray(k0, dtype=labels.dtype, device=_device(X))
+        best, labels = block(X, centroids[k0:k1], best, labels, offset)
+    return labels
+
+
+def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None):
+    """k-means++ initialization in the array API.
+
+    The first center is a uniform draw from ``rng`` (a
+    ``numpy.random.Generator``). Each later center draws
+    ``n_local_trials`` candidates with probability proportional to the
+    squared distance to the nearest center chosen so far, and keeps the
+    candidate that most reduces the sum of those distances. The default
+    trial count is ``2 + log(n_clusters)``, the same rule as scikit-learn.
+
+    Returns ``(centers, indices)``. ``centers[j]`` is the row ``X[indices[j]]``.
+    """
+    import math
+
+    xp = array_namespace(X)
+    n_samples = int(X.shape[0])
+    n_clusters = int(n_clusters)
+    if n_clusters < 1 or n_clusters > n_samples:
+        raise ValueError(f"n_clusters must be in 1..n_samples, got {n_clusters} and {n_samples}")
+    if n_local_trials is None:
+        n_local_trials = 2 + int(math.log(n_clusters))
+    n_local_trials = max(1, min(int(n_local_trials), n_samples))
+    chosen = [int(rng.integers(n_samples))]
+    closest = centroid_squared_distance(xp, X, X[chosen[0]])
+    closest = xp.maximum(closest, xp.zeros_like(closest))
+    for _ in range(1, n_clusters):
+        picks = _weighted_draw(xp, closest, rng, n_local_trials)
+        candidates = xp.stack([X[index] for index in picks])
+        distances = squared_distances_gemm(xp, X, candidates)
+        distances = xp.maximum(distances, xp.zeros_like(distances))
+        updated = xp.minimum(closest[:, None], distances)
+        potentials = xp.sum(updated, axis=0)
+        best = int(xp.argmin(potentials))
+        closest = updated[:, best]
+        chosen.append(picks[best])
+    centers = xp.stack([X[index] for index in chosen])
+    indices = xp.asarray(chosen, dtype=xp.int64, device=_device(X))
+    return centers, indices
+
+
+def _item(array):
+    if hasattr(array, "item"):
+        return float(array.item())
+    return float(array)
+
+
+def _weighted_draw(xp, weights, rng, n_draws):
+    """Draw ``n_draws`` indices with probability proportional to ``weights``."""
+    total = _item(xp.sum(weights))
+    n_samples = int(weights.shape[0])
+    if not total > 0:
+        return [int(index) for index in rng.integers(n_samples, size=n_draws)]
+    cumulative = xp.cumulative_sum(weights)
+    draws = xp.asarray(
+        rng.random(n_draws) * total,
+        dtype=weights.dtype,
+        device=_device(weights),
+    )
+    found = xp.searchsorted(cumulative, draws, side="left")
+    last = xp.asarray(n_samples - 1, dtype=found.dtype, device=_device(found))
+    found = xp.minimum(found, last)
+    return [int(found[index]) for index in range(n_draws)]
+
+
 def _assign(X, centroids, assign, recorder=None, **assign_kwargs):
     functions = {
         "naive": assign_naive,
         "gemm": assign_gemm,
         "tiled": assign_tiled,
         "running": assign_running,
+        "gemm_tiled": assign_gemm_tiled,
+        "running_tiled": assign_running_tiled,
+        "running_stateful": assign_running_stateful,
     }
     try:
         function = functions[assign]
