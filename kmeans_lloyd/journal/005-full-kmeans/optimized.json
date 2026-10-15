@@ -1,0 +1,49 @@
+{
+  "note": "row norm uses feature tiles of 256; inertia and the centroid update use sample tiles",
+  "lloyd": {
+    "median_seconds": 0.026084863662719726,
+    "median_peak_extra_bytes": 136905728
+  },
+  "plusplus": {
+    "median_seconds": 1.3423068237304687,
+    "median_peak_extra_bytes": 135790592
+  },
+  "init_inertia_timing": 489574400.0,
+  "init_inertia_blobs": 316887.0,
+  "fit": {
+    "median_seconds": 2.320502685546875,
+    "median_peak_extra_bytes": 538978816,
+    "name": "fit-eager-tiled",
+    "inertia": 266492032.0,
+    "n_iter": 30,
+    "shift": 0.19929614663124084,
+    "threshold": 0.00010000989437103272
+  },
+  "fit_6": {
+    "median_seconds": 1.563693115234375,
+    "median_peak_extra_bytes": 538978816,
+    "name": "fit-eager-tiled-6",
+    "inertia": 266538368.0,
+    "n_iter": 6,
+    "shift": 28.607257843017578,
+    "threshold": 0.00010000989437103272
+  },
+  "fit_compiled": {
+    "median_seconds": 2.272277587890625,
+    "median_peak_extra_bytes": 538978816,
+    "name": "fit-compiled-tiled",
+    "inertia": 266495120.0,
+    "n_iter": 30,
+    "shift": 0.1336238980293274,
+    "threshold": 0.00010000989437103272
+  },
+  "blobs": {
+    "median_seconds": 0.03385897445678711,
+    "median_peak_extra_bytes": 4325376,
+    "name": "fit-blobs-tiled",
+    "inertia": 167259.875,
+    "n_iter": 2,
+    "shift": 0.0,
+    "threshold": 0.011035914611816407
+  }
+}

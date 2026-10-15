@@ -1,0 +1,34 @@
+{
+  "cuml": "26.10.00",
+  "before_mib": 0,
+  "timing": {
+    "case": {
+      "name": "timing",
+      "n_samples": 131072,
+      "n_features": 2048,
+      "n_clusters": 256,
+      "seed": 0
+    },
+    "seconds": 5.110027459999856,
+    "peak_used_mib": 1240,
+    "n_iter": 6,
+    "inertia": 266531024.0,
+    "reported_inertia": 266531040.0
+  },
+  "blobs": {
+    "case": {
+      "name": "blobs",
+      "n_samples": 32768,
+      "n_features": 32,
+      "n_clusters": 8,
+      "seed": 1,
+      "separation": 12.0,
+      "noise": 0.4
+    },
+    "seconds": 0.10202430500021364,
+    "peak_used_mib": 198,
+    "n_iter": 2,
+    "inertia": 167259.875,
+    "reported_inertia": 167351.03125
+  }
+}
