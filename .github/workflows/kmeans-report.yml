@@ -33,7 +33,9 @@ jobs:
 
   report:
     needs: test
-    uses: ogrisel/cursor-sandbox/.github/workflows/publish-report.yml@main
+    # This branch calls the shared publisher at the current commit. main's
+    # copy fails the report-site push until the token fix there is merged.
+    uses: ./.github/workflows/publish-report.yml
     with:
       journal-path: kmeans_lloyd/journal
       site-title: Lloyd k-means fusion journal
