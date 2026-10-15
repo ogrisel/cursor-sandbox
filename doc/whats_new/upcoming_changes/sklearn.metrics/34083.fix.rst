@@ -1,3 +1,0 @@
-- Fixed :func:`metrics.average_precision_score` to handle list-type `y_score` for
-  multiclass data.
-  By :user:`Lucy Liu <lucyleeow>`.

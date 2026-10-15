@@ -1,3 +1,0 @@
-- Training :class:`sklearn.ensemble.RandomForestClassifier` and
-  :class:`sklearn.ensemble.RandomForestRegressor` on sparse data is now faster.
-  By :user:`Itamar Turner-Trauring <itamarst>`.

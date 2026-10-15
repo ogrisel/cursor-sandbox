@@ -1,3 +1,0 @@
-- :class:`feature_selection.RFE` and :class:`feature_selection.RFECV` now preserve
-  DataFrame inputs and column names during fitting and elimination.
-  By :user:`Kaynup`.

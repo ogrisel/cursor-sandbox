@@ -1,7 +1,0 @@
-.* export-ignore
-asv_benchmarks export-ignore
-benchmarks export-ignore
-build_tools export-ignore
-maint_tools export-ignore
-# SCM syntax highlighting & preventing 3-way merges
-pixi.lock merge=binary linguist-language=YAML linguist-generated=true -diff

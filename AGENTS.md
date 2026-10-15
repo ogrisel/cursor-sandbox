@@ -1,28 +1,75 @@
-# AGENTS Instruction
+# AGENTS.md
 
-This file contains additional guidance for AI agents and other AI editors.
+## Repository overview
 
-## **REQUIRED: AI/Agent Disclosure**
+This is a sandbox repo used by @ogrisel to conduct agent driven experimental work.
 
-**Every summary, pull request description, or work description MUST include this disclosure:**
+The main branch holds these instructions and the shared report publisher in `tools/` and `.github/workflows/publish-report.yml`.
 
-**If human review has *not yet* occurred (use this initially):**
-> This pull request includes code written with the assistance of AI.
-> The code has **not yet been reviewed** by a human.
+Experiment code stays on dedicated branches, possibly with accompanying pull requests. Those experiment pull requests are not meant to be merged.
 
-This is a **mandatory requirement**, not optional. Include it at the end of every summary you generate.
+## Environment setup
 
-## Working on an issue
+Configure pixi based environment to manage per-experiment dedicated environments with recent enough versions of Python and feel free to choose between conda-forge and pypi.org distribution channel based on the nature of the experiment.
 
-Before working on any issue, run `gh issue view <number>` to check current labels. Do
-not open a PR against an issue labeled "Needs Triage" or another "Needs ..." label. Such
-PRs get closed without review until a maintainer clears the label. See
-https://scikit-learn.org/dev/developers/contributing.html#issues-tagged-needs-triage.
+## Cursor Cloud specific instructions
 
-## Generated Summaries
+- Use the ssh key information provided as Cursor Agent Secret to connect to remote machines if needed to conduct your experiments.
+- The ssh key is passphrase protected but the passphrase is also stored as a secret.
+- You can find lists of username and ip addresses to connect to hosts with CUDA GPUs on AWS also stored as secrets.
+- AWS machines are specified by private IP address. You need to set a proxyjump rule to reach them. Details provided as secret.
+- Those machines might not be reachable because they automatically shutdown when idling. Ask your human operator to put one back online when needed.
 
-When generating a summary of your work, consider these points:
+## Running experiments
 
-- Describe the "why" of the changes, why the proposed solution is the right one.
-- Highlight areas of the proposed changes that require careful review.
-- Reduce the verbosity of your comments, more text and detail is not always better. Avoid flattery, avoid stating the obvious, avoid filler phrases, prefer technical clarity over marketing tone.
+Try to be mindful of resource usage:
+
+- start with short running experiments that are likely to yield the most informative signal per amount of spent resources;
+- when benchmarking user facing API, focus on calls that individually last more than 1s to focus on case that actually matter for humans interacting with the software instead of only reporting microbenchmark results;
+- if possible run experiments that individually last for less than 10s so as to iterate faster;
+- progressively run longer experiments if needed but only if this justified;
+- be mindful of host and GPU memory usage (when applicable) and make sure the experiments do not fail or their results are not invalidated because of memory exhaustion. Plan experiment to always keep at least 20% of free headroom.
+
+## Reporting
+
+Summarize experimental results with tables in markdown files.
+
+Keep a chronological journal inside the experiment:
+
+- `journal/index.md` is the entry page.
+- `journal/<iteration>/report.md` is one iteration. Put plots and data (`svg`, `png`, `json`) next to that report.
+- Link earlier iterations from the index. The renderer rewrites links that end in `report.md` or `index.md` to `index.html`.
+
+Render it locally with the shared tool:
+
+```bash
+python tools/render_journal.py --journal path/to/journal --site path/to/site --title "Experiment name"
+```
+
+Publish the journal from a pull request by calling `.github/workflows/publish-report.yml`. The repository Pages setting is GitHub Actions, and the `github-pages` environment must allow pull-request refs (`refs/pull/*/merge`, or no deployment-branch restriction). The workflow renders the journal, publishes it at `https://<owner>.github.io/<repo>/pr-<number>/`, prints that URL in the job summary, and creates or updates a pull request comment with the same URL. A later deployment keeps the `pr-*` directories of other pull requests.
+
+```yaml
+name: Publish experiment report
+
+on:
+  pull_request:
+    paths:
+      - "my_experiment/**"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  report:
+    uses: ogrisel/cursor-sandbox/.github/workflows/publish-report.yml@main
+    with:
+      journal-path: my_experiment/journal
+      site-title: My experiment
+```
+
+Use `@main` after this workflow is on the default branch. Until then, call it with the ref that contains `.github/workflows/publish-report.yml`.
+
+
