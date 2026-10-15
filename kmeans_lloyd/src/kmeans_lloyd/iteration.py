@@ -473,10 +473,46 @@ def fit_kmeans(
     ``distance`` are optional callables a benchmark may wrap with
     ``torch.compile``; both default to the array-API implementations.
     """
-    xp = array_namespace(X)
+    centers, indices = kmeans_plusplus(X, n_clusters, rng, distance=distance)
+    result = fit_lloyd(
+        X,
+        centers,
+        max_iter=max_iter,
+        tol=tol,
+        tile_n=tile_n,
+        tile_k=tile_k,
+        update_tile_k=update_tile_k,
+        update_tile_n=update_tile_n,
+        step=step,
+    )
+    result["indices"] = indices
+    return result
+
+
+def fit_lloyd(
+    X,
+    initial_centers,
+    max_iter=300,
+    tol=1e-4,
+    tile_n=4096,
+    tile_k=1024,
+    update_tile_k=256,
+    update_tile_n=None,
+    step=None,
+):
+    """Run Lloyd iterations from caller-provided centers.
+
+    This is the initializer-independent half of :func:`fit_kmeans`. The
+    centers can be rows selected once from ``X`` and shared across backends,
+    which isolates assignment, update, and convergence behavior from
+    k-means++ sampling differences.
+    """
+    xp = array_namespace(X, initial_centers)
+    if int(max_iter) < 1:
+        raise ValueError(f"max_iter must be at least 1, got {max_iter}")
     if update_tile_n is None:
         update_tile_n = min(int(tile_n), 4096)
-    centers, indices = kmeans_plusplus(X, n_clusters, rng, distance=distance)
+    centers = initial_centers
     # ``mean(var(X, axis=0))`` with the library reduction allocates a large
     # workspace (512 MiB on the timing shape). Feature tiles compute the same
     # scalar, which is the scikit-learn scale for ``tol``.
@@ -502,7 +538,6 @@ def fit_kmeans(
     return {
         "centers": centers,
         "labels": labels,
-        "indices": indices,
         "inertia": _item(value),
         "n_iter": n_iter,
         "shift": shift,

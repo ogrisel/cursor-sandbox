@@ -15,6 +15,7 @@ from kmeans_lloyd.iteration import (
     assign_running_tiled,
     assign_tiled,
     fit_kmeans,
+    fit_lloyd,
     inertia,
     kmeans_plusplus,
     lloyd_iteration,
@@ -219,6 +220,43 @@ def test_fit_kmeans_converges_on_separated_blobs():
         fitted["inertia"],
         float(_to_numpy(inertia(x, fitted["labels"], fitted["centers"], tile_n=7))),
     )
+
+
+def test_fit_lloyd_matches_fit_kmeans_from_its_initial_centers():
+    x_np, _ = _blobs(n_per=10, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    seed = 4
+    initial, indices = kmeans_plusplus(x, 3, np.random.default_rng(seed))
+    fixed = fit_lloyd(
+        x,
+        initial,
+        max_iter=20,
+        tile_n=7,
+        tile_k=2,
+        update_tile_k=2,
+        update_tile_n=5,
+    )
+    complete = fit_kmeans(
+        x,
+        3,
+        np.random.default_rng(seed),
+        max_iter=20,
+        tile_n=7,
+        tile_k=2,
+        update_tile_k=2,
+        update_tile_n=5,
+    )
+    np.testing.assert_array_equal(_to_numpy(complete["indices"]), _to_numpy(indices))
+    np.testing.assert_array_equal(_to_numpy(complete["labels"]), _to_numpy(fixed["labels"]))
+    np.testing.assert_allclose(_to_numpy(complete["centers"]), _to_numpy(fixed["centers"]))
+    assert complete["inertia"] == fixed["inertia"]
+    assert complete["n_iter"] == fixed["n_iter"]
+
+
+def test_fit_lloyd_rejects_zero_iterations():
+    x_np, c_np = _blobs(n_per=3, d=4, k=3)
+    with pytest.raises(ValueError, match="max_iter"):
+        fit_lloyd(_as_numpy_namespace(x_np), _as_numpy_namespace(c_np), max_iter=0)
 
 
 def _gpu_pairs():

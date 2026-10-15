@@ -4,16 +4,17 @@ The driver generates one float32 matrix per case and runs each
 implementation in its own interpreter, so RSS high-water marks do not
 leak between libraries. A worker prints one JSON object.
 
-Phases, all with the same iteration budget (``max_iter`` or the scaled
-tolerance, whichever comes first):
+Each phase is repeated for caller-selected seeds. The k-means++ phases use
+that seed in each library. The Lloyd-only phases load the same centers,
+selected without replacement from rows of X by NumPy with that seed:
 
-- ``init``: k-means++ only, then mean squared distance to the nearest center
-- ``lloyd``: one Lloyd iteration from the first ``k`` rows
-- ``fit``: k-means++ plus Lloyd until that budget is spent
+- ``init``: k-means++ only, then mean squared distance to the nearest center.
+- ``lloyd``: one Lloyd iteration from shared fixed centers.
+- ``fit``: k-means++ plus Lloyd until the shared iteration budget is spent.
+- ``fixed-fit``: Lloyd from shared fixed centers until the same budget is spent.
 
 cuML does not expose k-means++ on its own. Its init duration is a
-``max_iter=1`` fit minus a one-iteration fit from fixed centers, and its
-init memory is the ``max_iter=1`` fit.
+``max_iter=0`` fit, which still includes cuML's final label assignment.
 """
 
 from __future__ import annotations
@@ -84,7 +85,12 @@ def generate(case, path: Path):
         data = np.ascontiguousarray(centers[labels] + noise)
     path.parent.mkdir(parents=True, exist_ok=True)
     np.save(path, data)
-    np.save(path.with_name(path.stem + "-centers.npy"), np.ascontiguousarray(data[:k].copy()))
+
+
+def fixed_centers(samples, k, seed):
+    """Select rows once with NumPy so every implementation gets identical centers."""
+    indices = np.random.default_rng(seed).choice(samples.shape[0], size=k, replace=False)
+    return np.ascontiguousarray(samples[indices])
 
 
 def _hwm_bytes():
@@ -148,7 +154,7 @@ def _worker_torch(args, samples, centers0):
         data = torch.as_tensor(samples)
         fixed = torch.as_tensor(centers0)
     from kmeans_lloyd.instrument import measure_call
-    from kmeans_lloyd.iteration import fit_kmeans, kmeans_plusplus, lloyd_step
+    from kmeans_lloyd.iteration import fit_kmeans, fit_lloyd, kmeans_plusplus, lloyd_step
 
     tile_n, tile_k, update_n = _tiles(samples.shape[0], args.k, cuda)
 
@@ -173,7 +179,19 @@ def _worker_torch(args, samples, centers0):
             update_tile_n=update_n,
         )
 
-    calls = {"init": init, "lloyd": lloyd, "fit": fit}
+    def fixed_fit():
+        return fit_lloyd(
+            data,
+            fixed,
+            max_iter=args.max_iter,
+            tol=args.tol,
+            tile_n=tile_n,
+            tile_k=tile_k,
+            update_tile_k=min(args.k, 256),
+            update_tile_n=update_n,
+        )
+
+    calls = {"init": init, "lloyd": lloyd, "fit": fit, "fixed-fit": fixed_fit}
     fn = calls[args.phase]
     if cuda:
         # Warm the allocator, then measure a steady call.
@@ -190,7 +208,7 @@ def _worker_torch(args, samples, centers0):
     if args.phase == "init":
         centers = result[0].detach().cpu().numpy()
         payload["inertia_per_point"] = _mean_inertia(samples, centers)
-    elif args.phase == "fit":
+    elif args.phase in ("fit", "fixed-fit"):
         payload["n_iter"] = int(result["n_iter"])
         payload["shift"] = float(result["shift"])
         payload["threshold"] = float(result["threshold"])
@@ -199,6 +217,9 @@ def _worker_torch(args, samples, centers0):
         )
     else:
         payload["n_iter"] = 1
+        payload["inertia_per_point"] = _mean_inertia(
+            samples, result[0].detach().cpu().numpy()
+        )
     return payload
 
 
@@ -235,7 +256,20 @@ def _worker_sklearn(args, samples, centers0):
         model.fit(samples)
         return model
 
-    fn = {"init": init, "lloyd": lloyd, "fit": fit}[args.phase]
+    def fixed_fit():
+        model = KMeans(
+            n_clusters=args.k,
+            init=centers0,
+            n_init=1,
+            max_iter=args.max_iter,
+            tol=args.tol,
+            algorithm="lloyd",
+            random_state=args.seed,
+        )
+        model.fit(samples)
+        return model
+
+    fn = {"init": init, "lloyd": lloyd, "fit": fit, "fixed-fit": fixed_fit}[args.phase]
     result, _, seconds, mem, _ = _time_pair(fn)
     payload = {
         "seconds": seconds,
@@ -246,7 +280,7 @@ def _worker_sklearn(args, samples, centers0):
     if args.phase == "init":
         payload["inertia_per_point"] = _mean_inertia(samples, np.asarray(result[0], dtype=np.float32))
         payload["center_dtype"] = str(np.asarray(result[0]).dtype)
-    elif args.phase == "fit":
+    elif args.phase in ("fit", "fixed-fit"):
         labels = np.asarray(result.labels_)
         centers = np.asarray(result.cluster_centers_, dtype=np.float32)
         payload["n_iter"] = int(result.n_iter_)
@@ -255,6 +289,9 @@ def _worker_sklearn(args, samples, centers0):
     else:
         payload["n_iter"] = int(result.n_iter_)
         payload["center_dtype"] = str(result.cluster_centers_.dtype)
+        payload["inertia_per_point"] = _mean_inertia(
+            samples, np.asarray(result.cluster_centers_, dtype=np.float32)
+        )
     return payload
 
 
@@ -311,6 +348,9 @@ def _worker_cuml(args, samples, centers0):
     def fit():
         return one("k-means++", args.max_iter)
 
+    def fixed_fit():
+        return one(centers0, args.max_iter)
+
     def fit_one():
         return one("k-means++", 0)
 
@@ -340,12 +380,16 @@ def _worker_cuml(args, samples, centers0):
             "mem_increment_bytes": max(0, peak - before),
             "mem_meter": "nvidia-smi",
             "n_iter": int(model.n_iter_),
+            "inertia_per_point": _mean_inertia(
+                samples, np.asarray(model.cluster_centers_, dtype=np.float32)
+            ),
             "cuml": cuml.__version__,
         }
-    elif args.phase == "fit":
-        fit()
+    elif args.phase in ("fit", "fixed-fit"):
+        fn = fit if args.phase == "fit" else fixed_fit
+        fn()
         before = _nvidia_used()
-        model, seconds, peak = _sample_gpu(fit)
+        model, seconds, peak = _sample_gpu(fn)
         payload = {
             "seconds": seconds,
             "mem_increment_bytes": max(0, peak - before),
@@ -365,7 +409,7 @@ def worker(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("--worker", action="store_true")
     parser.add_argument("--impl", required=True)
-    parser.add_argument("--phase", required=True, choices=("init", "lloyd", "fit"))
+    parser.add_argument("--phase", required=True, choices=("init", "lloyd", "fit", "fixed-fit"))
     parser.add_argument("--data", required=True)
     parser.add_argument("--centers", required=True)
     parser.add_argument("--k", type=int, required=True)
@@ -386,11 +430,11 @@ def worker(argv):
         payload = _worker_cuml(args, samples, centers0)
     else:
         raise SystemExit(f"unknown impl {args.impl}")
-    payload.update({"impl": args.impl, "phase": args.phase, "k": args.k})
+    payload.update({"impl": args.impl, "phase": args.phase, "k": args.k, "run_seed": args.seed})
     print(json.dumps(payload), flush=True)
 
 
-def drive(selected_cases, selected_impls, out_path: Path):
+def drive(selected_cases, selected_impls, selected_phases, seeds, out_path: Path):
     pythons = _pythons()
     data_dir = HOME / "breadth-data"
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -405,78 +449,85 @@ def drive(selected_cases, selected_impls, out_path: Path):
             continue
         data_path = data_dir / f"{case['name']}.npy"
         generate(case, data_path)
-        centers_path = data_path.with_name(data_path.stem + "-centers.npy")
-        for impl in IMPLS:
-            if selected_impls and impl not in selected_impls:
-                continue
-            for phase in ("init", "lloyd", "fit"):
-                command = [
-                    str(pythons[impl]),
-                    str(Path(__file__).resolve()),
-                    "--worker",
-                    "--impl",
-                    impl,
-                    "--phase",
-                    phase,
-                    "--data",
-                    str(data_path),
-                    "--centers",
-                    str(centers_path),
-                    "--k",
-                    str(case["k"]),
-                    "--seed",
-                    "0",
-                    "--max-iter",
-                    str(MAX_ITER),
-                    "--tol",
-                    str(TOL),
-                ]
-                print(f"start {case['name']} {impl} {phase}", flush=True)
-                started = time.perf_counter()
-                try:
-                    completed = subprocess.run(
-                        command,
-                        cwd=str(ROOT),
-                        env=env,
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                        timeout=600,
+        samples = np.load(data_path, mmap_mode="r")
+        for seed in seeds:
+            centers_path = data_path.with_name(data_path.stem + f"-centers-seed-{seed}.npy")
+            np.save(centers_path, fixed_centers(samples, case["k"], seed))
+            for impl in IMPLS:
+                if selected_impls and impl not in selected_impls:
+                    continue
+                for phase in ("init", "lloyd", "fit", "fixed-fit"):
+                    if selected_phases and phase not in selected_phases:
+                        continue
+                    command = [
+                        str(pythons[impl]),
+                        str(Path(__file__).resolve()),
+                        "--worker",
+                        "--impl",
+                        impl,
+                        "--phase",
+                        phase,
+                        "--data",
+                        str(data_path),
+                        "--centers",
+                        str(centers_path),
+                        "--k",
+                        str(case["k"]),
+                        "--seed",
+                        str(seed),
+                        "--max-iter",
+                        str(MAX_ITER),
+                        "--tol",
+                        str(TOL),
+                    ]
+                    print(f"start {case['name']} seed={seed} {impl} {phase}", flush=True)
+                    started = time.perf_counter()
+                    try:
+                        completed = subprocess.run(
+                            command,
+                            cwd=str(ROOT),
+                            env=env,
+                            check=False,
+                            capture_output=True,
+                            text=True,
+                            timeout=600,
+                        )
+                    except subprocess.TimeoutExpired as exc:
+                        row = {
+                            "case": case,
+                            "impl": impl,
+                            "phase": phase,
+                            "run_seed": seed,
+                            "error": "timeout",
+                            "stderr": (exc.stderr or "")[-2000:],
+                        }
+                        _append(out_path, row)
+                        print("timeout", flush=True)
+                        continue
+                    wall = time.perf_counter() - started
+                    line = (completed.stdout or "").strip().splitlines()
+                    if completed.returncode != 0 or not line:
+                        row = {
+                            "case": case,
+                            "impl": impl,
+                            "phase": phase,
+                            "run_seed": seed,
+                            "error": f"exit {completed.returncode}",
+                            "stderr": (completed.stderr or "")[-2000:],
+                            "stdout": (completed.stdout or "")[-500:],
+                        }
+                        _append(out_path, row)
+                        print("fail", completed.returncode, flush=True)
+                        continue
+                    payload = json.loads(line[-1])
+                    payload["case"] = case
+                    payload["wall_seconds"] = wall
+                    _append(out_path, payload)
+                    print(
+                        f"  {payload.get('seconds')} mem={payload.get('mem_increment_bytes')} "
+                        f"inertia={payload.get('inertia_per_point')} n_iter={payload.get('n_iter')}",
+                        flush=True,
                     )
-                except subprocess.TimeoutExpired as exc:
-                    row = {
-                        "case": case,
-                        "impl": impl,
-                        "phase": phase,
-                        "error": "timeout",
-                        "stderr": (exc.stderr or "")[-2000:],
-                    }
-                    _append(out_path, row)
-                    print("timeout", flush=True)
-                    continue
-                wall = time.perf_counter() - started
-                line = (completed.stdout or "").strip().splitlines()
-                if completed.returncode != 0 or not line:
-                    row = {
-                        "case": case,
-                        "impl": impl,
-                        "phase": phase,
-                        "error": f"exit {completed.returncode}",
-                        "stderr": (completed.stderr or "")[-2000:],
-                        "stdout": (completed.stdout or "")[-500:],
-                    }
-                    _append(out_path, row)
-                    print("fail", completed.returncode, flush=True)
-                    continue
-                payload = json.loads(line[-1])
-                payload["case"] = case
-                payload["wall_seconds"] = wall
-                _append(out_path, payload)
-                print(
-                    f"  {payload.get('seconds')} mem={payload.get('mem_increment_bytes')} "
-                    f"inertia={payload.get('inertia_per_point')} n_iter={payload.get('n_iter')}",
-                    flush=True,
-                )
 
 
 def _append(path: Path, row):
@@ -489,14 +540,18 @@ def main():
     parser.add_argument("--worker", action="store_true")
     parser.add_argument("--cases", default="")
     parser.add_argument("--impls", default="")
-    parser.add_argument("--out", default=str(HOME / "breadth-results.jsonl"))
+    parser.add_argument("--phases", default="")
+    parser.add_argument("--seeds", default="0,1,2,3,4")
+    parser.add_argument("--out", default=str(HOME / "breadth-seeds-results.jsonl"))
     args, rest = parser.parse_known_args()
     if args.worker:
         worker(sys.argv[1:])
         return
     selected_cases = {name for name in args.cases.split(",") if name}
     selected_impls = {name for name in args.impls.split(",") if name}
-    drive(selected_cases, selected_impls, Path(args.out))
+    selected_phases = {name for name in args.phases.split(",") if name}
+    seeds = [int(seed) for seed in args.seeds.split(",") if seed]
+    drive(selected_cases, selected_impls, selected_phases, seeds, Path(args.out))
 
 
 if __name__ == "__main__":

@@ -43,15 +43,25 @@ def _grouped(ax, cases, rows, phase, field, title, ylabel, log=False):
     xs = np.arange(len(cases))
     for index, impl in enumerate(present):
         values = []
+        errors = []
         for name in cases:
             match = [
                 row[field]
                 for row in rows
                 if row["case"]["name"] == name and row["impl"] == impl and row["phase"] == phase and row.get(field) is not None
             ]
-            values.append(match[-1] if match else np.nan)
+            values.append(float(np.mean(match)) if match else np.nan)
+            errors.append(float(np.std(match, ddof=1)) if len(match) > 1 else 0.0)
         offset = (index - (len(present) - 1) / 2) * width
-        ax.bar(xs + offset, values, width=width * 0.92, color=COLORS[impl], label=LABELS[impl])
+        ax.bar(
+            xs + offset,
+            values,
+            yerr=errors,
+            width=width * 0.92,
+            color=COLORS[impl],
+            label=LABELS[impl],
+            error_kw={"elinewidth": 0.8, "capsize": 1.5},
+        )
     ax.set_xticks(xs, cases, rotation=30, ha="right")
     ax.set_title(title)
     ax.set_ylabel(ylabel)
@@ -123,6 +133,24 @@ def main():
     ax.legend(frameon=False, fontsize=8)
     fig.tight_layout()
     fig.savefig(out / "iterations-structure.svg")
+    plt.close(fig)
+
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.2))
+    _grouped(axes[0], speed, rows, "lloyd", "seconds", "One shared-center step", "seconds", log=True)
+    _grouped(axes[1], speed, rows, "fixed-fit", "seconds", "Shared-center fit", "seconds", log=True)
+    _grouped(
+        axes[2],
+        speed,
+        rows,
+        "fixed-fit",
+        "inertia_per_point",
+        "Shared-center fit quality",
+        "mean squared distance",
+    )
+    axes[2].legend(frameon=False, fontsize=8)
+    fig.suptitle("Lloyd isolated from initialization (mean +/- one standard deviation)", fontsize=12)
+    fig.tight_layout()
+    fig.savefig(out / "fixed-centers.svg")
     plt.close(fig)
     print(f"wrote plots for {len(rows)} rows", flush=True)
 
