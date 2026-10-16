@@ -37,11 +37,12 @@ img { max-width: 100%; height: auto; }
 
 
 def _href(url):
+    url, hash_mark, fragment = url.partition("#")
     if url.endswith("report.md"):
         url = url[: -len("report.md")] + "index.html"
     elif url.endswith("index.md"):
         url = url[: -len("index.md")] + "index.html"
-    return url
+    return url + hash_mark + fragment
 
 
 def _inline(text):

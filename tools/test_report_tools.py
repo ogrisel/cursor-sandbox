@@ -44,6 +44,10 @@ class RenderJournalTest(unittest.TestCase):
         self.assertIn("<ul><li>first line continued here</li><li>second</li></ul>", html)
         self.assertIn("<p>After.</p>", html)
 
+    def test_report_link_keeps_its_fragment(self):
+        html = render_journal.markdown_to_html("See [why](../002-x/report.md#why-it-differs).\n")
+        self.assertIn('href="../002-x/index.html#why-it-differs"', html)
+
 
 class PagesTreeTest(unittest.TestCase):
     def test_stage_replaces_one_pull_request_directory(self):
