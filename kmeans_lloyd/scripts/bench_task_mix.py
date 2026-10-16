@@ -56,12 +56,24 @@ API_IMPLS = (
 )
 OTHER_IMPLS = ("sklearn-vanilla", "sklearn-optimized", "cuml")
 IMPLS = API_IMPLS + OTHER_IMPLS
+# k-means++ has no empty-center update, so each array backend is one contender.
+INIT_IMPLS = (
+    "torch-cpu",
+    "torch-cuda",
+    "cupy",
+    "sklearn-vanilla",
+    "sklearn-optimized",
+    "cuml",
+)
 
 
 def _pythons():
     pixi = HOME / "kmeans_lloyd/.pixi/envs/default/bin/python"
     return {
         **{name: pixi for name in API_IMPLS},
+        "torch-cpu": pixi,
+        "torch-cuda": pixi,
+        "cupy": pixi,
         "random-baseline": pixi,
         "sklearn-vanilla": HOME / "sklearn-vanilla-venv/bin/python",
         "sklearn-optimized": HOME / "sklearn-plusplus-venv/bin/python",
@@ -174,12 +186,14 @@ def _worker_api(args, samples, centers0):
         cupy.cuda.Stream.null.synchronize()
 
     from kmeans_lloyd.instrument import measure_call
-    from kmeans_lloyd.iteration import fit_kmeans, fit_lloyd
+    from kmeans_lloyd.iteration import fit_kmeans, fit_lloyd, kmeans_plusplus
 
     tile_n, tile_k, update_n = _tiles(len(samples), args.k, gpu)
 
     def call():
         rng = np.random.default_rng(args.seed)
+        if args.phase == "init":
+            return kmeans_plusplus(data, args.k, rng)
         kwargs = dict(
             max_iter=args.max_iter,
             tol=args.tol,
@@ -205,6 +219,14 @@ def _worker_api(args, samples, centers0):
         seconds = time.perf_counter() - started
         memory = max(0, _hwm_bytes() - before)
         meter = "vmhwm"
+    if args.phase == "init":
+        return {
+            "seconds": seconds,
+            "mem_increment_bytes": memory,
+            "mem_meter": meter,
+            "n_iter": 0,
+            "inertia_per_point": _mean_inertia(samples, _to_numpy(result[0])),
+        }
     return {
         "seconds": seconds,
         "mem_increment_bytes": memory,
@@ -219,7 +241,24 @@ def _worker_api(args, samples, centers0):
 
 def _worker_sklearn(args, samples, centers0):
     import sklearn
-    from sklearn.cluster import KMeans
+    from sklearn.cluster import KMeans, kmeans_plusplus
+
+    if args.phase == "init":
+        before = _hwm_bytes()
+        started = time.perf_counter()
+        centers, _indices = kmeans_plusplus(
+            samples, n_clusters=args.k, random_state=args.seed
+        )
+        seconds = time.perf_counter() - started
+        memory = max(0, _hwm_bytes() - before)
+        return {
+            "seconds": seconds,
+            "mem_increment_bytes": memory,
+            "mem_meter": "vmhwm",
+            "n_iter": 0,
+            "inertia_per_point": _mean_inertia(samples, np.asarray(centers, dtype=np.float32)),
+            "sklearn": sklearn.__version__,
+        }
 
     model = KMeans(
         n_clusters=args.k,
@@ -273,6 +312,75 @@ def _sample_gpu(fn):
     return result, time.perf_counter() - started, peak["value"]
 
 
+def _worker_cuml_init(args, samples):
+    """Time cuML k-means++ with ``max_iter=0``.
+
+    That fit still assigns every sample once so it can store labels. A second
+    fit from the resulting centers repeats only that assignment. The reported
+    duration is the difference. Memory is the nvidia-smi rise of the
+    initialization fit above data already resident on the device.
+    """
+    import cuml
+    import cupy
+    from cuml.cluster import KMeans
+
+    data = cupy.asarray(samples)
+    cupy.cuda.Stream.null.synchronize()
+    warm_rows = min(int(data.shape[0]), 128)
+    KMeans(
+        n_clusters=min(2, args.k),
+        init="random",
+        n_init=1,
+        max_iter=0,
+        random_state=0,
+        output_type="numpy",
+    ).fit(data[:warm_rows])
+    cupy.cuda.Stream.null.synchronize()
+
+    def plusplus():
+        model = KMeans(
+            n_clusters=args.k,
+            init="k-means++",
+            n_init=1,
+            max_iter=0,
+            tol=args.tol,
+            random_state=args.seed,
+            output_type="numpy",
+        )
+        model.fit(data)
+        return model
+
+    def assign(centers):
+        model = KMeans(
+            n_clusters=args.k,
+            init=np.ascontiguousarray(centers, dtype=np.float32),
+            n_init=1,
+            max_iter=0,
+            tol=args.tol,
+            random_state=args.seed,
+            output_type="numpy",
+        )
+        model.fit(data)
+        return model
+
+    before = _nvidia_used()
+    model, fit_seconds, peak = _sample_gpu(plusplus)
+    centers = np.ascontiguousarray(model.cluster_centers_, dtype=np.float32)
+    assign_before = _nvidia_used()
+    _, assign_seconds, assign_peak = _sample_gpu(lambda: assign(centers))
+    return {
+        "seconds": max(0.0, fit_seconds - assign_seconds),
+        "fit_seconds": fit_seconds,
+        "assign_seconds": assign_seconds,
+        "mem_increment_bytes": max(0, peak - before),
+        "assign_mem_increment_bytes": max(0, assign_peak - assign_before),
+        "mem_meter": "nvidia-smi",
+        "n_iter": int(model.n_iter_),
+        "inertia_per_point": _mean_inertia(samples, centers),
+        "cuml": cuml.__version__,
+    }
+
+
 def _worker_cuml(args, samples, centers0):
     import cuml
     from cuml.cluster import KMeans
@@ -320,6 +428,7 @@ def _worker_baseline(args, samples, indices):
 def worker(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("--worker", action="store_true")
+    parser.add_argument("--phase", choices=("fit", "init"), default="fit")
     parser.add_argument("--impl", required=True)
     parser.add_argument("--init", choices=("plusplus", "random"), required=True)
     parser.add_argument("--data", required=True)
@@ -337,13 +446,23 @@ def worker(argv):
         payload = _worker_api(args, samples, centers0)
     elif args.impl.startswith("sklearn"):
         payload = _worker_sklearn(args, samples, centers0)
+    elif args.impl == "cuml" and args.phase == "init":
+        payload = _worker_cuml_init(args, samples)
     elif args.impl == "cuml":
         payload = _worker_cuml(args, samples, centers0)
     elif args.impl == "random-baseline":
         payload = _worker_baseline(args, samples, indices)
     else:
         raise ValueError(args.impl)
-    payload.update({"impl": args.impl, "init": args.init, "seed": args.seed, "k": args.k})
+    payload.update(
+        {
+            "impl": args.impl,
+            "init": args.init,
+            "phase": args.phase,
+            "seed": args.seed,
+            "k": args.k,
+        }
+    )
     print(json.dumps(payload), flush=True)
 
 
@@ -352,7 +471,7 @@ def _append(path, row):
         stream.write(json.dumps(row) + "\n")
 
 
-def drive(selected_tasks, selected_impls, seeds, out, calibrate=False):
+def drive(selected_tasks, selected_impls, seeds, out, calibrate=False, phase="fit"):
     data_dir = HOME / "task-mix-data-v4"
     env = os.environ.copy()
     env.update(
@@ -372,6 +491,9 @@ def drive(selected_tasks, selected_impls, seeds, out, calibrate=False):
             indices_path, centers_path = save_random_start(data_path, task, seed)
             if calibrate:
                 jobs = [("sklearn-vanilla", "plusplus")]
+            elif phase == "init":
+                jobs = [(impl, "plusplus") for impl in INIT_IMPLS]
+                jobs.append(("random-baseline", "random"))
             else:
                 jobs = [(impl, init) for impl in IMPLS for init in ("plusplus", "random")]
                 jobs.append(("random-baseline", "random"))
@@ -382,6 +504,8 @@ def drive(selected_tasks, selected_impls, seeds, out, calibrate=False):
                     str(pythons[impl]),
                     str(Path(__file__).resolve()),
                     "--worker",
+                    "--phase",
+                    phase,
                     "--impl",
                     impl,
                     "--init",
@@ -397,7 +521,7 @@ def drive(selected_tasks, selected_impls, seeds, out, calibrate=False):
                     "--seed",
                     str(seed),
                 ]
-                print(f"start {task['name']} seed={seed} {impl} {init}", flush=True)
+                print(f"start {task['name']} seed={seed} {phase} {impl} {init}", flush=True)
                 wall_started = time.perf_counter()
                 try:
                     completed = subprocess.run(
@@ -414,6 +538,7 @@ def drive(selected_tasks, selected_impls, seeds, out, calibrate=False):
                         "seed": seed,
                         "impl": impl,
                         "init": init,
+                        "phase": phase,
                         "error": "timeout",
                         "timeout_seconds": TIMEOUT,
                         "stderr": (error.stderr or "")[-1000:],
@@ -428,6 +553,7 @@ def drive(selected_tasks, selected_impls, seeds, out, calibrate=False):
                         "seed": seed,
                         "impl": impl,
                         "init": init,
+                        "phase": phase,
                         "error": f"exit {completed.returncode}",
                         "stderr": completed.stderr[-2000:],
                     }
@@ -436,6 +562,7 @@ def drive(selected_tasks, selected_impls, seeds, out, calibrate=False):
                     continue
                 row = json.loads(lines[-1])
                 row["task"] = task
+                row["phase"] = phase
                 row["wall_seconds"] = time.perf_counter() - wall_started
                 _append(out, row)
                 print(
@@ -453,6 +580,7 @@ def main():
     parser.add_argument("--seeds", default="0,1,2")
     parser.add_argument("--out", default=str(HOME / "task-mix-results.jsonl"))
     parser.add_argument("--calibrate", action="store_true")
+    parser.add_argument("--phase", choices=("fit", "init"), default="fit")
     args, _ = parser.parse_known_args()
     if args.worker:
         worker(sys.argv[1:])
@@ -460,7 +588,14 @@ def main():
     tasks = {value for value in args.tasks.split(",") if value}
     impls = {value for value in args.impls.split(",") if value}
     seeds = [int(value) for value in args.seeds.split(",") if value]
-    drive(tasks, impls, seeds, Path(args.out), calibrate=args.calibrate)
+    drive(
+        tasks,
+        impls,
+        seeds,
+        Path(args.out),
+        calibrate=args.calibrate,
+        phase=args.phase,
+    )
 
 
 if __name__ == "__main__":
