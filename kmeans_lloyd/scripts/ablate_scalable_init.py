@@ -11,7 +11,8 @@ only in how it is reduced to ``k`` centers:
 * ``weighted-greedy+weighted-lloyd``: the array-API reduction followed by the
   same weighted Lloyd recluster.
 
-Run on CUDA with PyTorch. Quality is full-data mean inertia without Lloyd.
+Run on CUDA with PyTorch. Quality is full-data mean inertia before and after
+the benchmark's 12 farthest-relocation Lloyd iterations on the full data.
 """
 
 from __future__ import annotations
@@ -26,10 +27,12 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from bench_task_mix import MAX_ITER, TOL, _tiles
 from kmeans_lloyd.iteration import (
     _scalable_candidates,
     _weighted_kmeans_plusplus,
     assign_gemm_tiled,
+    fit_lloyd,
     kmeans_plusplus,
 )
 
@@ -85,7 +88,21 @@ def run(task, seed, oversampling_factor, n_rounds):
     rows = []
     n_trials = 2 + int(math.ceil(math.log(k))) if k > 1 else 1
 
+    tile_n, tile_k, update_n = _tiles(X.shape[0], k, True)
+
     def record(name, centers, extra):
+        fitted = fit_lloyd(
+            X,
+            centers,
+            rng=np.random.default_rng(seed),
+            max_iter=MAX_ITER,
+            tol=TOL,
+            tile_n=tile_n,
+            tile_k=tile_k,
+            update_tile_k=tile_k,
+            update_tile_n=update_n,
+            reassign_empty=True,
+        )
         rows.append(
             {
                 "task": task,
@@ -94,6 +111,8 @@ def run(task, seed, oversampling_factor, n_rounds):
                 "n_candidates": int(C.shape[0]),
                 "candidate_seconds": candidate_seconds,
                 "inertia_per_point": mean_inertia(X, centers),
+                "fit_inertia_per_point": mean_inertia(X, fitted["centers"]),
+                "fit_n_iter": int(fitted["n_iter"]),
                 **extra,
             }
         )
@@ -132,6 +151,7 @@ def main():
                     stream.write(json.dumps(row) + "\n")
                 print(
                     f"{task} seed={seed} {row['variant']}: {row['inertia_per_point']:.6g} "
+                    f"fit={row['fit_inertia_per_point']:.6g} "
                     f"m={row['n_candidates']} iter={row.get('recluster_iter', '-')}",
                     flush=True,
                 )

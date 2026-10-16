@@ -27,7 +27,7 @@ COLOR = {
     "cuml": "#72B7B2",
     "shared": "#8C8C8C",
 }
-INIT = {"plusplus": "greedy", "scalable": "scalable", "random": "random"}
+INIT = {"plusplus": "greedy", "scalable": "scalable", "random": "random rows"}
 HATCH = {"plusplus": "", "scalable": "///", "random": "..."}
 API = ("torch-cpu", "torch-cuda", "cupy")
 OTHERS = ("sklearn-vanilla", "sklearn-optimized", "cuml")
@@ -87,18 +87,27 @@ def best_means(rows, keys, field="inertia_per_point"):
     return {task: np.nanmin([stats(rows, key, task, field)[0] for key in keys]) for task in TASKS}
 
 
-def bars(ax, rows, keys, field, scale=None):
+def bars(ax, rows, keys, field, scale=None, excess=False):
     width = 0.9 / len(keys)
     xs = np.arange(len(TASKS))
     for index, key in enumerate(keys):
         means, errors = [], []
-        for task in TASKS:
-            mean, std, _ = stats(rows, key, task, field)
+        positions = xs + (index - (len(keys) - 1) / 2) * width
+        for position, task in zip(positions, TASKS):
+            mean, std, count = stats(rows, key, task, field)
             divisor = scale[task] if scale else 1.0
-            means.append(mean / divisor)
-            errors.append(std / divisor)
+            mean, std = mean / divisor, std / divisor
+            if excess:
+                mean, std = 100 * (mean - 1), 100 * std
+            means.append(mean)
+            errors.append(std)
+            if not count and timed_out(rows, key, task):
+                ax.text(
+                    position, 0.02, "timeout", rotation=90, fontsize=7, ha="center",
+                    va="bottom", color="#333333", transform=ax.get_xaxis_transform(),
+                )
         ax.bar(
-            xs + (index - (len(keys) - 1) / 2) * width,
+            positions,
             means,
             yerr=errors,
             width=width * 0.94,
@@ -113,13 +122,18 @@ def bars(ax, rows, keys, field, scale=None):
     ax.spines[["top", "right"]].set_visible(False)
 
 
-def figure(path, rows, keys, field, title, ylabel, scale=None, log=False, reference=False):
+def figure(
+    path, rows, keys, field, title, ylabel, scale=None, log=False, reference=False, excess=False
+):
     import matplotlib.pyplot as plt
 
     plt.rcParams["hatch.color"] = "white"
     fig, ax = plt.subplots(figsize=(14, 5.6))
-    bars(ax, rows, keys, field, scale=scale)
-    if log:
+    bars(ax, rows, keys, field, scale=scale, excess=excess)
+    if excess:
+        ax.set_yscale("symlog", linthresh=0.01, linscale=0.5)
+        ax.set_ylim(bottom=0)
+    elif log:
         ax.set_yscale("log")
     if reference:
         ax.axhline(1.0, color="black", linewidth=0.7, linestyle=":")
@@ -196,6 +210,10 @@ def ratio(x):
     return f"{x:.4f}"
 
 
+def excess(x):
+    return f"{100 * (x - 1):.3f}%"
+
+
 def plot_init(rows, out, prefix=""):
     timed = init_keys(rows, include_random=False)
     quality = init_keys(rows, include_random=True)
@@ -247,8 +265,8 @@ def main():
         )
         figure(
             out / f"{name}-quality.svg", rows, keys, "inertia_per_point",
-            f"{title}: inertia relative to the best fitted mean per task",
-            "inertia / best fitted mean", scale=fit_best, reference=True,
+            f"{title}: inertia above the best fitted mean per task",
+            "% above best fitted mean (symlog)", scale=fit_best, excess=True,
         )
 
     if args.tables:
@@ -260,10 +278,10 @@ def main():
             ("init-quality", table(rows, quality, "inertia_per_point", ratio, scale=init_best)),
             ("lloyd-seconds", table(rows, lloyd_tables, "seconds", seconds)),
             ("lloyd-memory", table(rows, lloyd_tables, "mem_increment_bytes", mebibytes)),
-            ("lloyd-quality", table(rows, lloyd_tables, "inertia_per_point", ratio, scale=fit_best)),
+            ("lloyd-quality", table(rows, lloyd_tables, "inertia_per_point", excess, scale=fit_best)),
             ("fit-seconds", table(rows, full_tables, "seconds", seconds)),
             ("fit-memory", table(rows, full_tables, "mem_increment_bytes", mebibytes)),
-            ("fit-quality", table(rows, full_tables, "inertia_per_point", ratio, scale=fit_best)),
+            ("fit-quality", table(rows, full_tables, "inertia_per_point", excess, scale=fit_best)),
             (
                 "best",
                 "\n".join(

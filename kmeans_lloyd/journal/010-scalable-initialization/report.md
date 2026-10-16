@@ -156,6 +156,9 @@ cuML scalable has the best objective on all five tasks. The largest gap is the
 1092 versus approximately 1900 for row-only initializers. That result should
 not be read as a faster implementation of the same row-selection algorithm;
 cuML's candidate consolidation returns non-row centers.
+[011](../011-consolidated-benchmark/report.md#why-the-array-api-and-cuml-scalable-initializers-differ)
+compares both implementations step by step and isolates the cause with an
+ablation.
 
 ## Conclusions
 
@@ -172,4 +175,5 @@ cuML's candidate consolidation returns non-row centers.
   initializer on the structured 3000-cluster task.
 
 Previous: [k-means++ without Lloyd](../009-kmeans-plusplus-only/report.md).
+Next: [consolidated benchmark](../011-consolidated-benchmark/report.md).
 Index: [journal](../index.md).

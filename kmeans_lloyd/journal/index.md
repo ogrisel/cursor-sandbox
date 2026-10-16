@@ -17,32 +17,26 @@ samples. Runs use float32, eager execution, TF32 disabled, three seeds, and a
 
 ## Latest results
 
-[010](010-scalable-initialization/index.html) replaces stochastic empty-center
-handling with scikit-learn's farthest-point policy and compares greedy,
-scalable, and random initializers. The new array-API k-means|| strategy runs on
-PyTorch CPU/CUDA and CuPy. All 84 new workers complete within 60 seconds.
+[011](011-consolidated-benchmark/index.html) consolidates initialization-only,
+Lloyd-only, and full-fit results for all contenders on one page and explains
+the scalable-initializer gap between the array API and cuML.
 
-| initializer | 3 clusters | 17 clusters | 100 clusters | 550 clusters | 3000 clusters |
+| full fit, seconds | 3 clusters | 17 clusters | 100 clusters | 550 clusters | 3000 clusters |
 | --- | --- | --- | --- | --- | --- |
-| Array API - Torch CUDA, scalable | 0.94 s | 1.67 s | 1.29 s | 1.26 s | 2.58 s |
-| Array API - CuPy, scalable | 1.61 s | 2.58 s | 1.93 s | 1.88 s | 4.16 s |
-| Array API - Torch CPU, scalable | 18.57 s | 9.46 s | 14.77 s | 36.06 s | 47.09 s |
-| cuML, scalable | 0.49 s | 0.27 s | 0.25 s | 0.36 s | 0.91 s |
+| Array API - Torch CUDA, greedy | 0.94 s | 1.25 s | 1.20 s | 1.66 s | 2.62 s |
+| Array API - CuPy, greedy | 1.13 s | 1.77 s | 1.79 s | 2.44 s | 4.32 s |
+| scikit-learn PRs 23+26, greedy | 6.66 s | 5.04 s | 2.94 s | 3.25 s | 4.52 s |
+| cuML 26.10, greedy | 7.18 s | 2.52 s | 0.98 s | 0.99 s | 1.18 s |
+| cuML 26.10, scalable | 6.48 s | 2.41 s | 0.73 s | 0.63 s | 1.18 s |
 
 Main conclusions:
 
-- Farthest-point relocation lowers 3000-cluster inertia by 6.50% relative to
-  keeping empty centers and matches scikit-learn within 0.07%.
-- Array-API scalable initialization improves no-Lloyd inertia by up to 5.1%
-  at 17 and 100 clusters, but costs more than greedy k-means++ and is about 1%
-  worse at 550 clusters.
-- cuML scalable initialization is fastest or tied from 17 through 3000
-  clusters and has the lowest no-Lloyd inertia on every task. Its internal
-  candidate consolidation returns refined, non-row centers, unlike the
-  row-selecting array-API strategy.
-- The tiled Gram schedule remains the practical array-API Lloyd path.
-  `torch.compile` can eliminate a tile's distance matrix with a running
-  schedule, but that full schedule is slower than eager tiled GEMM.
+- Array API - Torch CUDA is the fastest full fit and Lloyd-only run at 3 and 17 clusters; cuML is fastest from 100 clusters up.
+- After 12 Lloyd iterations, every configuration ends within 0.4% of the best objective except cuML scalable at 3000 clusters, which ends 5.6% above it.
+- Farthest-point empty-center relocation makes all array-API backends match scikit-learn on the only task with empty clusters, 9.5 percentage points better than cuML.
+- cuML's scalable initializer looks best before Lloyd because it runs weighted Lloyd on its candidates; it ends worse at 3000 clusters because its greedy candidate reduction ignores the candidate weights.
+- Adding a weighted Lloyd recluster to the array-API scalable initializer, while keeping its weighted reduction, gave the best initializer and final objectives at 550 and 3000 clusters in an ablation.
+- The tiled Gram schedule remains the practical array-API Lloyd path; `torch.compile` can remove a tile's distance matrix with a running schedule, but that full schedule is slower than eager tiled GEMM.
 
 ## Journal
 
@@ -56,3 +50,4 @@ Main conclusions:
 - [008 — empty-center task mix](008-empty-reassignment-task-mix/index.html): stochastic relocation across five bounded tasks.
 - [009 — k-means++ only](009-kmeans-plusplus-only/index.html): timing, memory, and quality before Lloyd.
 - [010 — scalable initialization](010-scalable-initialization/index.html): farthest relocation, cuML initializer options, and array-API k-means||.
+- [011 — consolidated benchmark](011-consolidated-benchmark/index.html): initialization, Lloyd-only, and full-fit results on one page, plus the scalable-init ablation.
