@@ -39,6 +39,11 @@ class RenderJournalTest(unittest.TestCase):
             self.assertTrue((site / "001-first" / "plot.svg").is_file())
             self.assertIn("<title>Trial journal</title>", index)
 
+    def test_wrapped_list_item_stays_in_one_item(self):
+        html = render_journal.markdown_to_html("- first line\n  continued here\n- second\n\nAfter.\n")
+        self.assertIn("<ul><li>first line continued here</li><li>second</li></ul>", html)
+        self.assertIn("<p>After.</p>", html)
+
 
 class PagesTreeTest(unittest.TestCase):
     def test_stage_replaces_one_pull_request_directory(self):

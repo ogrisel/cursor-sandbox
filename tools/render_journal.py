@@ -101,8 +101,12 @@ def markdown_to_html(source):
         elif line.startswith("- "):
             items = []
             while i < len(lines) and lines[i].startswith("- "):
-                items.append(f"<li>{_inline(lines[i][2:])}</li>")
+                item = [lines[i][2:]]
                 i += 1
+                while i < len(lines) and lines[i].startswith("  ") and lines[i].strip():
+                    item.append(lines[i].strip())
+                    i += 1
+                items.append(f"<li>{_inline(' '.join(item))}</li>")
             out.append("<ul>" + "".join(items) + "</ul>")
             continue
         elif line.startswith("!["):
