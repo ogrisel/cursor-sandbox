@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>009-kmeans-plusplus-only</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+<a href="../index.html#cases">Cases</a>
+</nav>
+</header>
+<main>
+<h1 id="009-k-means-without-lloyd">009 — k-means++ without Lloyd</h1>
+<p>This iteration times initialization alone on the five tasks from <a href="../008-empty-reassignment-task-mix/index.html">008</a>. Each contender draws its own k-means++ centers and stops. There is no Lloyd update, so empty-center relocation does not apply. The random-centroid baseline stays on the inertia plot. Complete observations are in <a href="results.json">results.json</a>.</p>
+<p>105 fresh workers finished under the 60-second limit: five tasks, seeds 0 through 2, and seven contenders. Every recorded iteration count is 0.</p>
+<h2 id="what-was-timed">What was timed</h2>
+<p>The array-API contenders call <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L491-L533"><code>kmeans_plusplus</code></a> in eager mode on PyTorch CPU, PyTorch CUDA, and CuPy. Stock scikit-learn 1.7.2 and the build with PRs 23 and 26 call <code>sklearn.cluster.kmeans_plusplus</code>. cuML 26.10 fits with <code>init=&quot;k-means++&quot;</code>, <code>n_init=1</code>, and <code>max_iter=0</code>. That call still assigns labels after choosing centers. A second fit started from those centers repeats only the assignment, and the plotted cuML duration is the difference. <code>n_iter_</code> was 0 on all 15 cuML runs, and each center matched a data row.</p>
+<p>Inertia is the mean squared distance to the nearest selected center, computed after the timer. GPU array-API peaks are allocator bytes above data already on the device. CPU peaks are fresh-process <code>VmHWM</code>. cuML peaks are 1 MiB nvidia-smi samples above data already on the device.</p>
+<h2 id="duration">Duration</h2>
+<p>The random baseline is omitted here. Copying the chosen rows takes less than a millisecond and would compress the axis.</p>
+<img alt="k-means++ duration without Lloyd" src="duration.svg" />
+<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>API CPU</td><td>2.39 s</td><td>3.49 s</td><td>12.49 s</td><td>13.51 s</td><td>20.37 s</td></tr><tr><td>sklearn 1.7</td><td>5.15 s</td><td>7.42 s</td><td>11.44 s</td><td>16.48 s</td><td>27.73 s</td></tr><tr><td>sklearn PRs</td><td>1.28 s</td><td>2.04 s</td><td>1.53 s</td><td>1.95 s</td><td>3.00 s</td></tr><tr><td>API CUDA</td><td>0.25 s</td><td>0.31 s</td><td>0.48 s</td><td>0.74 s</td><td>1.50 s</td></tr><tr><td>API CuPy</td><td>0.18 s</td><td>0.28 s</td><td>0.74 s</td><td>1.38 s</td><td>2.99 s</td></tr><tr><td>cuML</td><td>0.15 s</td><td>0.39 s</td><td>0.48 s</td><td>0.69 s</td><td>0.91 s</td></tr></tbody></table>
+<p>Sample standard deviations are small beside these means, with two exceptions: API CUDA at 3 clusters is 0.254 ± 0.064 s, and stock scikit-learn at 550 clusters is 16.48 ± 2.08 s.</p>
+<p>cuML is the fastest initializer at 3, 100, 550, and 3000 clusters. CuPy leads at 17 clusters (0.280 s), just ahead of PyTorch CUDA (0.314 s) and cuML (0.390 s). The patched scikit-learn initializer is several times faster than stock and stays close to CuPy once the cluster count reaches 3000. Array-API CPU is faster than stock scikit-learn on four tasks and slower at 100 clusters.</p>
+<p>Compared with the full fits in 008, initialization is a small slice of the low-cluster GPU runs and most of the high-cluster CPU runs. Stock scikit-learn&#x27;s full fit at 3000 clusters averaged 27.26 s; the initializer alone averages 27.73 s, inside that earlier seed spread. Array-API CPU initialization at 3000 clusters takes 20.37 s, which is why adding Lloyd pushed those 008 runs past 60 s. cuML&#x27;s 3-cluster full fit was 7.18 s, while initialization alone is 0.15 s, so that gap is Lloyd work.</p>
+<h2 id="memory">Memory</h2>
+<img alt="k-means++ peak memory increment" src="memory.svg" />
+<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>API CPU</td><td>944 MiB</td><td>1455 MiB</td><td>232 MiB</td><td>157 MiB</td><td>57 MiB</td></tr><tr><td>API CUDA</td><td>939 MiB</td><td>1450 MiB</td><td>213 MiB</td><td>98 MiB</td><td>32 MiB</td></tr><tr><td>API CuPy</td><td>939 MiB</td><td>1450 MiB</td><td>212 MiB</td><td>98 MiB</td><td>31 MiB</td></tr><tr><td>sklearn 1.7</td><td>172 MiB</td><td>109 MiB</td><td>87 MiB</td><td>39 MiB</td><td>13 MiB</td></tr><tr><td>sklearn PRs</td><td>35 MiB</td><td>90 MiB</td><td>87 MiB</td><td>39 MiB</td><td>13 MiB</td></tr><tr><td>cuML</td><td>54 MiB</td><td>136 MiB</td><td>98 MiB</td><td>58 MiB</td><td>14 MiB</td></tr></tbody></table>
+<p>The array-API peak on the two widest tasks is the feature tile inside the one-time row-norm. With a tile of 256 features, <code>k3-d1000</code> materializes about 950000 by 256 products, and <code>k17-d180</code> materializes the full 180-feature block. PyTorch and CuPy report nearly the same increment. Stock and patched scikit-learn, and cuML, stay under 180 MiB on every task.</p>
+<h2 id="quality">Quality</h2>
+<img alt="k-means++ inertia relative to the best initializer" src="quality.svg" />
+<p>The quality axis is mean inertia divided by the best k-means++ mean on that task. The random baseline is included. Values are mean inertia per sample.</p>
+<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>API CPU</td><td>1911</td><td>291.8</td><td>31.51</td><td>1.086</td><td>0.02145</td></tr><tr><td>API CUDA</td><td>1912</td><td>292.0</td><td>31.53</td><td>1.086</td><td>0.02150</td></tr><tr><td>API CuPy</td><td>1911</td><td>294.1</td><td>31.48</td><td>1.086</td><td>0.02144</td></tr><tr><td>sklearn 1.7</td><td>1926</td><td>292.0</td><td>31.49</td><td>1.087</td><td>0.02154</td></tr><tr><td>sklearn PRs</td><td>1924</td><td>292.5</td><td>31.30</td><td>1.087</td><td>0.02152</td></tr><tr><td>cuML</td><td>1893</td><td>292.9</td><td>31.08</td><td>1.085</td><td>0.02145</td></tr><tr><td>random baseline</td><td>1924</td><td>300.3</td><td>33.94</td><td>1.189</td><td>0.05396</td></tr></tbody></table>
+<p>At 3 clusters the data are isotropic Gaussian noise, and a random draw of 3 rows matches k-means++. The best mean is cuML at 1893 and the random baseline is 1924; the seed standard deviations are about 20, so those gaps sit inside the noise. From 17 clusters upward the baseline is worse: 2.9% at 17 clusters, 9.2% at 100, 9.6% at 550, and 2.52 times the best k-means++ inertia at 3000 clusters (0.05396 versus 0.02144).</p>
+<p>The six k-means++ implementations land within about 1% of each other from 17 clusters upward. They do not share centers. Each backend consumes its own generator, and float32 reductions can change a later candidate, so PyTorch CPU, PyTorch CUDA, and CuPy are the same algorithm with small objective differences.</p>
+<h2 id="conclusions">Conclusions</h2>
+<ul><li>k-means++ without Lloyd finishes within 60 s for every contender, including array-API CPU at 3000 clusters (20.37 s).</li><li>cuML has the fastest initializer on four of the five tasks. CuPy leads at 17 clusters. Patched scikit-learn is the fastest CPU initializer on every task.</li><li>The array-API row-norm tile sets the memory peak on the wide tasks, about 0.94 GiB at 1000 features and 1.45 GiB at 2.1 million samples.</li><li>On isotropic 3-cluster noise, random rows match k-means++. At 3000 clusters, k-means++ cuts the random-row inertia by a factor of 2.52 before any Lloyd iteration.</li></ul>
+<p>Previous: <a href="../008-empty-reassignment-task-mix/index.html">stochastic relocation and the full-fit task mix</a>. Index: <a href="../index.html">journal</a>.</p>
+</main>
+</body>
+</html>
