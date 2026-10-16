@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>003-resized-shapes</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="three-shapes-that-fit-an-eager-gram-assignment">Three shapes that fit an eager Gram assignment</h1>
+<p>The probe showed the kernel split on a problem small enough for the naive broadcast tensor. This round uses three larger float32 problems on the same NVIDIA L4 (23 GiB). Sample count, centroid count, and feature count each take a turn as the large axis. <code>NVIDIA_TF32_OVERRIDE=0</code> and <code>allow_tf32=False</code>. PyTorch 2.14.1+cu130, CuPy 14.2.0, array-api-compat 1.15.0.</p>
+<p>Peak memory is bytes allocated above the inputs, including temporaries freed before the call returns. Times are medians after a warmup call, so they exclude <code>torch.compile</code>&#x27;s first trace. The full running assignment is one timed call of an already-compiled tile.</p>
+<h2 id="shapes">Shapes</h2>
+<table><thead><tr><th>case</th><th>samples</th><th>centroids</th><th>features</th><th><code>X</code></th><th>distance <code>(n, k)</code></th><th>one-centroid diff <code>(n, d)</code></th><th>broadcast <code>(n, k, d)</code></th></tr></thead><tbody><tr><td>sample-heavy</td><td>131072</td><td>8192</td><td>8192</td><td>4 GiB</td><td>4 GiB</td><td>4 GiB</td><td>32 TiB</td></tr><tr><td>centroid-heavy</td><td>65536</td><td>16384</td><td>8192</td><td>2 GiB</td><td>4 GiB</td><td>2 GiB</td><td>32 TiB</td></tr><tr><td>feature-heavy</td><td>65536</td><td>4096</td><td>16384</td><td>4 GiB</td><td>1 GiB</td><td>4 GiB</td><td>16 TiB</td></tr></tbody></table>
+<p>The naive broadcast is skipped on every case. A single <code>(n, k, d)</code> tensor is 16–32 TiB. What is measured instead is one broadcast tile whose unfused tensor is 256 MiB, the full Gram assignment, a Gram tile, and a running argmin.</p>
+<h2 id="gram-assignment">Gram assignment</h2>
+<p>Source: <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197"><code>gemm_distance_argmin</code></a>.</p>
+<p><code>||x - c||^2 = ||x||^2 + ||c||^2 - 2 x·c</code>, then <code>argmin</code>. Eager PyTorch materializes <code>X * X</code> before the reduction, then the <code>(n, k)</code> product.</p>
+<table><thead><tr><th>case</th><th>eager</th><th>eager peak</th><th><code>torch.compile</code></th><th>compiled peak</th></tr></thead><tbody><tr><td>sample-heavy</td><td>2.179 s</td><td>16.00 GiB</td><td>2.035 s</td><td>4.00 GiB</td></tr><tr><td>centroid-heavy</td><td>out of memory in this slot</td><td></td><td>2.015 s</td><td>4.00 GiB</td></tr><tr><td>feature-heavy</td><td>1.074 s</td><td>4.00 GiB</td><td>1.025 s</td><td>1.00 GiB</td></tr></tbody></table>
+<p>Compiled peaks match the distance matrix: 4.00 GiB on the first two shapes (<code>n * k * 4</code>) and 1.00 GiB on feature-heavy (<code>65536 * 4096 * 4</code>). Sample-heavy eager peak is four times that matrix: the elementwise square of <code>X</code>, the GEMM output, and the epilogue that adds the norms. Feature-heavy eager peak equals <code>X * X</code> (4 GiB), which is larger than the 1 GiB distance matrix, so the classifier label <code>materialized_distance</code> on that row is the wrong name for the dominant buffer. The byte count is the evidence.</p>
+<p>Kernel names on sample-heavy:</p>
+<ul><li>Eager: <code>ampere_sgemm_128x128_tn</code> (1.97 s) plus separate add, mul, sum, and <code>ArgMinOps</code> kernels.</li><li>Compiled: the same <code>ampere_sgemm_128x128_tn</code> (2.00 s), then <code>triton_red_fused_add_argmin_mul_sub_sum_transpose</code> (33 ms) and <code>triton_red_fused_mul_sum</code> (1 ms).</li></ul>
+<p><code>argmin</code> is inside the epilogue that consumes the GEMM output. cuBLAS still writes the <code>(n, k)</code> matrix. Runtime barely moves because the GEMM is the whole call, about 8 TFLOP/s on the sample-heavy shape (<code>2 * n * k * d</code> over 2.18 s).</p>
+<p>The centroid-heavy eager call failed while the process still held about 19 GiB from the previous case. The same eager Gram assignment, run later as a full Lloyd step on a fresh allocation of that shape, completed: assign 2.184 s, peak extra 16.00 GiB, inside a 3.853 s iteration. That 16 GiB is the same four-buffer eager pattern.</p>
+<p>CuPy has no fused Gram path (<code>sum(..., keepdims=True)</code> is unsupported inside <code>cupy.fuse</code>, same as the probe). Eager CuPy on feature-heavy matches PyTorch: 1.057 s, peak extra 4.00 GiB. Sample-heavy and centroid-heavy eager CuPy GEMM both died allocating another 4 GiB after 14–18 GiB was already in use.</p>
+<p>A Gram tile over the first 4096 samples, full centroid count, shows the same epilogue fusion at a smaller output:</p>
+<table><thead><tr><th>case</th><th>distance tile</th><th>eager</th><th>eager peak</th><th><code>torch.compile</code></th><th>compiled peak</th></tr></thead><tbody><tr><td>centroid-heavy</td><td>256 MiB</td><td>132 ms</td><td>1024 MiB</td><td>119 ms</td><td>256 MiB</td></tr><tr><td>feature-heavy</td><td>64 MiB</td><td>67.5 ms</td><td>256 MiB</td><td>60.3 ms</td><td>64 MiB</td></tr></tbody></table>
+<p>Compiled peak is the tile&#x27;s distance matrix. Eager peak is four times that. CuPy eager tiles land on the same four-times peak (512 MiB, 1024 MiB, and 256 MiB for the three shapes).</p>
+<img alt="GEMM peak memory" src="gemm-memory.svg" />
+<img alt="GEMM runtime" src="gemm-time.svg" />
+<h2 id="broadcast-tile">Broadcast tile</h2>
+<p>Source: <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L200-L203"><code>tile_broadcast_argmin</code></a>.</p>
+<p>One tile of the naive formula, sized so the unfused <code>(tile_n, 32, d)</code> tensor is 256 MiB. Two copies of that tensor (difference and square) are 512 MiB.</p>
+<table><thead><tr><th>case</th><th>tile</th><th>eager</th><th>eager peak</th><th><code>torch.compile</code></th><th>compiled peak</th></tr></thead><tbody><tr><td>sample-heavy</td><td>256 × 32</td><td>4.75 ms</td><td>512 MiB</td><td>0.51 ms</td><td>35 KiB</td></tr><tr><td>centroid-heavy</td><td>256 × 32</td><td>4.76 ms</td><td>512 MiB</td><td>0.49 ms</td><td>35 KiB</td></tr><tr><td>feature-heavy</td><td>128 × 32</td><td>4.75 ms</td><td>512 MiB</td><td>0.54 ms</td><td>17.5 KiB</td></tr></tbody></table>
+<p>The compiled kernels are still two: <code>triton_red_fused_mul_sub_sum_unsqueeze</code> and <code>triton_per_fused_amin_argmin</code>. The 35 KiB peak is the 32 KiB distance tile (<code>256 * 32 * 4</code>) plus the label vector. On the feature-heavy tile the distance matrix is 16 KiB and the peak is 17.5 KiB. The reduction is fused. The argmin still reads the distance tile afterwards.</p>
+<p><code>cupy.fuse</code> on the same tile raises <code>AttributeError: &#x27;_ArrayProxy&#x27; object has no attribute &#x27;argmin&#x27;</code> on all three shapes. Eager CuPy tiles match the 512 MiB peak and the 5 ms runtime.</p>
+<img alt="Broadcast tile memory" src="broadcast-memory.svg" />
+<img alt="Broadcast tile time" src="broadcast-time.svg" />
+<h2 id="running-argmin-one-centroid">Running argmin, one centroid</h2>
+<p>Source: <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232"><code>running_argmin_step</code></a>.</p>
+<p><code>diff = X - centroid</code>, reduce, then <code>where</code> to keep the winner. Eager timing is four identical steps, so a single launch is not the whole measurement. Compiled and fused timings are one step.</p>
+<table><thead><tr><th>case</th><th>eager, 4 steps</th><th>eager peak</th><th><code>torch.compile</code>, 1 step</th><th>compiled peak</th><th><code>cupy.fuse</code>, 1 step</th><th>fused peak</th></tr></thead><tbody><tr><td>sample-heavy</td><td>360 ms</td><td>8.00 GiB</td><td>16.7 ms</td><td>1.50 MiB</td><td>606 ms</td><td>4.00 GiB</td></tr><tr><td>centroid-heavy</td><td>180 ms</td><td>4.00 GiB</td><td>8.54 ms</td><td>768 KiB</td><td>293 ms</td><td>2.00 GiB</td></tr><tr><td>feature-heavy</td><td>360 ms</td><td>8.00 GiB</td><td>16.7 ms</td><td>768 KiB</td><td>585 ms</td><td>4.00 GiB</td></tr></tbody></table>
+<p>Eager peaks are two <code>(n, d)</code> buffers, difference and square. Compiled peaks are exactly <code>n * 12</code> bytes: int64 labels and the float32 winning distances. The kernel is one reduction, <code>triton_red_fused_lt_mul_sub_sum_where</code>. The comparison is inside the distance kernel. The <code>(n, d)</code> temporaries are gone, and so is any <code>(n, k)</code> matrix.</p>
+<p><code>cupy.fuse</code> accepts this function. Its peak equals one <code>(n, d)</code> buffer (<code>n * d * 4</code>): sample-heavy 4.00 GiB, centroid-heavy 2.00 GiB, feature-heavy 4.00 GiB. The square is fused away. The difference remains. One fused step is slower than four eager steps.</p>
+<h2 id="running-tile-of-32-centroids">Running tile of 32 centroids</h2>
+<p>Source: <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L130-L136"><code>running_tile_distances</code></a>, covering every centroid in <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L139-L157"><code>assign_running_tiled</code></a>.</p>
+<p>The tile loops over 32 centroids inside one function and returns local labels and local distances. <code>torch.compile</code> turns that into a single kernel, <code>triton_red_fused_full_lift_fresh_lt_mul_select_sub_sum_where_zeros</code>.</p>
+<table><thead><tr><th>case</th><th>eager</th><th>eager peak</th><th><code>torch.compile</code></th><th>compiled peak</th></tr></thead><tbody><tr><td>sample-heavy</td><td>2.884 s</td><td>8.00 GiB</td><td>49.2 ms</td><td>1.50 MiB</td></tr><tr><td>centroid-heavy</td><td>1.448 s</td><td>4.00 GiB</td><td>24.7 ms</td><td>768 KiB</td></tr><tr><td>feature-heavy</td><td>2.887 s</td><td>8.00 GiB</td><td>49.3 ms</td><td>768 KiB</td></tr></tbody></table>
+<p>Compiled peaks are again exactly <code>n * 12</code> bytes. A 32-column distance matrix would be 16 MiB on sample-heavy (<code>131072 * 32 * 4</code>) and is absent. This is the schedule that fuses nearest-centroid identification into the squared distance.</p>
+<p>Covering every centroid with those tiles, merging with <code>where</code> in Python:</p>
+<table><thead><tr><th>case</th><th>tiles</th><th>full <code>torch.compile</code> assignment</th><th>peak extra</th></tr></thead><tbody><tr><td>sample-heavy</td><td>256</td><td>12.75 s</td><td>5.13 MiB</td></tr><tr><td>centroid-heavy</td><td>512</td><td>12.78 s</td><td>2.56 MiB</td></tr><tr><td>feature-heavy</td><td>128</td><td>6.13 s</td><td>2.56 MiB</td></tr></tbody></table>
+<p>The few extra MiB above <code>n * 12</code> are the Python merge (<code>where</code> outputs between tiles). The distance matrix for these problems is 1–4 GiB, and the broadcast tensor is tens of tebibytes. Neither appears.</p>
+<p>That full pass is slower than the Gram GEMM (12.8 s against about 2 s on sample-heavy and centroid-heavy). Fusing argmin removes the big buffers. It does not beat cuBLAS on this card.</p>
+<img alt="Running tile memory" src="running-memory.svg" />
+<img alt="Running tile time" src="running-time.svg" />
+<h2 id="full-lloyd-step">Full Lloyd step</h2>
+<p>Source: <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L21-L53"><code>lloyd_iteration</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L160-L171"><code>update_centroids</code></a>.</p>
+<p>The update is a one-hot membership of shape <code>(n, k)</code> times <code>X</code>. Naive broadcast assignment is skipped by the headroom check on every case.</p>
+<table><thead><tr><th>case</th><th>library</th><th>result</th><th>assign</th><th>update</th><th>assign peak</th></tr></thead><tbody><tr><td>sample-heavy</td><td>torch</td><td>out of memory</td><td></td><td></td><td>requested another 4 GiB with 20.5 GiB already held</td></tr><tr><td>sample-heavy</td><td>cupy</td><td>out of memory</td><td></td><td></td><td>4 GiB request after 18 GiB already allocated</td></tr><tr><td>centroid-heavy</td><td>torch eager</td><td>3.853 s</td><td>2.184 s</td><td>1.683 s</td><td>16.00 GiB</td></tr><tr><td>centroid-heavy</td><td>cupy</td><td>out of memory</td><td></td><td></td><td>4 GiB request after 14 GiB already allocated</td></tr><tr><td>feature-heavy</td><td>torch eager</td><td>1.771 s</td><td>1.087 s</td><td>0.680 s</td><td>4.00 GiB</td></tr><tr><td>feature-heavy</td><td>cupy eager</td><td>1.735 s</td><td>1.068 s</td><td>0.665 s</td><td>4.00 GiB</td></tr></tbody></table>
+<p>Update peaks were 5.50 GiB (centroid-heavy) and 1.75 GiB (feature-heavy), which is the one-hot <code>(n, k)</code> matrix plus the summed samples. Where both libraries finished, assign time and assign peak match.</p>
+<h2 id="what-this-round-adds-to-the-probe">What this round adds to the probe</h2>
+<ul><li>On these shapes <code>torch.compile</code> still fuses the broadcast reduction and still launches argmin as a second kernel. The distance tile is the compiled peak.</li><li>On the Gram form, <code>torch.compile</code> folds <code>X * X</code>, the norm broadcast, and <code>argmin</code> into epilogue kernels. <code>ampere_sgemm</code> still writes <code>(n, k)</code>. Peak drops from 16 GiB to 4 GiB, or from 4 GiB to 1 GiB when <code>X</code> itself was the large temporary. Time stays on the GEMM.</li><li>The running tile is the rewrite that puts argmin inside the distance kernel. One Triton kernel, peak <code>n * 12</code> bytes for 32 centroids, and a full assignment at 2.6–5.1 MiB. It is several times slower than the eager or compiled GEMM.</li><li><code>cupy.fuse</code> still cannot see <code>argmin</code>. On the one-centroid running update it removes the square and keeps the <code>(n, d)</code> difference, and that fused call is slower than eager.</li></ul>
+<p>Previous: <a href="../002-large-shape-oom/index.html">large shape that ran out of memory</a>. Index: <a href="../index.html">journal</a>.</p>
+</main>
+</body>
+</html>
