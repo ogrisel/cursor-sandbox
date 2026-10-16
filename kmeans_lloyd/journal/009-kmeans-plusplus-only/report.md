@@ -6,7 +6,7 @@ This iteration times initialization alone on the five tasks from [008](../008-em
 
 ## What was timed
 
-The array-API contenders call [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L491-L533) in eager mode on PyTorch CPU, PyTorch CUDA, and CuPy. Stock scikit-learn 1.7.2 and the build with PRs 23 and 26 call `sklearn.cluster.kmeans_plusplus`. cuML 26.10 fits with `init="k-means++"`, `n_init=1`, and `max_iter=0`. That call still assigns labels after choosing centers. A second fit started from those centers repeats only the assignment, and the plotted cuML duration is the difference. `n_iter_` was 0 on all 15 cuML runs, and each center matched a data row.
+The array-API contenders call [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/9f1ab9991c99514d36fa4f0a9377896687c6ba01/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L491-L533) in eager mode on PyTorch CPU, PyTorch CUDA, and CuPy. Stock scikit-learn 1.7.2 and the build with PRs 23 and 26 call `sklearn.cluster.kmeans_plusplus`. cuML 26.10 fits with `init="k-means++"`, `n_init=1`, and `max_iter=0`. That call still assigns labels after choosing centers. A second fit started from those centers repeats only the assignment, and the plotted cuML duration is the difference. `n_iter_` was 0 on all 15 cuML runs, and each center matched a data row.
 
 Inertia is the mean squared distance to the nearest selected center, computed after the timer. GPU array-API peaks are allocator bytes above data already on the device. CPU peaks are fresh-process `VmHWM`. cuML peaks are 1 MiB nvidia-smi samples above data already on the device.
 

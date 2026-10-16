@@ -16,7 +16,7 @@ The naive broadcast is skipped on every case. A single `(n, k, d)` tensor is 16â
 
 ## Gram assignment
 
-Source: [`gemm_distance_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197).
+Source: [`gemm_distance_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197).
 
 `||x - c||^2 = ||x||^2 + ||c||^2 - 2 xÂ·c`, then `argmin`. Eager PyTorch materializes `X * X` before the reduction, then the `(n, k)` product.
 
@@ -54,7 +54,7 @@ Compiled peak is the tile's distance matrix. Eager peak is four times that. CuPy
 
 ## Broadcast tile
 
-Source: [`tile_broadcast_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L200-L203).
+Source: [`tile_broadcast_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L200-L203).
 
 One tile of the naive formula, sized so the unfused `(tile_n, 32, d)` tensor is 256 MiB. Two copies of that tensor (difference and square) are 512 MiB.
 
@@ -74,7 +74,7 @@ The compiled kernels are still two: `triton_red_fused_mul_sub_sum_unsqueeze` and
 
 ## Running argmin, one centroid
 
-Source: [`running_argmin_step`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232).
+Source: [`running_argmin_step`](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232).
 
 `diff = X - centroid`, reduce, then `where` to keep the winner. Eager timing is four identical steps, so a single launch is not the whole measurement. Compiled and fused timings are one step.
 
@@ -90,7 +90,7 @@ Eager peaks are two `(n, d)` buffers, difference and square. Compiled peaks are 
 
 ## Running tile of 32 centroids
 
-Source: [`running_tile_distances`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L130-L136), covering every centroid in [`assign_running_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L139-L157).
+Source: [`running_tile_distances`](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L130-L136), covering every centroid in [`assign_running_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L139-L157).
 
 The tile loops over 32 centroids inside one function and returns local labels and local distances. `torch.compile` turns that into a single kernel, `triton_red_fused_full_lift_fresh_lt_mul_select_sub_sum_where_zeros`.
 
@@ -120,7 +120,7 @@ That full pass is slower than the Gram GEMM (12.8 s against about 2 s on sample-
 
 ## Full Lloyd step
 
-Source: [`lloyd_iteration`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L21-L53) and [`update_centroids`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L160-L171).
+Source: [`lloyd_iteration`](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L21-L53) and [`update_centroids`](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L160-L171).
 
 The update is a one-hot membership of shape `(n, k)` times `X`. Naive broadcast assignment is skipped by the headroom check on every case.
 

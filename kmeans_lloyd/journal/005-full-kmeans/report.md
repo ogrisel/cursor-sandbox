@@ -11,12 +11,12 @@ The core functions stay in Python array-API syntax. `torch.compile` is applied o
 
 | piece | source |
 | --- | --- |
-| k-means++ | [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L390-L432) |
-| squared row norm, one feature tile at a time | [`_row_squared_norm`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L522-L534) |
-| one-hot update accumulated over sample tiles | [`update_centroids_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L288-L324) |
-| inertia over sample tiles | [`inertia`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L435-L450) |
-| mean feature variance over feature tiles | [`_mean_feature_variance`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L508-L520) |
-| init plus Lloyd until the center shift falls under the scaled tolerance | [`fit_kmeans`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L453-L505) |
+| k-means++ | [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/1d641b2ea7a38d576726f5ef174a4745dbfca1a3/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L390-L432) |
+| squared row norm, one feature tile at a time | [`_row_squared_norm`](https://github.com/ogrisel/cursor-sandbox/blob/1d641b2ea7a38d576726f5ef174a4745dbfca1a3/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L522-L534) |
+| one-hot update accumulated over sample tiles | [`update_centroids_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/1d641b2ea7a38d576726f5ef174a4745dbfca1a3/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L288-L323) |
+| inertia over sample tiles | [`inertia`](https://github.com/ogrisel/cursor-sandbox/blob/1d641b2ea7a38d576726f5ef174a4745dbfca1a3/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L435-L450) |
+| mean feature variance over feature tiles | [`_mean_feature_variance`](https://github.com/ogrisel/cursor-sandbox/blob/1d641b2ea7a38d576726f5ef174a4745dbfca1a3/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L508-L519) |
+| init plus Lloyd until the center shift falls under the scaled tolerance | [`fit_kmeans`](https://github.com/ogrisel/cursor-sandbox/blob/1d641b2ea7a38d576726f5ef174a4745dbfca1a3/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L453-L505) |
 
 Empty clusters keep their previous center. scikit-learn relocates them. That difference did not show up on the separated blobs below: every sample received the same cluster as cuML, up to label permutation.
 

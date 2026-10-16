@@ -282,7 +282,7 @@ per seed and swaps only the reduction step. The weighted Lloyd recluster
 mirrors cuVS's defaults and convergence test. Each variant's centers are then
 also refined by the benchmark's 12 farthest-relocation Lloyd iterations on the
 full data. Rows come from
-[ablate_scalable_init.py](https://github.com/ogrisel/cursor-sandbox/blob/cursor/scalable-kmeans-init-8896/kmeans_lloyd/scripts/ablate_scalable_init.py)
+[ablate_scalable_init.py](https://github.com/ogrisel/cursor-sandbox/blob/82e5aaafe5f8fe5ef9abda54d59932a8b6390553/kmeans_lloyd/scripts/ablate_scalable_init.py)
 on PyTorch CUDA; the cuML rows repeat the benchmark means.
 
 | no-Lloyd inertia | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
@@ -342,4 +342,5 @@ does not guarantee a better 12-iteration fit.
   better initializer.
 
 Previous: [scalable initialization](../010-scalable-initialization/report.md).
+Next: [source link audit](../012-source-link-audit/report.md).
 Index: [journal](../index.md).

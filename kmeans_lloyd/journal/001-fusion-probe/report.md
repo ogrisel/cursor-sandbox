@@ -23,13 +23,13 @@ Peak memory below is bytes allocated **above the inputs**, including temporaries
 
 | variant | eager time | eager peak | `torch.compile` time | `torch.compile` peak | what the compiler did |
 | --- | --- | --- | --- | --- | --- |
-| [naive argmin](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L188-L191) | 35.9 ms | 4100 MiB | 1.14 ms | 4.03 MiB | fused sub, square, and sum; argmin stays a second kernel |
-| [distance only](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L235-L237) | 35.7 ms | 4100 MiB | 1.14 ms | 4.00 MiB | one reduction kernel, output is exactly the 4 MiB matrix |
-| [gemm argmin](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197) | 0.34 ms | 16.0 MiB | 0.30 ms | 4.05 MiB | cuBLAS GEMM unchanged; argmin fused into the epilogue |
-| [one-centroid distance](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L212-L219) | 0.17 ms | 16.0 MiB | 0.20 ms | 0.016 MiB | one kernel, output is exactly the 16 KiB vector |
-| [running step](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232) | 0.27 ms | 16.0 MiB | 0.20 ms | 0.047 MiB | compare and `where` fused into the distance reduction |
-| [running loop, k=8](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L106-L127) | 1.38 ms | 16.1 MiB | 0.21 ms | 0.031 MiB | the Python loop is one kernel; peak is the label vector |
-| [running loop, k=32](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L106-L127) | 4.72 ms | 16.1 MiB | 0.23 ms | 0.031 MiB | still one kernel; eager launched each op 32 times |
+| [naive argmin](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L188-L191) | 35.9 ms | 4100 MiB | 1.14 ms | 4.03 MiB | fused sub, square, and sum; argmin stays a second kernel |
+| [distance only](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L235-L237) | 35.7 ms | 4100 MiB | 1.14 ms | 4.00 MiB | one reduction kernel, output is exactly the 4 MiB matrix |
+| [gemm argmin](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197) | 0.34 ms | 16.0 MiB | 0.30 ms | 4.05 MiB | cuBLAS GEMM unchanged; argmin fused into the epilogue |
+| [one-centroid distance](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L212-L219) | 0.17 ms | 16.0 MiB | 0.20 ms | 0.016 MiB | one kernel, output is exactly the 16 KiB vector |
+| [running step](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232) | 0.27 ms | 16.0 MiB | 0.20 ms | 0.047 MiB | compare and `where` fused into the distance reduction |
+| [running loop, k=8](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L106-L127) | 1.38 ms | 16.1 MiB | 0.21 ms | 0.031 MiB | the Python loop is one kernel; peak is the label vector |
+| [running loop, k=32](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L106-L127) | 4.72 ms | 16.1 MiB | 0.23 ms | 0.031 MiB | still one kernel; eager launched each op 32 times |
 
 Eager naive peak is two full broadcast buffers (difference and square), 4096 MiB, plus a small amount of allocator rounding. Compiled naive peak is 4.00 MiB for the distance matrix plus 32 KiB of labels (`4227072 - 4194304 = 32768`). The distance matrix is still there.
 
@@ -52,14 +52,14 @@ Kernel names from the profiler:
 
 | variant | eager time | eager peak | `cupy.fuse` | fused peak | note |
 | --- | --- | --- | --- | --- | --- |
-| [elementwise `(a-b)*(a-b)`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/scripts/run_experiments.py#L487-L557) | 16.7 ms | 128 MiB | 0.90 ms | 64 MiB | positive control: one output buffer |
-| [naive argmin](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L188-L191) | 34.6 ms | 4100 MiB | error | | `'_ArrayProxy' object has no attribute 'argmin'` |
-| [broadcast distance](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L235-L237) | 39.5 ms | 4100 MiB | 503 ms | 2052 MiB | call returns, still materializes about 2 GiB, and is slower |
-| [gemm argmin](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197) | 0.36 ms | 16.0 MiB | error | | `cupy.sum` does not support `keepdims` in fusion |
-| [one-centroid distance](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L212-L219) | 0.10 ms | 16.0 MiB | 0.15 ms | 0.016 MiB | sub, square, and sum fused; output is the 16 KiB vector |
-| [running step](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232) | 0.17 ms | 16.0 MiB | 1.73 ms | 8.06 MiB | an `(n, d)` temporary remains; slower than eager |
-| [broadcast tile, any k](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L200-L203) | same as naive | | error | | same missing `argmin` |
-| [running loop](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L106-L127) | eager ok | 16.1 MiB | error | | `array_namespace` rejects `_ArrayProxy` |
+| [elementwise `(a-b)*(a-b)`](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/scripts/run_experiments.py#L487-L557) | 16.7 ms | 128 MiB | 0.90 ms | 64 MiB | positive control: one output buffer |
+| [naive argmin](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L188-L191) | 34.6 ms | 4100 MiB | error | | `'_ArrayProxy' object has no attribute 'argmin'` |
+| [broadcast distance](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L235-L237) | 39.5 ms | 4100 MiB | 503 ms | 2052 MiB | call returns, still materializes about 2 GiB, and is slower |
+| [gemm argmin](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197) | 0.36 ms | 16.0 MiB | error | | `cupy.sum` does not support `keepdims` in fusion |
+| [one-centroid distance](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L212-L219) | 0.10 ms | 16.0 MiB | 0.15 ms | 0.016 MiB | sub, square, and sum fused; output is the 16 KiB vector |
+| [running step](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232) | 0.17 ms | 16.0 MiB | 1.73 ms | 8.06 MiB | an `(n, d)` temporary remains; slower than eager |
+| [broadcast tile, any k](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L200-L203) | same as naive | | error | | same missing `argmin` |
+| [running loop](https://github.com/ogrisel/cursor-sandbox/blob/c4768470076c21e105bddb544bef65e9d1791415/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L106-L127) | eager ok | 16.1 MiB | error | | `array_namespace` rejects `_ArrayProxy` |
 
 The one-centroid distance is the CuPy fusion that matches the question's distance half: no `(n, d)` temporary. Putting the running-argmin `where` in the same fused function does not remove that temporary. `argmin` over a full centroid axis is not expressible to this runtime.
 
