@@ -285,13 +285,28 @@ def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
     return labels
 
 
-def update_centroids_tiled(X, labels, centroids, tile_k, tile_n=None):
+def update_centroids_tiled(
+    X,
+    labels,
+    centroids,
+    tile_k,
+    tile_n=None,
+    reassign_empty=False,
+    rng=None,
+):
     """Mean update one centroid tile at a time.
 
     The one-hot membership for a tile has shape ``(n_samples, tile_k)``
     instead of ``(n_samples, n_clusters)``. ``tile_n`` also splits the
-    samples, so that membership has shape ``(tile_n, tile_k)`` and the
-    sums are accumulated. An empty cluster keeps its previous centroid.
+    samples, so that membership has shape ``(tile_n, tile_k)`` and the sums
+    are accumulated.
+
+    By default, an empty cluster keeps its previous centroid. With
+    ``reassign_empty=True``, each empty center takes a distinct sample drawn
+    with probability proportional to its squared distance from its assigned
+    center. The selected sample is removed from its donor sum and count,
+    matching scikit-learn's Lloyd relocation bookkeeping while replacing its
+    deterministic farthest-point choice by a stochastic D² choice.
     """
     xp = array_namespace(X, labels, centroids)
     n_samples = int(X.shape[0])
@@ -299,7 +314,10 @@ def update_centroids_tiled(X, labels, centroids, tile_k, tile_n=None):
     n_features = int(X.shape[1])
     if tile_n is None:
         tile_n = n_samples
+    if reassign_empty and rng is None:
+        raise ValueError("rng is required when reassign_empty=True")
     updated = xp.empty_like(centroids)
+    all_counts = xp.empty(n_clusters, dtype=X.dtype, device=_device(X))
     for k0 in range(0, n_clusters, tile_k):
         k1 = min(k0 + tile_k, n_clusters)
         ids = xp.arange(k1 - k0, dtype=labels.dtype, device=_device(X)) + k0
@@ -320,7 +338,61 @@ def update_centroids_tiled(X, labels, centroids, tile_k, tile_n=None):
         means = sums / counts_safe[:, None]
         empty = counts[:, None] == 0
         updated[k0:k1] = xp.where(empty, centroids[k0:k1], means)
+        all_counts[k0:k1] = counts
+    if reassign_empty:
+        updated = _random_reassign_empty(
+            xp,
+            X,
+            labels,
+            centroids,
+            updated,
+            all_counts,
+            rng,
+            tile_n=min(int(tile_n), 8192),
+        )
     return updated
+
+
+def _random_reassign_empty(xp, X, labels, old_centers, updated, counts, rng, tile_n):
+    """Relocate empty centers with distance-weighted samples, without replacement."""
+    empty_indices = xp.nonzero(counts == 0)[0]
+    n_empty = int(empty_indices.shape[0])
+    if n_empty == 0:
+        return updated
+    weights = _assigned_squared_distances(xp, X, labels, old_centers, tile_n)
+    # A singleton donor cannot give away its only sample. Such a sample also
+    # has zero distance in ordinary Lloyd updates, but mask it explicitly.
+    donor_counts = xp.take(counts, labels, axis=0)
+    weights = xp.where(donor_counts > 1, weights, xp.zeros_like(weights))
+    for index in range(n_empty):
+        total = _item(xp.sum(weights))
+        if not total > 0:
+            break
+        picked = int(_weighted_draw(xp, weights, rng, 1)[0])
+        donor = int(labels[picked])
+        donor_count = counts[donor]
+        donor_sum = updated[donor] * donor_count
+        updated[donor] = (donor_sum - X[picked]) / (donor_count - 1)
+        counts[donor] = donor_count - 1
+        empty = int(empty_indices[index])
+        updated[empty] = X[picked]
+        counts[empty] = xp.asarray(1, dtype=counts.dtype, device=_device(counts))
+        available = xp.arange(int(X.shape[0]), device=_device(X)) != picked
+        if _item(counts[donor]) <= 1:
+            available = available & (labels != donor)
+        weights = xp.where(available, weights, xp.zeros_like(weights))
+    return updated
+
+
+def _assigned_squared_distances(xp, X, labels, centers, tile_n):
+    """Squared distance to the assigned old center, in sample tiles."""
+    distances = xp.empty((int(X.shape[0]),), dtype=X.dtype, device=_device(X))
+    for n0 in range(0, int(X.shape[0]), tile_n):
+        n1 = min(n0 + tile_n, int(X.shape[0]))
+        assigned = xp.take(centers, labels[n0:n1], axis=0)
+        difference = X[n0:n1] - assigned
+        distances[n0:n1] = xp.sum(difference * difference, axis=1)
+    return distances
 
 
 def lloyd_step(
@@ -330,6 +402,8 @@ def lloyd_step(
     tile_k,
     update_tile_k=None,
     update_tile_n=None,
+    reassign_empty=False,
+    rng=None,
     step=None,
     recorder=None,
 ):
@@ -344,12 +418,28 @@ def lloyd_step(
         update_tile_k = tile_k
     if recorder is None:
         labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
-        updated = update_centroids_tiled(X, labels, centroids, update_tile_k, tile_n=update_tile_n)
+        updated = update_centroids_tiled(
+            X,
+            labels,
+            centroids,
+            update_tile_k,
+            tile_n=update_tile_n,
+            reassign_empty=reassign_empty,
+            rng=rng,
+        )
     else:
         with recorder.phase("assign"):
             labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
         with recorder.phase("update"):
-            updated = update_centroids_tiled(X, labels, centroids, update_tile_k, tile_n=update_tile_n)
+            updated = update_centroids_tiled(
+                X,
+                labels,
+                centroids,
+                update_tile_k,
+                tile_n=update_tile_n,
+                reassign_empty=reassign_empty,
+                rng=rng,
+            )
     return updated, labels
 
 
@@ -460,6 +550,7 @@ def fit_kmeans(
     tile_k=1024,
     update_tile_k=256,
     update_tile_n=None,
+    reassign_empty=False,
     step=None,
     distance=None,
 ):
@@ -468,10 +559,11 @@ def fit_kmeans(
     ``tol`` is scaled by the mean feature variance, matching scikit-learn.
     ``update_tile_n`` splits the sample axis of the one-hot update. The
     default is ``min(tile_n, 4096)``, which keeps that matrix off the full
-    sample count. An empty cluster keeps its center. The returned inertia is the sum of
-    squared distances to the centers of the last iteration. ``step`` and
-    ``distance`` are optional callables a benchmark may wrap with
-    ``torch.compile``; both default to the array-API implementations.
+    sample count. An empty cluster keeps its center unless
+    ``reassign_empty=True``. The returned inertia is the sum of squared
+    distances to the centers of the last iteration. ``step`` and ``distance``
+    are optional callables a benchmark may wrap with ``torch.compile``; both
+    default to the array-API implementations.
     """
     centers, indices = kmeans_plusplus(X, n_clusters, rng, distance=distance)
     result = fit_lloyd(
@@ -483,6 +575,8 @@ def fit_kmeans(
         tile_k=tile_k,
         update_tile_k=update_tile_k,
         update_tile_n=update_tile_n,
+        reassign_empty=reassign_empty,
+        rng=rng,
         step=step,
     )
     result["indices"] = indices
@@ -498,6 +592,8 @@ def fit_lloyd(
     tile_k=1024,
     update_tile_k=256,
     update_tile_n=None,
+    reassign_empty=False,
+    rng=None,
     step=None,
 ):
     """Run Lloyd iterations from caller-provided centers.
@@ -505,7 +601,9 @@ def fit_lloyd(
     This is the initializer-independent half of :func:`fit_kmeans`. The
     centers can be rows selected once from ``X`` and shared across backends,
     which isolates assignment, update, and convergence behavior from
-    k-means++ sampling differences.
+    k-means++ sampling differences. ``reassign_empty=True`` enables the
+    distance-weighted random relocation described by
+    :func:`update_centroids_tiled` and requires ``rng``.
     """
     xp = array_namespace(X, initial_centers)
     if int(max_iter) < 1:
@@ -528,6 +626,8 @@ def fit_lloyd(
             tile_k,
             update_tile_k=update_tile_k,
             update_tile_n=update_tile_n,
+            reassign_empty=reassign_empty,
+            rng=rng,
             step=step,
         )
         shift = _item(xp.sum((updated - centers) ** 2))

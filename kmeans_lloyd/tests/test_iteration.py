@@ -140,6 +140,36 @@ def test_tiled_update_matches_one_hot_update():
     np.testing.assert_allclose(tiled[3], c_np[3])
 
 
+def test_tiled_update_randomly_reassigns_empty_and_adjusts_donor():
+    x_np = np.array([[0.0], [2.0], [10.0]], dtype=np.float64)
+    labels_np = np.array([0, 0, 1], dtype=np.int64)
+    c_np = np.array([[0.0], [10.0], [100.0]], dtype=np.float64)
+    x = _as_numpy_namespace(x_np)
+    labels = array_namespace(x).asarray(labels_np)
+    c = _as_numpy_namespace(c_np)
+    updated = update_centroids_tiled(
+        x,
+        labels,
+        c,
+        tile_k=2,
+        tile_n=2,
+        reassign_empty=True,
+        rng=np.random.default_rng(0),
+    )
+    # X[1] is the only row with nonzero assigned distance. As in
+    # scikit-learn's relocation bookkeeping, it leaves donor 0 and becomes
+    # the singleton center for previously empty cluster 2.
+    np.testing.assert_allclose(_to_numpy(updated), [[0.0], [10.0], [2.0]])
+
+
+def test_tiled_update_reassignment_requires_rng():
+    x_np, c_np = _blobs(n_per=3, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    labels = array_namespace(x).zeros(x.shape[0], dtype=array_namespace(x).int64)
+    with pytest.raises(ValueError, match="rng"):
+        update_centroids_tiled(x, labels, _as_numpy_namespace(c_np), tile_k=2, reassign_empty=True)
+
+
 def test_lloyd_step_matches_naive_iteration():
     x_np, c_np = _blobs(n_per=8, d=4, k=3)
     x = _as_numpy_namespace(x_np)
@@ -305,3 +335,30 @@ def test_gpu_assignment_matches_numpy(backend):
     assert _to_numpy(plus_index).shape == (c_np.shape[0],)
     updated, _ = lloyd_iteration(x, c, assign="gemm")
     assert _to_numpy(updated).shape == c_np.shape
+
+
+@pytest.mark.parametrize("backend", [name for name, _ in _gpu_pairs()] or [pytest.param("none", marks=pytest.mark.skip)])
+def test_gpu_randomly_reassigns_empty_centroid(backend):
+    modules = dict(_gpu_pairs())
+    module = modules[backend]
+    x_np = np.array([[0.0], [2.0], [10.0]], dtype=np.float32)
+    labels_np = np.array([0, 0, 1], dtype=np.int64)
+    c_np = np.array([[0.0], [10.0], [100.0]], dtype=np.float32)
+    if backend == "torch":
+        x = module.as_tensor(x_np, device="cuda")
+        labels = module.as_tensor(labels_np, device="cuda")
+        centers = module.as_tensor(c_np, device="cuda")
+    else:
+        x = module.asarray(x_np)
+        labels = module.asarray(labels_np)
+        centers = module.asarray(c_np)
+    updated = update_centroids_tiled(
+        x,
+        labels,
+        centers,
+        tile_k=2,
+        tile_n=2,
+        reassign_empty=True,
+        rng=np.random.default_rng(0),
+    )
+    np.testing.assert_allclose(_to_numpy(updated), [[0.0], [10.0], [2.0]])
