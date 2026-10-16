@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>008-empty-reassignment-task-mix</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+<a href="../index.html#cases">Cases</a>
+</nav>
+</header>
+<main>
+<h1 id="008-stochastic-empty-center-relocation-and-bounded-task-mix">008 — stochastic empty-center relocation and bounded task mix</h1>
+<p>This iteration adds an opt-in empty-center policy to the eager Python array-API implementation and evaluates a new bounded task mix.</p>
+<h2 id="empty-center-policy">Empty-center policy</h2>
+<p><code>reassign_empty=False</code> keeps the previous center, preserving the behavior in reports 001 through 007. With <code>reassign_empty=True</code>, the tiled update:</p>
+<p>1. detects zero-count centers; 2. computes each sample&#x27;s squared distance from its assigned old center; 3. draws distinct replacement samples with probability proportional to that squared error; 4. removes each selected sample from its donor sum and count; and 5. makes it the singleton member of the empty center before averaging.</p>
+<p>Vanilla scikit-learn batch KMeans deterministically chooses the farthest samples. The array-API option uses a stochastic D² analogue, but it preserves scikit-learn&#x27;s donor accounting rather than merely overwriting an empty center after the mean update. The random generator is explicit and the default remains disabled.</p>
+<p>The CPU suite passes with 16 tests and 2 optional GPU skips. On the L4, the expanded suite passes all 20 tests, including this relocation on PyTorch CUDA and CuPy.</p>
+<h2 id="calibrated-tasks">Calibrated tasks</h2>
+<p>Data are standard Gaussian float32 matrices. Cluster and feature counts follow inverse, approximately logarithmic ranges so both requested endpoints fit in memory. Sample counts were calibrated against stock scikit-learn 1.7.2 with one k-means++ start, 12 iterations, and <code>tol=1e-8</code>.</p>
+<table><thead><tr><th>task</th><th>samples</th><th>clusters</th><th>features</th><th>calibration</th></tr></thead><tbody><tr><td>k3-d1000</td><td>950000</td><td>3</td><td>1000</td><td>11.65 s</td></tr><tr><td>k17-d180</td><td>2100000</td><td>17</td><td>180</td><td>10.40 s</td></tr><tr><td>k100-d32</td><td>1500000</td><td>100</td><td>32</td><td>12.92 s</td></tr><tr><td>k550-d6</td><td>525000</td><td>550</td><td>6</td><td>16.34 s</td></tr><tr><td>k3000-d2</td><td>135000</td><td>3000</td><td>2</td><td>29.56 s</td></tr></tbody></table>
+<p>Each task uses seeds 0 through 2. The implementation-specific k-means++ track is separate from a paired random-start track: NumPy samples dataset rows once for each task and seed, and every Lloyd implementation receives exactly those rows. A no-Lloyd random-centroid baseline reports the quality of those same rows.</p>
+<p>Contenders are eager array API with PyTorch CPU, PyTorch CUDA, and CuPy, each with relocation disabled and enabled; stock scikit-learn; scikit-learn with PRs 23 and 26; and cuML. Every worker is a fresh process with a hard 60-second wall timeout.</p>
+<p>The 285-row matrix is in progress. This page will be replaced with aggregate plots, tables, timeout counts, and quality qualifications.</p>
+</main>
+</body>
+</html>
