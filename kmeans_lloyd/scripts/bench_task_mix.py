@@ -56,14 +56,20 @@ API_IMPLS = (
 )
 OTHER_IMPLS = ("sklearn-vanilla", "sklearn-optimized", "cuml")
 IMPLS = API_IMPLS + OTHER_IMPLS
-# k-means++ has no empty-center update, so each array backend is one contender.
-INIT_IMPLS = (
-    "torch-cpu",
-    "torch-cuda",
-    "cupy",
-    "sklearn-vanilla",
-    "sklearn-optimized",
-    "cuml",
+# Initializer-only contenders. cuML's ``k-means||`` spelling aliases
+# ``scalable-k-means++`` and is therefore not repeated.
+INIT_JOBS = (
+    ("torch-cpu", "plusplus"),
+    ("torch-cuda", "plusplus"),
+    ("cupy", "plusplus"),
+    ("torch-cpu-scalable", "scalable"),
+    ("torch-cuda-scalable", "scalable"),
+    ("cupy-scalable", "scalable"),
+    ("sklearn-vanilla", "plusplus"),
+    ("sklearn-optimized", "plusplus"),
+    ("cuml-plusplus", "plusplus"),
+    ("cuml-scalable", "scalable"),
+    ("cuml-random", "random"),
 )
 
 
@@ -74,10 +80,16 @@ def _pythons():
         "torch-cpu": pixi,
         "torch-cuda": pixi,
         "cupy": pixi,
+        "torch-cpu-scalable": pixi,
+        "torch-cuda-scalable": pixi,
+        "cupy-scalable": pixi,
         "random-baseline": pixi,
         "sklearn-vanilla": HOME / "sklearn-vanilla-venv/bin/python",
         "sklearn-optimized": HOME / "sklearn-plusplus-venv/bin/python",
         "cuml": HOME / "cuml-venv/bin/python",
+        "cuml-plusplus": HOME / "cuml-venv/bin/python",
+        "cuml-scalable": HOME / "cuml-venv/bin/python",
+        "cuml-random": HOME / "cuml-venv/bin/python",
     }
 
 
@@ -186,13 +198,28 @@ def _worker_api(args, samples, centers0):
         cupy.cuda.Stream.null.synchronize()
 
     from kmeans_lloyd.instrument import measure_call
-    from kmeans_lloyd.iteration import fit_kmeans, fit_lloyd, kmeans_plusplus
+    from kmeans_lloyd.iteration import (
+        fit_kmeans,
+        fit_lloyd,
+        kmeans_plusplus,
+        scalable_kmeans_plusplus,
+    )
 
     tile_n, tile_k, update_n = _tiles(len(samples), args.k, gpu)
 
     def call():
         rng = np.random.default_rng(args.seed)
         if args.phase == "init":
+            if args.init == "scalable":
+                return scalable_kmeans_plusplus(
+                    data,
+                    args.k,
+                    rng,
+                    oversampling_factor=args.oversampling_factor,
+                    n_rounds=args.init_rounds,
+                    tile_n=min(tile_n, 8192),
+                    tile_k=tile_k,
+                )
             return kmeans_plusplus(data, args.k, rng)
         kwargs = dict(
             max_iter=args.max_iter,
@@ -313,7 +340,7 @@ def _sample_gpu(fn):
 
 
 def _worker_cuml_init(args, samples):
-    """Time cuML k-means++ with ``max_iter=0``.
+    """Time one cuML initializer with ``max_iter=0``.
 
     That fit still assigns every sample once so it can store labels. A second
     fit from the resulting centers repeats only that assignment. The reported
@@ -337,14 +364,21 @@ def _worker_cuml_init(args, samples):
     ).fit(data[:warm_rows])
     cupy.cuda.Stream.null.synchronize()
 
-    def plusplus():
+    init = {
+        "plusplus": "k-means++",
+        "scalable": "scalable-k-means++",
+        "random": "random",
+    }[args.init]
+
+    def initialize():
         model = KMeans(
             n_clusters=args.k,
-            init="k-means++",
+            init=init,
             n_init=1,
             max_iter=0,
             tol=args.tol,
             random_state=args.seed,
+            oversampling_factor=args.oversampling_factor,
             output_type="numpy",
         )
         model.fit(data)
@@ -364,7 +398,7 @@ def _worker_cuml_init(args, samples):
         return model
 
     before = _nvidia_used()
-    model, fit_seconds, peak = _sample_gpu(plusplus)
+    model, fit_seconds, peak = _sample_gpu(initialize)
     centers = np.ascontiguousarray(model.cluster_centers_, dtype=np.float32)
     assign_before = _nvidia_used()
     _, assign_seconds, assign_peak = _sample_gpu(lambda: assign(centers))
@@ -426,11 +460,11 @@ def _worker_baseline(args, samples, indices):
 
 
 def worker(argv):
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("--worker", action="store_true")
     parser.add_argument("--phase", choices=("fit", "init"), default="fit")
     parser.add_argument("--impl", required=True)
-    parser.add_argument("--init", choices=("plusplus", "random"), required=True)
+    parser.add_argument("--init", choices=("plusplus", "scalable", "random"), required=True)
     parser.add_argument("--data", required=True)
     parser.add_argument("--centers", required=True)
     parser.add_argument("--indices", required=True)
@@ -438,6 +472,8 @@ def worker(argv):
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--max-iter", type=int, default=MAX_ITER)
     parser.add_argument("--tol", type=float, default=TOL)
+    parser.add_argument("--oversampling-factor", type=float, default=2.0)
+    parser.add_argument("--init-rounds", type=int, default=8)
     args = parser.parse_args(argv)
     samples = np.load(args.data)
     centers0 = np.load(args.centers)
@@ -446,7 +482,7 @@ def worker(argv):
         payload = _worker_api(args, samples, centers0)
     elif args.impl.startswith("sklearn"):
         payload = _worker_sklearn(args, samples, centers0)
-    elif args.impl == "cuml" and args.phase == "init":
+    elif args.impl.startswith("cuml") and args.phase == "init":
         payload = _worker_cuml_init(args, samples)
     elif args.impl == "cuml":
         payload = _worker_cuml(args, samples, centers0)
@@ -471,7 +507,17 @@ def _append(path, row):
         stream.write(json.dumps(row) + "\n")
 
 
-def drive(selected_tasks, selected_impls, seeds, out, calibrate=False, phase="fit"):
+def drive(
+    selected_tasks,
+    selected_impls,
+    selected_inits,
+    seeds,
+    out,
+    calibrate=False,
+    phase="fit",
+    oversampling_factor=2.0,
+    init_rounds=8,
+):
     data_dir = HOME / "task-mix-data-v4"
     env = os.environ.copy()
     env.update(
@@ -492,13 +538,15 @@ def drive(selected_tasks, selected_impls, seeds, out, calibrate=False, phase="fi
             if calibrate:
                 jobs = [("sklearn-vanilla", "plusplus")]
             elif phase == "init":
-                jobs = [(impl, "plusplus") for impl in INIT_IMPLS]
+                jobs = list(INIT_JOBS)
                 jobs.append(("random-baseline", "random"))
             else:
                 jobs = [(impl, init) for impl in IMPLS for init in ("plusplus", "random")]
                 jobs.append(("random-baseline", "random"))
             for impl, init in jobs:
                 if selected_impls and impl not in selected_impls:
+                    continue
+                if selected_inits and init not in selected_inits:
                     continue
                 command = [
                     str(pythons[impl]),
@@ -520,6 +568,10 @@ def drive(selected_tasks, selected_impls, seeds, out, calibrate=False, phase="fi
                     str(task["k"]),
                     "--seed",
                     str(seed),
+                    "--oversampling-factor",
+                    str(oversampling_factor),
+                    "--init-rounds",
+                    str(init_rounds),
                 ]
                 print(f"start {task['name']} seed={seed} {phase} {impl} {init}", flush=True)
                 wall_started = time.perf_counter()
@@ -573,28 +625,35 @@ def drive(selected_tasks, selected_impls, seeds, out, calibrate=False, phase="fi
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("--worker", action="store_true")
     parser.add_argument("--tasks", default="")
     parser.add_argument("--impls", default="")
+    parser.add_argument("--inits", default="")
     parser.add_argument("--seeds", default="0,1,2")
     parser.add_argument("--out", default=str(HOME / "task-mix-results.jsonl"))
     parser.add_argument("--calibrate", action="store_true")
     parser.add_argument("--phase", choices=("fit", "init"), default="fit")
+    parser.add_argument("--oversampling-factor", type=float, default=2.0)
+    parser.add_argument("--init-rounds", type=int, default=8)
     args, _ = parser.parse_known_args()
     if args.worker:
         worker(sys.argv[1:])
         return
     tasks = {value for value in args.tasks.split(",") if value}
     impls = {value for value in args.impls.split(",") if value}
+    inits = {value for value in args.inits.split(",") if value}
     seeds = [int(value) for value in args.seeds.split(",") if value]
     drive(
         tasks,
         impls,
+        inits,
         seeds,
         Path(args.out),
         calibrate=args.calibrate,
         phase=args.phase,
+        oversampling_factor=args.oversampling_factor,
+        init_rounds=args.init_rounds,
     )
 
 
