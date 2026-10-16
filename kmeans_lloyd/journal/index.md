@@ -17,26 +17,26 @@ samples. Runs use float32, eager execution, TF32 disabled, three seeds, and a
 
 ## Latest results
 
-[011](011-consolidated-benchmark/index.html) consolidates initialization-only,
-Lloyd-only, and full-fit results for all contenders on one page and explains
-the scalable-initializer gap between the array API and cuML.
+[013](013-large-k-lloyd-optimization/index.html) explains why cuML Lloyd is
+faster at large `k`, tests portable and backend-specific optimizations, and
+checks whether fewer scalable-initialization rounds change its trade-off.
 
-| full fit, seconds | 3 clusters | 17 clusters | 100 clusters | 550 clusters | 3000 clusters |
-| --- | --- | --- | --- | --- | --- |
-| Array API - Torch CUDA, greedy | 0.94 s | 1.25 s | 1.20 s | 1.66 s | 2.62 s |
-| Array API - CuPy, greedy | 1.13 s | 1.77 s | 1.79 s | 2.44 s | 4.32 s |
-| scikit-learn PRs 23+26, greedy | 6.66 s | 5.04 s | 2.94 s | 3.25 s | 4.52 s |
-| cuML 26.10, greedy | 7.18 s | 2.52 s | 0.98 s | 0.99 s | 1.18 s |
-| cuML 26.10, scalable | 6.48 s | 2.41 s | 0.73 s | 0.63 s | 1.18 s |
+| 12 Lloyd iterations, seconds | 100 clusters | 550 clusters | 3000 clusters |
+| --- | --- | --- | --- |
+| Array API - Torch CUDA, current | 0.626 s | 0.793 s | 1.001 s |
+| Array API - Torch CUDA, portable tuned | 0.251 s | 0.377 s | 0.508 s |
+| Array API - CuPy, current | 0.992 s | 0.997 s | 1.228 s |
+| Array API - CuPy, portable tuned | 0.461 s | 0.484 s | 0.610 s |
+| PyTorch compiled assignment + native update | 0.091 s | 0.119 s | 0.150 s |
+| cuML, device-resident input | 0.126 s | 0.090 s | 0.086 s |
 
 Main conclusions:
 
-- Array API - Torch CUDA is the fastest full fit and Lloyd-only run at 3 and 17 clusters; cuML is fastest from 100 clusters up.
-- After 12 Lloyd iterations, every configuration ends within 0.4% of the best objective except cuML scalable at 3000 clusters, which ends 5.6% above it.
-- Farthest-point empty-center relocation makes all array-API backends match scikit-learn on the only task with empty clusters; keeping empty centers and cuML finish about 7% above the best Lloyd-only result.
-- cuML's scalable initializer looks best before Lloyd because it runs weighted Lloyd on its candidates; it ends worse at 3000 clusters because its greedy candidate reduction ignores the candidate weights.
-- Adding a weighted Lloyd recluster to the array-API scalable initializer, while keeping its weighted reduction, gave the best initializer and final objectives at 550 and 3000 clusters in an ablation.
-- The tiled Gram schedule remains the practical array-API Lloyd path; `torch.compile` can remove a tile's distance matrix with a running schedule, but that full schedule is slower than eager tiled GEMM.
+- The current scalable initializer is not competitive here: every 2-, 4-, and 8-round configuration costs more than greedy k-means++, and Lloyd erases its initial-quality gains.
+- cuVS fuses distance evaluation with top-1 reduction and updates centers with keyed reductions. The array-API code materializes score tiles and builds about 400 one-hot membership tiles per iteration.
+- Larger one-hot tiles plus argmin-and-gather make 12 Lloyd iterations 2.0x to 2.5x faster on PyTorch and 2.0x to 2.2x faster on CuPy, with unchanged final inertia.
+- A compiled PyTorch assignment plus native `index_add_` is faster than the cuML times in 011. Device-resident cuML remains faster at 550 and 3000 clusters.
+- The next implementation step is the portable tile change, followed by an optional native centroid-update hook and cached compiled assignment.
 
 ## Journal
 
@@ -52,3 +52,4 @@ Main conclusions:
 - [010 — scalable initialization](010-scalable-initialization/index.html): farthest relocation, cuML initializer options, and array-API k-means||.
 - [011 — consolidated benchmark](011-consolidated-benchmark/index.html): initialization, Lloyd-only, and full-fit results on one page, plus the scalable-init ablation.
 - [012 — source link audit](012-source-link-audit/index.html): source links pinned to the commits that each report measured.
+- [013 — large-k Lloyd optimization](013-large-k-lloyd-optimization/index.html): scalable-init sensitivity, cuML kernel analysis, optimization probes, and next steps.

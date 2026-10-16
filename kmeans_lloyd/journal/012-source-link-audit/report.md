@@ -52,4 +52,5 @@ name does not match its exact range, or when a descriptive link does not
 start at a definition. It checks the 36 current links with no problems.
 
 Previous: [consolidated benchmark](../011-consolidated-benchmark/report.md).
+Next: [large-k Lloyd optimization](../013-large-k-lloyd-optimization/report.md).
 Index: [journal](../index.md).
