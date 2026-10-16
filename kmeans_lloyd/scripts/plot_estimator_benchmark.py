@@ -59,7 +59,10 @@ def _color(impl):
 
 
 def load(path):
-    return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+    text = Path(path).read_text()
+    if Path(path).suffix == ".json":
+        return json.loads(text)
+    return [json.loads(line) for line in text.splitlines() if line.strip()]
 
 
 def stats(rows, impl, init, task, field):
@@ -111,14 +114,15 @@ def panel(ax, rows, series, field, title, ylabel, scale=None):
                 )
         plotted += means
         generic = impl.endswith("-generic")
+        scalable = init == "scalable"
         ax.bar(
             positions,
             means,
             yerr=errors,
             width=width * 0.94,
             color=_color(impl),
-            alpha=0.45 if generic else 1.0,
-            hatch="///" if generic else "",
+            alpha=0.45 if generic else 0.7 if scalable else 1.0,
+            hatch="///" if generic else "..." if scalable else "",
             edgecolor="white",
             linewidth=0,
             label=LABEL[impl] if not impl.startswith("cuml") or init != "scalable" else LABEL["cuml-scalable"],
