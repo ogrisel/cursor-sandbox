@@ -42,7 +42,7 @@
 <h2 id="next-implementation-steps">Next implementation steps</h2>
 <p>1. Keep the new estimator&#x27;s default path pure array API. 2. Add a private optional centroid-update callable to <code>lloyd_step</code> and    <code>fit_lloyd</code>; keep it out of the sklearn-compatible constructor. Lock down    the contract <code>(X, labels, old_centers) -&gt; updated_centers</code>: empty clusters    keep their old center unless the caller requested farthest-point    relocation, in which case the native path must still invoke the shared    relocation bookkeeping. 3. Implement a CuPy adapter with <code>cupyx.scatter_add</code> plus <code>bincount</code> for    float32 and strict label validation. Add agreement, empty-center, and    namespace tests. 4. Implement the matching PyTorch adapter with <code>index_add_</code>, under the same    hook and tests. 5. Benchmark full fits before considering the fused raw accumulator or a    CuPy top-1 assignment kernel.</p>
 <p>The result is a stable portable estimator now, with a narrow extension point for backend acceleration later. The CuPy measurements show that this boundary can recover essentially all of the update gap without contaminating the portable implementation with backend branches.</p>
-<p>Previous: <a href="../013-large-k-lloyd-optimization/index.html">large-k Lloyd optimization</a>. Index: <a href="../index.html">journal</a>.</p>
+<p>Previous: <a href="../013-large-k-lloyd-optimization/index.html">large-k Lloyd optimization</a>. Next: <a href="../015-native-backend-estimator-benchmark/index.html">native backend updates in the estimator</a>. Index: <a href="../index.html">journal</a>.</p>
 </main>
 </body>
 </html>
