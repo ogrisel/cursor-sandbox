@@ -42,14 +42,14 @@ K-means++ plus Lloyd:
 
 | implementation | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
 | --- | --- | --- | --- | --- | --- |
-| API CPU, keep | 17.47 s | 11.35 s | 25.85 s | 55.56 s | timeout |
-| API CPU, reassign | 17.59 s | 11.07 s | 28.85 s | 55.97 s | timeout |
-| sklearn 1.7 | 11.54 s | 10.53 s | 12.89 s | 17.30 s | 27.26 s |
-| sklearn PRs | 6.66 s | 5.04 s | 2.94 s | 3.25 s | 4.52 s |
-| API CUDA, keep | 1.05 s | 1.32 s | 1.18 s | 1.64 s | 2.61 s |
-| API CUDA, reassign | 0.91 s | 1.25 s | 1.19 s | 1.64 s | 2.58 s |
-| API CuPy, keep | 1.62 s | 2.10 s | 1.84 s | 2.41 s | 4.28 s |
-| API CuPy, reassign | 1.04 s | 1.79 s | 1.78 s | 2.50 s | 4.25 s |
+| Array API - Torch CPU, keep | 17.47 s | 11.35 s | 25.85 s | 55.56 s | timeout |
+| Array API - Torch CPU, reassign | 17.59 s | 11.07 s | 28.85 s | 55.97 s | timeout |
+| scikit-learn 1.7.2 | 11.54 s | 10.53 s | 12.89 s | 17.30 s | 27.26 s |
+| scikit-learn PRs 23+26 | 6.66 s | 5.04 s | 2.94 s | 3.25 s | 4.52 s |
+| Array API - Torch CUDA, keep | 1.05 s | 1.32 s | 1.18 s | 1.64 s | 2.61 s |
+| Array API - Torch CUDA, reassign | 0.91 s | 1.25 s | 1.19 s | 1.64 s | 2.58 s |
+| Array API - CuPy, keep | 1.62 s | 2.10 s | 1.84 s | 2.41 s | 4.28 s |
+| Array API - CuPy, reassign | 1.04 s | 1.79 s | 1.78 s | 2.50 s | 4.25 s |
 | cuML | 7.18 s | 2.52 s | 0.98 s | 0.99 s | 1.18 s |
 
 Only array-API CPU k-means++ at 3000 clusters times out: both policies for all three seeds, six timeouts. The shared-random-start CPU fits complete in 52.64 ± 0.04 s when empty centers are kept and 53.16 ± 0.24 s when they are reassigned.
@@ -70,14 +70,14 @@ The quantized 3000-cluster task does exercise relocation from random starts:
 
 | implementation | seconds | empty events | reassignments | mean inertia |
 | --- | --- | --- | --- | --- |
-| API CPU, keep | 52.64 ± 0.04 | 50 to 55 | 0 | 0.026541 |
-| API CPU, reassign | 53.16 ± 0.24 | 46 to 55 | 46 to 55 | 0.025320 |
-| API CUDA, keep | 1.176 ± 0.003 | 49 to 55 | 0 | 0.026543 |
-| API CUDA, reassign | 1.230 ± 0.005 | 46 to 55 | 46 to 55 | 0.025321 |
-| API CuPy, keep | 1.329 ± 0.010 | 49 to 55 | 0 | 0.026543 |
-| API CuPy, reassign | 1.429 ± 0.118 | 46 to 55 | 46 to 55 | 0.025321 |
-| sklearn 1.7 | 1.538 ± 0.017 | relocates farthest | relocates farthest | 0.024833 |
-| sklearn PRs | 1.551 ± 0.010 | relocates farthest | relocates farthest | 0.024834 |
+| Array API - Torch CPU, keep | 52.64 ± 0.04 | 50 to 55 | 0 | 0.026541 |
+| Array API - Torch CPU, reassign | 53.16 ± 0.24 | 46 to 55 | 46 to 55 | 0.025320 |
+| Array API - Torch CUDA, keep | 1.176 ± 0.003 | 49 to 55 | 0 | 0.026543 |
+| Array API - Torch CUDA, reassign | 1.230 ± 0.005 | 46 to 55 | 46 to 55 | 0.025321 |
+| Array API - CuPy, keep | 1.329 ± 0.010 | 49 to 55 | 0 | 0.026543 |
+| Array API - CuPy, reassign | 1.429 ± 0.118 | 46 to 55 | 46 to 55 | 0.025321 |
+| scikit-learn 1.7.2 | 1.538 ± 0.017 | relocates farthest | relocates farthest | 0.024833 |
+| scikit-learn PRs 23+26 | 1.551 ± 0.010 | relocates farthest | relocates farthest | 0.024834 |
 | cuML | 0.324 ± 0.023 | not exposed | not exposed | 0.026550 |
 | random baseline | less than 0.001 | none | none | 0.053957 |
 

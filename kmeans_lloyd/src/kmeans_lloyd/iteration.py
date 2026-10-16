@@ -303,11 +303,10 @@ def update_centroids_tiled(
     are accumulated.
 
     By default, an empty cluster keeps its previous centroid. With
-    ``reassign_empty=True``, each empty center takes a distinct sample drawn
-    with probability proportional to its squared distance from its assigned
-    center. The selected sample is removed from its donor sum and count,
-    matching scikit-learn's Lloyd relocation bookkeeping while replacing its
-    deterministic farthest-point choice by a stochastic D² choice.
+    ``reassign_empty=True``, the samples farthest from their assigned centers
+    are moved to the empty centers. The selected samples are removed from
+    their donor sums and counts. This is the unweighted dense relocation
+    policy used by scikit-learn's Lloyd implementation.
     """
     xp = array_namespace(X, labels, centroids)
     n_samples = int(X.shape[0])
@@ -315,8 +314,6 @@ def update_centroids_tiled(
     n_features = int(X.shape[1])
     if tile_n is None:
         tile_n = n_samples
-    if reassign_empty and rng is None:
-        raise ValueError("rng is required when reassign_empty=True")
     updated = xp.empty_like(centroids)
     all_counts = xp.empty(n_clusters, dtype=X.dtype, device=_device(X))
     for k0 in range(0, n_clusters, tile_k):
@@ -344,14 +341,13 @@ def update_centroids_tiled(
     if stats is not None:
         stats["empty_events"] = stats.get("empty_events", 0) + n_empty
     if reassign_empty and n_empty:
-        updated, n_reassigned = _random_reassign_empty(
+        updated, n_reassigned = _reassign_empty_farthest(
             xp,
             X,
             labels,
             centroids,
             updated,
             all_counts,
-            rng,
             tile_n=min(int(tile_n), 8192),
         )
         if stats is not None:
@@ -359,23 +355,18 @@ def update_centroids_tiled(
     return updated
 
 
-def _random_reassign_empty(xp, X, labels, old_centers, updated, counts, rng, tile_n):
-    """Relocate empty centers with distance-weighted samples, without replacement."""
+def _reassign_empty_farthest(xp, X, labels, old_centers, updated, counts, tile_n):
+    """Relocate empty centers with scikit-learn's farthest-point policy."""
     empty_indices = xp.nonzero(counts == 0)[0]
     n_empty = int(empty_indices.shape[0])
     if n_empty == 0:
         return updated, 0
-    weights = _assigned_squared_distances(xp, X, labels, old_centers, tile_n)
-    # A singleton donor cannot give away its only sample. Such a sample also
-    # has zero distance in ordinary Lloyd updates, but mask it explicitly.
-    donor_counts = xp.take(counts, labels, axis=0)
-    weights = xp.where(donor_counts > 1, weights, xp.zeros_like(weights))
-    n_reassigned = 0
+    distances = _assigned_squared_distances(xp, X, labels, old_centers, tile_n)
+    if _item(xp.max(distances)) == 0:
+        return updated, 0
+    farthest = xp.argsort(distances, descending=True)[:n_empty]
     for index in range(n_empty):
-        total = _item(xp.sum(weights))
-        if not total > 0:
-            break
-        picked = int(_weighted_draw(xp, weights, rng, 1)[0])
+        picked = int(farthest[index])
         donor = int(labels[picked])
         donor_count = counts[donor]
         donor_sum = updated[donor] * donor_count
@@ -384,12 +375,7 @@ def _random_reassign_empty(xp, X, labels, old_centers, updated, counts, rng, til
         empty = int(empty_indices[index])
         updated[empty] = X[picked]
         counts[empty] = xp.asarray(1, dtype=counts.dtype, device=_device(counts))
-        n_reassigned += 1
-        available = xp.arange(int(X.shape[0]), device=_device(X)) != picked
-        if _item(counts[donor]) <= 1:
-            available = available & (labels != donor)
-        weights = xp.where(available, weights, xp.zeros_like(weights))
-    return updated, n_reassigned
+    return updated, n_empty
 
 
 def _assigned_squared_distances(xp, X, labels, centers, tile_n):
@@ -533,6 +519,175 @@ def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None, distance=None):
     return centers, indices
 
 
+def scalable_kmeans_plusplus(
+    X,
+    n_clusters,
+    rng,
+    oversampling_factor=2.0,
+    n_rounds=8,
+    n_local_trials=None,
+    tile_n=8192,
+    tile_k=256,
+):
+    """Initialize centers with an array-API k-means|| strategy.
+
+    One uniform center is followed by ``n_rounds`` parallel D² sampling
+    rounds. Each round draws ``ceil(oversampling_factor * n_clusters)``
+    candidate rows. The candidate pool is weighted by the number of input
+    rows nearest to each candidate, then reduced to ``n_clusters`` centers
+    with weighted greedy k-means++.
+
+    The defaults follow cuML's documented scalable initializer budget of
+    ``oversampling_factor * n_clusters * 8`` sampled candidates. Sampling a
+    fixed-size D² batch per round is close to k-means||'s independent
+    Bernoulli sampling while bounding memory deterministically.
+
+    Returns ``(centers, indices)`` where every center is a row of ``X``.
+    """
+    xp = array_namespace(X)
+    n_samples = int(X.shape[0])
+    n_clusters = int(n_clusters)
+    n_rounds = int(n_rounds)
+    oversampling_factor = float(oversampling_factor)
+    if n_clusters < 1 or n_clusters > n_samples:
+        raise ValueError(f"n_clusters must be in 1..n_samples, got {n_clusters} and {n_samples}")
+    if oversampling_factor <= 0:
+        raise ValueError("oversampling_factor must be positive")
+    if n_rounds < 1:
+        raise ValueError("n_rounds must be at least 1")
+
+    candidate_indices, candidates, weights = _scalable_candidates(
+        xp, X, n_clusters, rng, oversampling_factor, n_rounds, tile_n, tile_k
+    )
+    selected = _weighted_kmeans_plusplus(
+        xp,
+        candidates,
+        weights,
+        rng,
+        n_clusters,
+        n_local_trials=n_local_trials,
+    )
+    indices = xp.take(candidate_indices, selected, axis=0)
+    return xp.take(X, indices, axis=0), indices
+
+
+def _scalable_candidates(xp, X, n_clusters, rng, oversampling_factor, n_rounds, tile_n, tile_k):
+    """Return k-means|| candidate indices, rows, and nearest-sample counts."""
+    import math
+
+    n_samples = int(X.shape[0])
+    first = int(rng.integers(n_samples))
+    candidate_indices = [xp.asarray([first], dtype=xp.int64, device=_device(X))]
+    x_norm = _row_squared_norm(xp, X)
+    closest = _minimum_squared_distances(
+        xp,
+        X,
+        x_norm,
+        X[first : first + 1],
+        tile_n=tile_n,
+        tile_k=tile_k,
+    )
+    draws_per_round = max(1, int(math.ceil(oversampling_factor * n_clusters)))
+    for _ in range(n_rounds):
+        if not _item(xp.sum(closest)) > 0:
+            break
+        picks = xp.unique_values(_weighted_draw(xp, closest, rng, draws_per_round))
+        candidate_indices.append(picks)
+        new_centers = xp.take(X, picks, axis=0)
+        new_distances = _minimum_squared_distances(
+            xp,
+            X,
+            x_norm,
+            new_centers,
+            tile_n=tile_n,
+            tile_k=tile_k,
+        )
+        closest = xp.minimum(closest, new_distances)
+
+    # Guarantee that the weighted reduction has at least k candidate rows.
+    uniform = xp.asarray(
+        rng.choice(n_samples, size=n_clusters, replace=False),
+        dtype=xp.int64,
+        device=_device(X),
+    )
+    candidate_indices.append(uniform)
+    candidate_indices = xp.unique_values(xp.concat(candidate_indices))
+    candidates = xp.take(X, candidate_indices, axis=0)
+
+    labels = assign_gemm_tiled(
+        X,
+        candidates,
+        tile_n=min(int(tile_n), n_samples),
+        tile_k=min(int(tile_k), int(candidates.shape[0])),
+    )
+    weights = _label_counts(xp, labels, int(candidates.shape[0]), X.dtype)
+    return candidate_indices, candidates, weights
+
+
+def _minimum_squared_distances(xp, X, x_norm, candidates, tile_n, tile_k):
+    """Distance to the nearest candidate with bounded sample/candidate tiles."""
+    n_samples = int(X.shape[0])
+    n_candidates = int(candidates.shape[0])
+    closest = xp.empty((n_samples,), dtype=X.dtype, device=_device(X))
+    for n0 in range(0, n_samples, tile_n):
+        n1 = min(n0 + tile_n, n_samples)
+        best = xp.full((n1 - n0,), xp.inf, dtype=X.dtype, device=_device(X))
+        for k0 in range(0, n_candidates, tile_k):
+            k1 = min(k0 + tile_k, n_candidates)
+            distances = _distances_to_candidates(
+                xp,
+                X[n0:n1],
+                x_norm[n0:n1],
+                candidates[k0:k1],
+            )
+            best = xp.minimum(best, xp.min(distances, axis=1))
+        closest[n0:n1] = best
+    return closest
+
+
+def _label_counts(xp, labels, n_labels, dtype):
+    """Count sorted integer labels without a backend-specific bincount."""
+    observed = xp.unique_counts(labels)
+    ids = xp.arange(n_labels, dtype=labels.dtype, device=_device(labels))
+    positions = xp.searchsorted(observed.values, ids)
+    last = xp.asarray(int(observed.values.shape[0]) - 1, dtype=positions.dtype, device=_device(labels))
+    safe = xp.minimum(positions, last)
+    found = xp.take(observed.values, safe, axis=0) == ids
+    counts = xp.take(observed.counts, safe, axis=0)
+    return xp.astype(xp.where(found, counts, xp.zeros_like(counts)), dtype)
+
+
+def _weighted_kmeans_plusplus(
+    xp,
+    candidates,
+    weights,
+    rng,
+    n_clusters,
+    n_local_trials=None,
+):
+    """Reduce weighted k-means|| candidates with greedy k-means++."""
+    import math
+
+    if n_local_trials is None:
+        n_local_trials = 2 + int(math.log(n_clusters))
+    n_local_trials = max(1, min(int(n_local_trials), int(candidates.shape[0])))
+    chosen = [int(_weighted_draw(xp, weights, rng, 1)[0])]
+    norms = _row_squared_norm(xp, candidates)
+    first = candidates[chosen[0]]
+    closest = norms + xp.sum(first * first) - 2 * xp.matmul(candidates, first)
+    closest = xp.maximum(closest, xp.zeros_like(closest))
+    for _ in range(1, n_clusters):
+        picks = _weighted_draw(xp, weights * closest, rng, n_local_trials)
+        trial_centers = xp.take(candidates, picks, axis=0)
+        distances = _distances_to_candidates(xp, candidates, norms, trial_centers)
+        updated = xp.minimum(closest[:, None], distances)
+        potentials = xp.sum(updated * weights[:, None], axis=0)
+        best = int(xp.argmin(potentials))
+        closest = updated[:, best]
+        chosen.append(int(picks[best]))
+    return xp.asarray(chosen, dtype=xp.int64, device=_device(candidates))
+
+
 def inertia(X, labels, centers, tile_n=8192):
     """Sum of squared distances from each sample to its assigned center.
 
@@ -613,8 +768,8 @@ def fit_lloyd(
     centers can be rows selected once from ``X`` and shared across backends,
     which isolates assignment, update, and convergence behavior from
     k-means++ sampling differences. ``reassign_empty=True`` enables the
-    distance-weighted random relocation described by
-    :func:`update_centroids_tiled` and requires ``rng``.
+    deterministic farthest-point relocation described by
+    :func:`update_centroids_tiled`.
     """
     xp = array_namespace(X, initial_centers)
     if int(max_iter) < 1:

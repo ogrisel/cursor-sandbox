@@ -39,7 +39,7 @@ Mean squared distance to the assigned center. For well separated blobs this land
 
 Init, mean squared distance:
 
-| case | API CPU | sklearn 1.7 | sklearn PRs | API CUDA | cuML |
+| case | Array API - Torch CPU | scikit-learn 1.7.2 | scikit-learn PRs 23+26 | Array API - Torch CUDA | cuML |
 | --- | --- | --- | --- | --- | --- |
 | tight | 9.86 | 9.85 | 9.85 | 9.86 | 9.90 |
 | mild | 59.63 | 64.18 | 64.18 | 59.63 | 55.41 |
@@ -56,7 +56,7 @@ Init, mean squared distance:
 
 Fit, mean squared distance and iterations actually run:
 
-| case | API CPU | sklearn 1.7 | sklearn PRs | API CUDA | cuML |
+| case | Array API - Torch CPU | scikit-learn 1.7.2 | scikit-learn PRs 23+26 | Array API - Torch CUDA | cuML |
 | --- | --- | --- | --- | --- | --- |
 | tight | 5.13, 2 it | 5.13, 2 it | 5.13, 2 it | 5.13, 2 it | 5.13, 2 it |
 | mild | 31.89, 2 it | 31.89, 2 it | 31.89, 2 it | 31.89, 2 it | 31.89, 2 it |
@@ -100,7 +100,7 @@ Calls below a few tens of milliseconds are real second-call times, but cuML's on
 
 k-means++, seconds and peak increment:
 
-| case | API CPU | sklearn 1.7 | sklearn PRs | API CUDA | cuML |
+| case | Array API - Torch CPU | scikit-learn 1.7.2 | scikit-learn PRs 23+26 | Array API - Torch CUDA | cuML |
 | --- | --- | --- | --- | --- | --- |
 | k64 | 0.078 s, 14.1 MiB | 0.109 s, 4.5 MiB | 0.015 s, 2.3 MiB | 0.028 s, 2.8 MiB | 0.041 s, 2.0 MiB |
 | k128 | 0.158 s, 14.1 MiB | 0.221 s, 4.5 MiB | 0.028 s, 2.5 MiB | 0.055 s, 2.8 MiB | 0.039 s, 6.0 MiB |
@@ -112,7 +112,7 @@ k-means++, seconds and peak increment:
 
 One Lloyd iteration from the first `k` rows:
 
-| case | API CPU | sklearn 1.7 | sklearn PRs | API CUDA | cuML |
+| case | Array API - Torch CPU | scikit-learn 1.7.2 | scikit-learn PRs 23+26 | Array API - Torch CUDA | cuML |
 | --- | --- | --- | --- | --- | --- |
 | k128 | 0.017 s, 27.3 MiB | 0.010 s, 4.8 MiB | 0.010 s, 4.8 MiB | 0.002 s, 19.9 MiB | 0.040 s, 2.0 MiB |
 | wide | 0.016 s, 11.3 MiB | 0.038 s, 77.8 MiB | 0.037 s, 78.0 MiB | 0.002 s, 5.6 MiB | 0.040 s, 2.0 MiB |
@@ -122,7 +122,7 @@ One Lloyd iteration from the first `k` rows:
 
 Full fit:
 
-| case | API CPU | sklearn 1.7 | sklearn PRs | API CUDA | cuML |
+| case | Array API - Torch CPU | scikit-learn 1.7.2 | scikit-learn PRs 23+26 | Array API - Torch CUDA | cuML |
 | --- | --- | --- | --- | --- | --- |
 | k128 | 0.386 s, 41.3 MiB | 0.246 s, 7.9 MiB | 0.048 s, 5.3 MiB | 0.069 s, 20.6 MiB | 0.040 s, 6.0 MiB |
 | wide | 0.135 s, 49.9 MiB | 0.335 s, 78.0 MiB | 0.077 s, 78.0 MiB | 0.013 s, 59.5 MiB | 0.040 s, 44.0 MiB |

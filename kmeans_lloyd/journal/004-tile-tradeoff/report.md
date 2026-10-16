@@ -12,12 +12,12 @@ The core functions stay in Python array-API syntax and run without `torch.compil
 
 | piece | source |
 | --- | --- |
-| centroid-norm scores, then argmin | [`gemm_scores_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L240-L251) |
-| Gram assignment over sample and centroid tiles | [`assign_gemm_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L253-L286) |
-| mean update with a `(n, tile_k)` one-hot | [`update_centroids_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L288-L309) |
-| one Lloyd step using those two tiles | [`lloyd_step`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L311-L329) |
-| running tile that also merges the best distance | [`running_tile_update`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L331-L342) |
-| k-means++ | [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L365-L406) |
+| centroid-norm scores, then argmin | [`gemm_scores_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/16cfa4dbd1401393be0e45c31648ca81204d11ed/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L240-L250) |
+| Gram assignment over sample and centroid tiles | [`assign_gemm_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/16cfa4dbd1401393be0e45c31648ca81204d11ed/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L253-L285) |
+| mean update with a `(n, tile_k)` one-hot | [`update_centroids_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/16cfa4dbd1401393be0e45c31648ca81204d11ed/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L288-L308) |
+| one Lloyd step using those two tiles | [`lloyd_step`](https://github.com/ogrisel/cursor-sandbox/blob/16cfa4dbd1401393be0e45c31648ca81204d11ed/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L311-L328) |
+| running tile that also merges the best distance | [`running_tile_update`](https://github.com/ogrisel/cursor-sandbox/blob/16cfa4dbd1401393be0e45c31648ca81204d11ed/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L331-L341) |
+| k-means++ | [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/16cfa4dbd1401393be0e45c31648ca81204d11ed/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L365-L402) |
 
 `||x||²` is omitted inside a tile because it does not change the argmin. That is the same reduction the Cython kernel uses. Centroid norms are computed once per centroid tile, then reused for every sample tile.
 

@@ -18,13 +18,13 @@ ORDER = (
     "random-baseline",
 )
 LABEL = {
-    "torch-cpu": "API CPU",
-    "sklearn-vanilla": "sklearn 1.7",
-    "sklearn-optimized": "sklearn PRs",
-    "torch-cuda": "API CUDA",
-    "cupy": "API CuPy",
-    "cuml": "cuML",
-    "random-baseline": "random baseline",
+    "torch-cpu": "Array API - Torch CPU",
+    "sklearn-vanilla": "scikit-learn 1.7.2",
+    "sklearn-optimized": "scikit-learn PRs 23+26",
+    "torch-cuda": "Array API - Torch CUDA",
+    "cupy": "Array API - CuPy",
+    "cuml": "cuML 26.10",
+    "random-baseline": "shared random rows",
 }
 COLOR = {
     name: color

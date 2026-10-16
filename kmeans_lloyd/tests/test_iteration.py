@@ -20,6 +20,7 @@ from kmeans_lloyd.iteration import (
     kmeans_plusplus,
     lloyd_iteration,
     lloyd_step,
+    scalable_kmeans_plusplus,
     update_centroids,
     update_centroids_tiled,
 )
@@ -140,9 +141,9 @@ def test_tiled_update_matches_one_hot_update():
     np.testing.assert_allclose(tiled[3], c_np[3])
 
 
-def test_tiled_update_randomly_reassigns_empty_and_adjusts_donor():
-    x_np = np.array([[0.0], [2.0], [10.0]], dtype=np.float64)
-    labels_np = np.array([0, 0, 1], dtype=np.int64)
+def test_tiled_update_reassigns_farthest_point_and_adjusts_donor():
+    x_np = np.array([[0.0], [2.0], [4.0], [10.0]], dtype=np.float64)
+    labels_np = np.array([0, 0, 0, 1], dtype=np.int64)
     c_np = np.array([[0.0], [10.0], [100.0]], dtype=np.float64)
     x = _as_numpy_namespace(x_np)
     labels = array_namespace(x).asarray(labels_np)
@@ -155,22 +156,25 @@ def test_tiled_update_randomly_reassigns_empty_and_adjusts_donor():
         tile_k=2,
         tile_n=2,
         reassign_empty=True,
-        rng=np.random.default_rng(0),
         stats=stats,
     )
-    # X[1] is the only row with nonzero assigned distance. As in
-    # scikit-learn's relocation bookkeeping, it leaves donor 0 and becomes
-    # the singleton center for previously empty cluster 2.
-    np.testing.assert_allclose(_to_numpy(updated), [[0.0], [10.0], [2.0]])
+    # X[2] is farthest from its assigned old center. As in scikit-learn's
+    # relocation bookkeeping, it leaves donor 0 and becomes the singleton
+    # center for previously empty cluster 2.
+    np.testing.assert_allclose(_to_numpy(updated), [[1.0], [10.0], [4.0]])
     assert stats == {"empty_events": 1, "reassignments": 1}
 
 
-def test_tiled_update_reassignment_requires_rng():
-    x_np, c_np = _blobs(n_per=3, d=4, k=3)
+def test_tiled_update_skips_pointless_zero_distance_reassignment():
+    x_np = np.array([[0.0], [0.0]], dtype=np.float64)
+    labels_np = np.array([0, 0], dtype=np.int64)
+    c_np = np.array([[0.0], [1.0]], dtype=np.float64)
     x = _as_numpy_namespace(x_np)
-    labels = array_namespace(x).zeros(x.shape[0], dtype=array_namespace(x).int64)
-    with pytest.raises(ValueError, match="rng"):
-        update_centroids_tiled(x, labels, _as_numpy_namespace(c_np), tile_k=2, reassign_empty=True)
+    labels = array_namespace(x).asarray(labels_np)
+    updated = update_centroids_tiled(
+        x, labels, _as_numpy_namespace(c_np), tile_k=2, reassign_empty=True
+    )
+    np.testing.assert_allclose(_to_numpy(updated), [[0.0], [1.0]])
 
 
 def test_lloyd_step_matches_naive_iteration():
@@ -210,6 +214,51 @@ def test_kmeans_plusplus_is_deterministic_for_a_generator():
     second = _to_numpy(kmeans_plusplus(x, 3, np.random.default_rng(4))[1])
     np.testing.assert_array_equal(first, second)
     assert len(set(first.tolist())) == 3
+
+
+def test_scalable_kmeans_plusplus_is_deterministic_and_selects_rows():
+    x_np, _ = _blobs(n_per=12, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    first_centers, first_indices = scalable_kmeans_plusplus(
+        x,
+        3,
+        np.random.default_rng(4),
+        oversampling_factor=2,
+        n_rounds=3,
+        tile_n=7,
+        tile_k=4,
+    )
+    second_centers, second_indices = scalable_kmeans_plusplus(
+        x,
+        3,
+        np.random.default_rng(4),
+        oversampling_factor=2,
+        n_rounds=3,
+        tile_n=7,
+        tile_k=4,
+    )
+    np.testing.assert_array_equal(_to_numpy(first_indices), _to_numpy(second_indices))
+    np.testing.assert_allclose(_to_numpy(first_centers), x_np[_to_numpy(first_indices)])
+    np.testing.assert_allclose(_to_numpy(second_centers), _to_numpy(first_centers))
+    assert len(set(_to_numpy(first_indices).tolist())) == 3
+
+
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"oversampling_factor": 0}, "oversampling_factor"),
+        ({"n_rounds": 0}, "n_rounds"),
+    ],
+)
+def test_scalable_kmeans_plusplus_validates_options(kwargs, message):
+    x_np, _ = _blobs(n_per=3, d=4, k=3)
+    with pytest.raises(ValueError, match=message):
+        scalable_kmeans_plusplus(
+            _as_numpy_namespace(x_np),
+            3,
+            np.random.default_rng(0),
+            **kwargs,
+        )
 
 
 def test_mean_feature_variance_matches_library_var():
@@ -336,12 +385,21 @@ def test_gpu_assignment_matches_numpy(backend):
     centers, plus_index = kmeans_plusplus(x, c_np.shape[0], np.random.default_rng(2))
     assert _to_numpy(centers).shape == c_np.shape
     assert _to_numpy(plus_index).shape == (c_np.shape[0],)
+    scalable, scalable_index = scalable_kmeans_plusplus(
+        x,
+        c_np.shape[0],
+        np.random.default_rng(2),
+        n_rounds=2,
+        tile_n=8,
+        tile_k=2,
+    )
+    np.testing.assert_allclose(_to_numpy(scalable), x_np[_to_numpy(scalable_index)])
     updated, _ = lloyd_iteration(x, c, assign="gemm")
     assert _to_numpy(updated).shape == c_np.shape
 
 
 @pytest.mark.parametrize("backend", [name for name, _ in _gpu_pairs()] or [pytest.param("none", marks=pytest.mark.skip)])
-def test_gpu_randomly_reassigns_empty_centroid(backend):
+def test_gpu_reassigns_farthest_point_to_empty_centroid(backend):
     modules = dict(_gpu_pairs())
     module = modules[backend]
     x_np = np.array([[0.0], [2.0], [10.0]], dtype=np.float32)
@@ -362,6 +420,5 @@ def test_gpu_randomly_reassigns_empty_centroid(backend):
         tile_k=2,
         tile_n=2,
         reassign_empty=True,
-        rng=np.random.default_rng(0),
     )
     np.testing.assert_allclose(_to_numpy(updated), [[0.0], [10.0], [2.0]])
