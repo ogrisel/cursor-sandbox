@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>012-source-link-audit</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="012-source-link-audit">012 — source link audit</h1>
+<p>After <a href="../011-consolidated-benchmark/index.html">011</a> was published, every GitHub source link on the rendered PR site was checked against the code it points to. Reports 001 to 009 linked line ranges on the <code>cursor/kmeans-lloyd-fusion-8896</code> branch. A branch moves, so its line numbers drift as <code>iteration.py</code> grows.</p>
+<h2 id="live-site-before-the-fix">Live site before the fix</h2>
+<p>The audit crawled all 12 pages of the published site, found 36 links to this repository&#x27;s source files, and read the line each anchor opens at. The 011 link names a whole file and has no anchor.</p>
+<table><thead><tr><th>report</th><th>anchored links</th><th>first line is the named definition</th><th>misaligned</th></tr></thead><tbody><tr><td>001 fusion probe</td><td>15</td><td>15</td><td>0</td></tr><tr><td>003 resized shapes</td><td>7</td><td>7</td><td>0</td></tr><tr><td>004 tile trade-offs</td><td>6</td><td>3</td><td>3</td></tr><tr><td>005 full k-means</td><td>6</td><td>1</td><td>5</td></tr><tr><td>009 k-means++ only</td><td>1</td><td>1</td><td>0</td></tr></tbody></table>
+<p>The eight misaligned links opened inside other functions. For example, 004&#x27;s <code>lloyd_step</code> link opened at line 311, a docstring inside <code>update_centroids_tiled</code>, while <code>lloyd_step</code> now spans lines 406 to 454. 005&#x27;s <code>fit_kmeans</code> link opened at a closing parenthesis. The aligned links were correct only because the code above them had not moved yet. Several of them already ended at the wrong line: <code>update_centroids_tiled</code> grew from 21 to 72 lines after empty-center relocation.</p>
+<h2 id="fix">Fix</h2>
+<p>Each link now names the full SHA of the commit that published its report, so it shows the code that the report measured:</p>
+<table><thead><tr><th>report</th><th>pinned commit</th></tr></thead><tbody><tr><td>001 and 003</td><td><code>c476847</code></td></tr><tr><td>004</td><td><code>16cfa4d</code></td></tr><tr><td>005</td><td><code>1d641b2</code></td></tr><tr><td>009</td><td><code>9f1ab99</code></td></tr><tr><td>011</td><td><code>82e5aaa</code></td></tr></tbody></table>
+<p>Line ranges come from Python&#x27;s <code>ast</code> at that commit, so each covers exactly one function from its first line to its last. The old ranges for 004 and 005 also included one trailing blank line; the exact ranges drop it.</p>
+<p><code>tools/check_source_links.py</code> now runs in the report CI with full git history. It fails when a line-anchored link names a branch instead of a commit, when the file is missing at that commit, when a backticked function name does not match its exact range, or when a descriptive link does not start at a definition. It checks the 36 current links with no problems.</p>
+<p>Previous: <a href="../011-consolidated-benchmark/index.html">consolidated benchmark</a>. Next: <a href="../013-large-k-lloyd-optimization/index.html">large-k Lloyd optimization</a>. Index: <a href="../index.html">journal</a>.</p>
+</main>
+</body>
+</html>

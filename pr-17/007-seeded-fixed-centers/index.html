@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>007-seeded-fixed-centers</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="007-repeated-seeds-and-shared-fixed-centers">007 — repeated seeds and shared fixed centers</h1>
+<p>All 17 cases from <a href="../006-breadth/index.html">006</a> were repeated with seeds 0 through 4: 1,700 successful worker runs and no failures. Values and error bars are the mean plus or minus one sample standard deviation over five runs.</p>
+<p>This iteration separates two questions:</p>
+<p>1. How much do k-means++ basin selection, fit quality, duration, and memory vary with the random seed? 2. When every implementation receives exactly the same starting centers, how do the Lloyd implementations compare?</p>
+<p>For the second question, NumPy selects <code>k</code> rows from each dataset without replacement for each seed. Those float32 rows are saved once and passed unchanged to eager array-API PyTorch on CPU and CUDA, stock scikit-learn, scikit-learn with PRs 23 and 26, and cuML. Each implementation runs one Lloyd step and a full Lloyd-only fit. The full fit uses the same 12-iteration budget and variance-scaled tolerance as 006.</p>
+<p>The array-API entry point for this path is <code>fit_lloyd</code>. <code>fit_kmeans</code> composes k-means++ with that same function, so the fixed-center and initialized tracks do not maintain separate iteration loops. The complete observations are in <a href="results.json">results.json</a>.</p>
+<h2 id="k-means-and-full-fit-variation">k-means++ and full-fit variation</h2>
+<p>The single-seed winners in 006 are not stable. On <code>speed-l</code>, array-API CPU fit quality is 1,058 ± 79: one seed reaches the separated-blob floor near 1,024 in 2 iterations, while seed 0 ended at 1,199. cuML is unusually stable there at 1,193 ± 3 but does not reach the floor. On <code>speed-xl</code>, every implementation varies materially in fit quality; the standard deviation ranges from 95 to 155 mean-inertia units.</p>
+<img alt="Seeded inertia against blob structure" src="inertia-structure.svg" />
+<img alt="Seeded iteration counts" src="iterations-structure.svg" />
+<p>The <code>speed-xl</code> result, 131072 samples by 2048 features and 256 clusters:</p>
+<table><thead><tr><th>implementation</th><th>k-means++ seconds</th><th>init inertia</th><th>fit seconds</th><th>fit peak increment</th><th>fit inertia</th><th>iterations</th></tr></thead><tbody><tr><td>Array API - Torch CPU</td><td>41.41 ± 1.07</td><td>4279 ± 181</td><td>46.06 ± 1.05</td><td>175.2 ± 1.5 MiB</td><td>2149 ± 96</td><td>2.4 ± 0.5</td></tr><tr><td>scikit-learn 1.7.2</td><td>126.80 ± 2.22</td><td>4602 ± 292</td><td>128.35 ± 6.01</td><td>2047.9 ± 0.0 MiB</td><td>2322 ± 155</td><td>3.6 ± 1.1</td></tr><tr><td>scikit-learn PRs 23+26</td><td>23.96 ± 0.05</td><td>4602 ± 365</td><td>26.60 ± 0.46</td><td>2047.9 ± 0.0 MiB</td><td>2288 ± 154</td><td>3.0 ± 0.7</td></tr><tr><td>Array API - Torch CUDA</td><td>1.344 ± 0.001</td><td>4469 ± 269</td><td>1.484 ± 0.034</td><td>135.6 ± 0.0 MiB</td><td>2252 ± 144</td><td>3.0 ± 1.0</td></tr><tr><td>cuML</td><td>3.966 ± 0.016</td><td>4207 ± 169</td><td>4.018 ± 0.018</td><td>1042.0 ± 0.0 MiB</td><td>2113 ± 95</td><td>2.2 ± 0.4</td></tr></tbody></table>
+<p>The CUDA array API remains the fastest full fit. cuML has the best average inertia on this case, but its error bar overlaps array-API CPU. The patched scikit-learn initializer remains 5.3 times faster than stock scikit-learn. These are distributions over each implementation&#x27;s own seeded sampler, not paired identical draws: the libraries consume random state differently, and CPU and CUDA array-API draws can diverge after floating-point rounding changes one weighted sample.</p>
+<img alt="Seeded duration on larger shapes" src="time-scale.svg" />
+<img alt="Seeded memory and centroid-count results" src="memory-and-k.svg" />
+<p>Peak increments still use different meters: the PyTorch allocator above the input, first-call process <code>VmHWM</code> for CPU libraries, and 1 MiB-resolution nvidia-smi sampling for cuML. Error bars quantify run variation within an implementation; absolute memory values across meter types remain approximate comparisons.</p>
+<h2 id="lloyd-from-shared-centers">Lloyd from shared centers</h2>
+<p>One Lloyd step is the cleanest isolation. The worst quality spread between implementations over all 85 case-seed pairs is 0.080%; it occurs on <code>tight-d128</code>, seed 3. On <code>speed-xl</code>, mean inertia after the step is about 17,696 for every implementation.</p>
+<table><thead><tr><th>implementation</th><th>one-step seconds</th><th>peak increment</th><th>inertia after step</th></tr></thead><tbody><tr><td>Array API - Torch CPU</td><td>1.848 ± 0.002</td><td>163.8 ± 0.4 MiB</td><td>17695.58 ± 350.29</td></tr><tr><td>scikit-learn 1.7.2</td><td>2.027 ± 0.004</td><td>2047.8 ± 0.1 MiB</td><td>17695.64 ± 350.08</td></tr><tr><td>scikit-learn PRs 23+26</td><td>2.030 ± 0.007</td><td>2047.9 ± 0.1 MiB</td><td>17695.64 ± 350.08</td></tr><tr><td>Array API - Torch CUDA</td><td>0.025 ± 0.000</td><td>130.6 ± 0.0 MiB</td><td>17695.02 ± 349.27</td></tr><tr><td>cuML</td><td>0.285 ± 0.000</td><td>1036.0 ± 0.0 MiB</td><td>17695.58 ± 350.40</td></tr></tbody></table>
+<p>The array-API CPU step is 9% faster than both scikit-learn builds and uses about one twelfth their peak increment on <code>speed-xl</code>. The optimized scikit-learn patches accelerate initialization, not this Lloyd kernel at this shape. CUDA array API is 11.2 times faster than cuML for the isolated step.</p>
+<img alt="Shared-center Lloyd comparison" src="fixed-centers.svg" />
+<h3 id="full-fixed-center-fits-expose-an-algorithmic-difference">Full fixed-center fits expose an algorithmic difference</h3>
+<p>Shared starts remove k-means++ differences, but they do not force implementations to follow the same path after an empty cluster appears. Every selected center owns samples in the initial assignment for the examples below. During the second assignment, one or more clusters become empty. The array-API implementation deliberately keeps an empty center unchanged, as does cuML in these observations. Scikit-learn relocates empty clusters, then follows a different and often better path.</p>
+<table><thead><tr><th>case and seed</th><th>empty clusters at step 2</th><th>API and cuML inertia</th><th>both sklearn inertias</th></tr></thead><tbody><tr><td>k4, seed 0</td><td>1</td><td>249.50</td><td>32.02</td></tr><tr><td>k16, seed 4</td><td>1</td><td>137.82</td><td>87.56</td></tr><tr><td>wide, seed 2</td><td>1</td><td>1335.90</td><td>881.16</td></tr><tr><td>mixed, seed 3</td><td>1</td><td>317.00</td><td>253.97</td></tr><tr><td>speed-m, seed 2</td><td>5</td><td>3270.13</td><td>2874.95</td></tr><tr><td>speed-l, seed 0</td><td>9</td><td>6629.01</td><td>6201.32</td></tr><tr><td>speed-xl, seed 0</td><td>16</td><td>15456.99</td><td>15244.74</td></tr></tbody></table>
+<p>This is the main qualification on the full fixed-center timing. On <code>speed-xl</code>, Array API - Torch CUDA takes 0.219 ± 0.029 s and cuML 0.363 ± 0.001 s for their matching 14,725 ± 701 inertia result; Array API - Torch CPU takes 11.51 ± 0.98 s. Scikit-learn takes about 5.1 s but relocates empty centers and averages a different 14,451 ± 756 objective. The one-step table is the performance comparison without this semantic split.</p>
+<h2 id="conclusions">Conclusions</h2>
+<ul><li>Five seeds overturn several apparent quality rankings from the one-seed report. Runtime conclusions are much more stable than fit-quality conclusions.</li><li>Shared centers make all five one-step Lloyd objectives agree within 0.080%, demonstrating that the large initialized-fit gaps come from basin selection rather than an incorrect assignment/update step.</li><li>Longer shared-center fits identify a real semantic difference: scikit-learn relocates empty clusters, while the array API and cuML preserve them in these runs. Those timings must not be presented as equivalent work once paths diverge.</li><li>On the largest case, eager array-API CUDA remains fastest for initialization, one Lloyd step, and a full initialized fit. The array-API CPU Lloyd step is also slightly faster and far lower-memory than both scikit-learn builds.</li></ul>
+</main>
+</body>
+</html>

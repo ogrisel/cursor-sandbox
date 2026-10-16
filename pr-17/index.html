@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lloyd k-means journal</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="lloyd-k-means-in-the-python-array-api">Lloyd k-means in the Python array API</h1>
+<h2 id="what-this-pr-explores">What this PR explores</h2>
+<p>This experiment studies nearest-centroid assignment, Lloyd updates, empty clusters, and centroid initialization through the Python array API. The eager implementation runs with PyTorch on CPU and CUDA and with CuPy on CUDA. Comparisons cover stock scikit-learn, scikit-learn with k-means++ performance patches, Cython, and cuML.</p>
+<p>The journal progresses from kernel-fusion probes to bounded-memory tiled assignment, full fits, repeated-seed and shared-start comparisons, empty-center relocation, and greedy versus scalable initialization. The current five-task mix spans 3 to 3000 clusters, 2 to 1000 features, and 135000 to 2100000 samples. Runs use float32, eager execution, TF32 disabled, three seeds, and a 60-second worker limit.</p>
+<h2 id="latest-results">Latest results</h2>
+<p><a href="014-portable-array-api-kmeans/index.html">014</a> extracts a scikit-learn compatible portable <code>KMeans</code> estimator and evaluates CuPy-native replacements for the one-hot centroid update identified in 013.</p>
+<table><thead><tr><th>one CuPy centroid update</th><th>100 clusters</th><th>550 clusters</th><th>3000 clusters</th></tr></thead><tbody><tr><td>Portable current</td><td>56.95 ms</td><td>60.02 ms</td><td>65.89 ms</td></tr><tr><td>Portable tuned</td><td>19.20 ms</td><td>17.66 ms</td><td>18.00 ms</td></tr><tr><td><code>cupyx.scatter_add</code></td><td>1.172 ms</td><td>0.350 ms</td><td>0.365 ms</td></tr><tr><td>Fused atomic <code>RawKernel</code></td><td>1.064 ms</td><td>0.161 ms</td><td>0.152 ms</td></tr></tbody></table>
+<p>Main conclusions:</p>
+<ul><li>The public estimator supports only random and greedy k-means++ initialization, dense Lloyd iterations, and the applicable scikit-learn KMeans hyperparameters.</li><li>It passes the scikit-learn estimator suite, including strict array-API namespace, device, indexing, and dtype checks.</li><li>The default path remains backend-agnostic and carries explicit TODO boundaries for optional compiled assignment and keyed centroid-update callables.</li><li><code>cupyx.scatter_add</code> is 16x to 50x faster than the tuned portable update. It is the best first CuPy fast path, subject to its float32 atomic and non-determinism constraints.</li><li>A custom fused sum/count kernel is another 2.2x to 2.4x faster at large <code>k</code>, but should follow the simpler public CuPy primitive rather than precede it.</li></ul>
+<h2 id="journal">Journal</h2>
+<ul><li><a href="001-fusion-probe/index.html">001 — fusion probe</a>: eager and compiled distance-plus-argmin kernels.</li><li><a href="002-large-shape-oom/index.html">002 — large-shape OOM</a>: which schedules avoid the full distance matrix.</li><li><a href="003-resized-shapes/index.html">003 — three shapes</a>: sample-, centroid-, and feature-heavy fusion behavior.</li><li><a href="004-tile-tradeoff/index.html">004 — tile trade-offs</a>: bounded-memory tiles, Cython Lloyd, and k-means++.</li><li><a href="005-full-kmeans/index.html">005 — full k-means</a>: eager array API, Cython, patched scikit-learn, and cuML.</li><li><a href="006-breadth/index.html">006 — benchmark breadth</a>: structure and cluster-count sensitivity across five implementations.</li><li><a href="007-seeded-fixed-centers/index.html">007 — repeated seeds and shared centers</a>: uncertainty bars and initializer-independent Lloyd comparisons.</li><li><a href="008-empty-reassignment-task-mix/index.html">008 — empty-center task mix</a>: stochastic relocation across five bounded tasks.</li><li><a href="009-kmeans-plusplus-only/index.html">009 — k-means++ only</a>: timing, memory, and quality before Lloyd.</li><li><a href="010-scalable-initialization/index.html">010 — scalable initialization</a>: farthest relocation, cuML initializer options, and array-API k-means||.</li><li><a href="011-consolidated-benchmark/index.html">011 — consolidated benchmark</a>: initialization, Lloyd-only, and full-fit results on one page, plus the scalable-init ablation.</li><li><a href="012-source-link-audit/index.html">012 — source link audit</a>: source links pinned to the commits that each report measured.</li><li><a href="013-large-k-lloyd-optimization/index.html">013 — large-k Lloyd optimization</a>: scalable-init sensitivity, cuML kernel analysis, optimization probes, and next steps.</li><li><a href="014-portable-array-api-kmeans/index.html">014 — portable array-API KMeans</a>: sklearn-compatible estimator extraction and CuPy-native centroid-update probes.</li></ul>
+</main>
+</body>
+</html>
