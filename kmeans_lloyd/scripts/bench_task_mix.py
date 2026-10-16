@@ -28,11 +28,11 @@ SEEDS = (0, 1, 2)
 # Inverse pairing spans both requested logarithmic ranges without making the
 # product k * d too large at both ends. ``n`` is calibrated separately.
 TASKS = [
-    dict(name="k3-d1000", n=600_000, d=1000, k=3, seed=101),
-    dict(name="k17-d180", n=1_200_000, d=180, k=17, seed=102),
+    dict(name="k3-d1000", n=950_000, d=1000, k=3, seed=101),
+    dict(name="k17-d180", n=2_100_000, d=180, k=17, seed=102),
     dict(name="k100-d32", n=1_500_000, d=32, k=100, seed=103),
     dict(name="k550-d6", n=525_000, d=6, k=550, seed=104),
-    dict(name="k3000-d2", n=150_000, d=2, k=3000, seed=105),
+    dict(name="k3000-d2", n=135_000, d=2, k=3000, seed=105),
 ]
 
 API_IMPLS = (
