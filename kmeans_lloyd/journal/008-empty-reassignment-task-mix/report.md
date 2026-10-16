@@ -95,3 +95,5 @@ K-means++ avoids empty centers on this task. Its mean inertia is about 0.0181 fo
 - PyTorch CUDA leads at low cluster counts; cuML leads from 100 clusters upward. CuPy is consistently functional and usually between PyTorch CUDA and CPU implementations.
 - The no-Lloyd random baseline is worse on every task. K-means++ is especially important at 3000 clusters.
 - The 60-second limit is enforced per fresh process. Only the six array-API CPU k-means++ runs at 3000 clusters time out.
+
+Next: [k-means++ without Lloyd](../009-kmeans-plusplus-only/report.md).

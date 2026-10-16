@@ -2,6 +2,21 @@
 
 ## Current result
 
+[009](009-kmeans-plusplus-only/index.html) times k-means++ alone on the five tasks from [008](008-empty-reassignment-task-mix/index.html). Eager PyTorch CPU, PyTorch CUDA, and CuPy call the array-API initializer. Stock scikit-learn, patched scikit-learn, and cuML use their own initializers. No Lloyd iteration runs. All 105 workers finish inside 60 s.
+
+| k-means++ only | 3 clusters | 17 clusters | 100 clusters | 550 clusters | 3000 clusters |
+| --- | --- | --- | --- | --- | --- |
+| cuML | 0.15 s | 0.39 s | 0.48 s | 0.69 s | 0.91 s |
+| API CUDA | 0.25 s | 0.31 s | 0.48 s | 0.74 s | 1.50 s |
+| API CuPy | 0.18 s | 0.28 s | 0.74 s | 1.38 s | 2.99 s |
+| sklearn PRs | 1.28 s | 2.04 s | 1.53 s | 1.95 s | 3.00 s |
+| API CPU | 2.39 s | 3.49 s | 12.49 s | 13.51 s | 20.37 s |
+| sklearn 1.7 | 5.15 s | 7.42 s | 11.44 s | 16.48 s | 27.73 s |
+
+cuML is fastest at four cluster counts. CuPy leads at 17 clusters. The random-row baseline matches k-means++ inertia on isotropic 3-cluster noise and is 2.52 times worse at 3000 clusters (0.05396 versus 0.02144) before any Lloyd update. The array-API row-norm tile peaks at about 0.94 GiB on the 1000-feature task.
+
+## Previous bounded task mix
+
 [008](008-empty-reassignment-task-mix/index.html) adds stochastic empty-center relocation and a five-task mix from 3 to 3000 clusters and 2 to 1000 features. Array-API contenders are eager PyTorch CPU, PyTorch CUDA, and CuPy, each with relocation disabled and enabled. Stock scikit-learn, patched scikit-learn, cuML, and a no-Lloyd random-centroid baseline complete the comparison. Every fresh worker has a hard 60-second limit.
 
 On the quantized 3000-cluster task, shared random starts produce 46 to 55 empty-center events in the array API. Relocation improves mean inertia by 4.60%, from 0.02654 to 0.02532. Scikit-learn's deterministic farthest-point relocation reaches 0.02483; the stochastic D² policy is analogous but not identical. PyTorch CUDA takes 1.230 s with relocation, CuPy 1.429 s, and array-API CPU 53.16 s. cuML takes 0.324 s but follows the keep-empty quality, 0.02655. The no-Lloyd baseline is 0.05396.
@@ -95,6 +110,7 @@ The fusion schedules are linked from [001](001-fusion-probe/index.html), [002](0
 - [006 — structure, centroid count, five implementations](006-breadth/index.html). One seed of the eager array API, stock scikit-learn, both cakedev0 patches, and cuML, from tight blobs to noise and up to 131072×2048×256.
 - [007 — repeated seeds and shared fixed centers](007-seeded-fixed-centers/index.html). Seeds 0 through 4 add uncertainty bars. Shared dataset rows isolate one Lloyd step. One-step objectives agree within 0.080%. Longer runs expose scikit-learn's empty-cluster relocation.
 - [008 — stochastic empty-center relocation and bounded task mix](008-empty-reassignment-task-mix/index.html). Adds an opt-in distance-weighted relocation policy and spans 3 to 3000 clusters and 2 to 1000 features. PyTorch CPU, PyTorch CUDA, and CuPy run both empty-center policies. On the quantized 3000-cluster task, relocation lowers shared-start inertia by 4.60%. Six array-API CPU k-means++ runs hit the 60-second limit.
+- [009 — k-means++ without Lloyd](009-kmeans-plusplus-only/index.html). The same five tasks, timed at initialization only. cuML leads four tasks, CuPy leads at 17 clusters, and the random-row baseline is 2.52 times worse at 3000 clusters. All 105 runs finish within 60 s.
 
 ## Cases
 
