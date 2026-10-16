@@ -51,3 +51,4 @@ Main conclusions:
 - [009 — k-means++ only](009-kmeans-plusplus-only/index.html): timing, memory, and quality before Lloyd.
 - [010 — scalable initialization](010-scalable-initialization/index.html): farthest relocation, cuML initializer options, and array-API k-means||.
 - [011 — consolidated benchmark](011-consolidated-benchmark/index.html): initialization, Lloyd-only, and full-fit results on one page, plus the scalable-init ablation.
+- [012 — source link audit](012-source-link-audit/index.html): source links pinned to the commits that each report measured.
