@@ -24,11 +24,13 @@ COLORS = {
 
 
 def load(path: Path):
+    text = path.read_text()
+    if text.lstrip().startswith("["):
+        source = json.loads(text)
+    else:
+        source = [json.loads(line) for line in text.splitlines() if line.strip()]
     rows = []
-    for line in path.read_text().splitlines():
-        if not line.strip():
-            continue
-        row = json.loads(line)
+    for row in source:
         if "error" in row or "seconds" not in row:
             continue
         rows.append(row)
