@@ -33,7 +33,7 @@ Main conclusions:
 
 - Array API - Torch CUDA is the fastest full fit and Lloyd-only run at 3 and 17 clusters; cuML is fastest from 100 clusters up.
 - After 12 Lloyd iterations, every configuration ends within 0.4% of the best objective except cuML scalable at 3000 clusters, which ends 5.6% above it.
-- Farthest-point empty-center relocation makes all array-API backends match scikit-learn on the only task with empty clusters, 9.5 percentage points better than cuML.
+- Farthest-point empty-center relocation makes all array-API backends match scikit-learn on the only task with empty clusters; keeping empty centers and cuML finish about 7% above the best Lloyd-only result.
 - cuML's scalable initializer looks best before Lloyd because it runs weighted Lloyd on its candidates; it ends worse at 3000 clusters because its greedy candidate reduction ignores the candidate weights.
 - Adding a weighted Lloyd recluster to the array-API scalable initializer, while keeping its weighted reduction, gave the best initializer and final objectives at 550 and 3000 clusters in an ablation.
 - The tiled Gram schedule remains the practical array-API Lloyd path; `torch.compile` can remove a tile's distance matrix with a running schedule, but that full schedule is slower than eager tiled GEMM.

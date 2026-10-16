@@ -109,8 +109,8 @@ returning.
 
 Every implementation starts from the same `k` random rows per seed, so this
 section isolates the Lloyd kernel and its empty-center policy. Quality is
-reported as the percentage above the best fitted mean, the lowest seed-mean
-inertia over every Lloyd-only and full-fit configuration on that task.
+reported as the percentage above the best Lloyd-only mean for the same task.
+Full-fit results do not contribute to this denominator.
 
 ![Lloyd-only duration](lloyd-duration.svg)
 
@@ -144,15 +144,15 @@ inertia over every Lloyd-only and full-fit configuration on that task.
 
 | configuration | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
 | --- | --- | --- | --- | --- | --- |
-| Array API - Torch CPU, random rows, keep empty | 0.000% | 0.001% | 0.006% | 0.337% | 46.718% |
-| Array API - Torch CPU, random rows | 0.000% | 0.001% | 0.006% | 0.337% | 37.180% |
-| Array API - Torch CUDA, random rows, keep empty | 0.000% | 0.001% | 0.006% | 0.337% | 46.726% |
-| Array API - Torch CUDA, random rows | 0.000% | 0.001% | 0.006% | 0.337% | 37.182% |
-| Array API - CuPy, random rows, keep empty | 0.000% | 0.001% | 0.006% | 0.337% | 46.726% |
-| Array API - CuPy, random rows | 0.000% | 0.001% | 0.006% | 0.337% | 37.182% |
-| scikit-learn 1.7.2, random rows | 0.000% | 0.001% | 0.006% | 0.337% | 37.277% |
-| scikit-learn PRs 23+26, random rows | 0.000% | 0.001% | 0.006% | 0.337% | 37.279% |
-| cuML 26.10, random rows | 0.000% | 0.001% | 0.006% | 0.337% | 46.769% |
+| Array API - Torch CPU, random rows, keep empty | 0.000% | 0.000% | 0.000% | 0.000% | 6.953% |
+| Array API - Torch CPU, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 0.000% |
+| Array API - Torch CUDA, random rows, keep empty | 0.000% | 0.000% | 0.000% | 0.000% | 6.959% |
+| Array API - Torch CUDA, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 0.002% |
+| Array API - CuPy, random rows, keep empty | 0.000% | 0.000% | 0.000% | 0.000% | 6.959% |
+| Array API - CuPy, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 0.002% |
+| scikit-learn 1.7.2, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 0.071% |
+| scikit-learn PRs 23+26, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 0.072% |
+| cuML 26.10, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 6.990% |
 
 PyTorch CUDA is the fastest Lloyd implementation at 3 and 17 clusters, for
 example 0.77 s against 6.85 s for cuML on the 1000-feature task. cuML is
@@ -160,13 +160,13 @@ fastest from 100 clusters up, at 0.54, 0.35, and 0.32 s. The array-API tiles
 keep the peak increment near 0.9 GiB on the widest task, where scikit-learn
 peaks at 7.1 GiB and cuML at 3.8 GiB.
 
-Implementations agree to within 0.01% on the four tasks without empty
-clusters. Empty clusters only
-occur on the 3000-cluster task, with 46 to 55 empty-center events per run.
-There, farthest-point relocation reaches 37.2% above the best fitted mean on
-all three array-API backends, matching scikit-learn's 37.3%. Keeping empty
-centers leaves 46.7%. cuML ends at 46.8%, consistent with keeping its empty
-centers in place.
+Implementations agree to the shown precision on the four tasks without empty
+clusters. Empty clusters only occur on the 3000-cluster task, with 46 to 55
+empty-center events per run. There, farthest-point relocation sets the
+Lloyd-only reference on Array API - Torch CPU. The other array-API backends
+are within 0.002%, and scikit-learn is within 0.072%. Keeping empty centers
+is about 6.96% worse; cuML ends 6.99% above the reference, consistent with
+keeping its empty centers in place.
 
 ## Full fit
 
@@ -330,8 +330,8 @@ does not guarantee a better 12-iteration fit.
 - The array API with PyTorch CUDA is the fastest full fit and Lloyd-only run
   at 3 and 17 clusters; cuML is fastest from 100 clusters up.
 - Farthest-point relocation makes all three array-API backends match
-  scikit-learn on the only task with empty clusters. cuML ends 9.5
-  percentage points further above the best on that Lloyd-only run.
+  scikit-learn on the only task with empty clusters. Keeping empty centers
+  and cuML end about 7% above the best Lloyd-only result on that task.
 - After 12 Lloyd iterations initialization barely matters on four tasks;
   everything but cuML scalable at 3000 clusters ends within 0.4% of the best.
 - cuML's scalable initializer looks best before Lloyd because it runs weighted

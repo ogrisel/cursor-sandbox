@@ -252,11 +252,25 @@ def main():
 
     lloyd = fit_keys(("random",))
     full = fit_keys(("plusplus", "scalable"))
-    all_fits = fit_keys(("random", "plusplus", "scalable"), relocations=("keep", "farthest"))
-    fit_best = best_means(rows, all_fits)
-    for name, keys, title in (
-        ("lloyd", lloyd, "Lloyd only from shared random rows (12 iterations)"),
-        ("fit", full, "Full fit: initialization plus 12 Lloyd iterations"),
+    lloyd_tables = fit_keys(("random",), relocations=("keep", "farthest"))
+    full_tables = fit_keys(("plusplus", "scalable"), relocations=("keep", "farthest"))
+    lloyd_best = best_means(rows, lloyd_tables)
+    fit_best = best_means(rows, full_tables)
+    for name, keys, title, best, quality_label in (
+        (
+            "lloyd",
+            lloyd,
+            "Lloyd only from shared random rows (12 iterations)",
+            lloyd_best,
+            "best Lloyd-only mean",
+        ),
+        (
+            "fit",
+            full,
+            "Full fit: initialization plus 12 Lloyd iterations",
+            fit_best,
+            "best full-fit mean",
+        ),
     ):
         figure(out / f"{name}-duration.svg", rows, keys, "seconds", f"{title}: duration", "seconds", log=True)
         figure(
@@ -265,27 +279,27 @@ def main():
         )
         figure(
             out / f"{name}-quality.svg", rows, keys, "inertia_per_point",
-            f"{title}: inertia above the best fitted mean per task",
-            "% above best fitted mean (symlog)", scale=fit_best, excess=True,
+            f"{title}: inertia above the {quality_label} per task",
+            f"% above {quality_label} (symlog)", scale=best, excess=True,
         )
 
     if args.tables:
-        lloyd_tables = fit_keys(("random",), relocations=("keep", "farthest"))
-        full_tables = fit_keys(("plusplus", "scalable"), relocations=("keep", "farthest"))
         sections = [
             ("init-seconds", table(rows, timed, "seconds", seconds)),
             ("init-memory", table(rows, timed, "mem_increment_bytes", mebibytes)),
             ("init-quality", table(rows, quality, "inertia_per_point", ratio, scale=init_best)),
             ("lloyd-seconds", table(rows, lloyd_tables, "seconds", seconds)),
             ("lloyd-memory", table(rows, lloyd_tables, "mem_increment_bytes", mebibytes)),
-            ("lloyd-quality", table(rows, lloyd_tables, "inertia_per_point", excess, scale=fit_best)),
+            ("lloyd-quality", table(rows, lloyd_tables, "inertia_per_point", excess, scale=lloyd_best)),
             ("fit-seconds", table(rows, full_tables, "seconds", seconds)),
             ("fit-memory", table(rows, full_tables, "mem_increment_bytes", mebibytes)),
             ("fit-quality", table(rows, full_tables, "inertia_per_point", excess, scale=fit_best)),
             (
                 "best",
                 "\n".join(
-                    f"{task}: init {init_best[task]:.6g}, fit {fit_best[task]:.6g}" for task in TASKS
+                    f"{task}: init {init_best[task]:.6g}, "
+                    f"Lloyd {lloyd_best[task]:.6g}, full fit {fit_best[task]:.6g}"
+                    for task in TASKS
                 ),
             ),
         ]
