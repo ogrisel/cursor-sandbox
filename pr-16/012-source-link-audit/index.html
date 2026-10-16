@@ -25,7 +25,7 @@
 <table><thead><tr><th>report</th><th>pinned commit</th></tr></thead><tbody><tr><td>001 and 003</td><td><code>c476847</code></td></tr><tr><td>004</td><td><code>16cfa4d</code></td></tr><tr><td>005</td><td><code>1d641b2</code></td></tr><tr><td>009</td><td><code>9f1ab99</code></td></tr><tr><td>011</td><td><code>82e5aaa</code></td></tr></tbody></table>
 <p>Line ranges come from Python&#x27;s <code>ast</code> at that commit, so each covers exactly one function from its first line to its last. The old ranges for 004 and 005 also included one trailing blank line; the exact ranges drop it.</p>
 <p><code>tools/check_source_links.py</code> now runs in the report CI with full git history. It fails when a line-anchored link names a branch instead of a commit, when the file is missing at that commit, when a backticked function name does not match its exact range, or when a descriptive link does not start at a definition. It checks the 36 current links with no problems.</p>
-<p>Previous: <a href="../011-consolidated-benchmark/index.html">consolidated benchmark</a>. Index: <a href="../index.html">journal</a>.</p>
+<p>Previous: <a href="../011-consolidated-benchmark/index.html">consolidated benchmark</a>. Next: <a href="../013-large-k-lloyd-optimization/index.html">large-k Lloyd optimization</a>. Index: <a href="../index.html">journal</a>.</p>
 </main>
 </body>
 </html>
