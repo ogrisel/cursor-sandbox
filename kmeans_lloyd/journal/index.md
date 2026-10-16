@@ -17,24 +17,25 @@ samples. Runs use float32, eager execution, TF32 disabled, three seeds, and a
 
 ## Latest results
 
-[014](014-portable-array-api-kmeans/index.html) extracts a scikit-learn
-compatible portable `KMeans` estimator and evaluates CuPy-native replacements
-for the one-hot centroid update identified in 013.
+[015](015-native-backend-estimator-benchmark/index.html) adds PyTorch
+`index_add_` and CuPy `add.at` centroid updates to the portable `KMeans`
+estimator, keeps the one-hot update for other namespaces, and reruns the full
+benchmark through the estimator.
 
-| one CuPy centroid update | 100 clusters | 550 clusters | 3000 clusters |
-| --- | --- | --- | --- |
-| Portable current | 56.95 ms | 60.02 ms | 65.89 ms |
-| Portable tuned | 19.20 ms | 17.66 ms | 18.00 ms |
-| `cupyx.scatter_add` | 1.172 ms | 0.350 ms | 0.365 ms |
-| Fused atomic `RawKernel` | 1.064 ms | 0.161 ms | 0.152 ms |
+| shared-start fit, 12 Lloyd iterations | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Array API - Torch CUDA | 0.89 s | 0.64 s | 0.39 s | 0.49 s | 0.62 s |
+| Array API - Torch CUDA, generic update | 0.89 s | 0.63 s | 0.46 s | 0.59 s | 0.75 s |
+| Array API - CuPy | 1.06 s | 0.67 s | 0.39 s | 0.42 s | 0.58 s |
+| Array API - CuPy, generic update | 1.00 s | 0.87 s | 0.58 s | 0.60 s | 0.76 s |
+| cuML 26.10 | 6.88 s | 2.12 s | 0.54 s | 0.35 s | 0.32 s |
 
 Main conclusions:
 
-- The public estimator supports only random and greedy k-means++ initialization, dense Lloyd iterations, and the applicable scikit-learn KMeans hyperparameters.
-- It passes the scikit-learn estimator suite, including strict array-API namespace, device, indexing, and dtype checks.
-- The default path remains backend-agnostic and carries explicit TODO boundaries for optional compiled assignment and keyed centroid-update callables.
-- `cupyx.scatter_add` is 16x to 50x faster than the tuned portable update. It is the best first CuPy fast path, subject to its float32 atomic and non-determinism constraints.
-- A custom fused sum/count kernel is another 2.2x to 2.4x faster at large `k`, but should follow the simpler public CuPy primitive rather than precede it.
+- The native update speeds up CUDA fits by 1.06x to 1.47x from 17 clusters up on CuPy and 100 clusters up on PyTorch, and Torch CPU fits by up to 4.6x.
+- With few clusters and many features, atomic contention makes the CUDA scatter-add slower than the one-hot GEMM, so the dispatch keeps the portable update there.
+- The first run also found a PyTorch finiteness check that used 5.3 GiB of temporaries on the widest task; the estimator now checks column sums first.
+- The array-API backends now beat cuML's Lloyd iterations up to 100 clusters; cuML stays 1.2x to 1.9x faster at 550 and 3000 clusters.
 
 ## Journal
 
@@ -52,3 +53,4 @@ Main conclusions:
 - [012 — source link audit](012-source-link-audit/index.html): source links pinned to the commits that each report measured.
 - [013 — large-k Lloyd optimization](013-large-k-lloyd-optimization/index.html): scalable-init sensitivity, cuML kernel analysis, optimization probes, and next steps.
 - [014 — portable array-API KMeans](014-portable-array-api-kmeans/index.html): sklearn-compatible estimator extraction and CuPy-native centroid-update probes.
+- [015 — native backend updates in the estimator](015-native-backend-estimator-benchmark/index.html): PyTorch and CuPy scatter-add updates, the CUDA contention crossover, and the full benchmark rerun.

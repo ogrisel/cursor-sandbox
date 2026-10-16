@@ -145,4 +145,5 @@ can recover essentially all of the update gap without contaminating the
 portable implementation with backend branches.
 
 Previous: [large-k Lloyd optimization](../013-large-k-lloyd-optimization/report.md).
+Next: [native backend updates in the estimator](../015-native-backend-estimator-benchmark/report.md).
 Index: [journal](../index.md).
