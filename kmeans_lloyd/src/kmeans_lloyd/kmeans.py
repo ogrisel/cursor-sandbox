@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numbers
+import warnings
 from typing import ClassVar
 
 import numpy as np
@@ -13,10 +14,12 @@ from sklearn.base import (
     ClusterMixin,
     TransformerMixin,
 )
+from sklearn.utils import check_random_state
 from sklearn.utils._array_api import check_same_namespace
 from sklearn.utils._param_validation import Interval, StrOptions
 from sklearn.utils.validation import check_is_fitted, validate_data
 
+from kmeans_lloyd.backends import native_accumulate
 from kmeans_lloyd.iteration import assign_gemm_tiled, fit_lloyd, inertia, kmeans_plusplus
 
 
@@ -45,18 +48,24 @@ class KMeans(
     """K-means clustering implemented with portable array API operations.
 
     The public hyperparameters intentionally follow :class:`sklearn.cluster.KMeans`.
-    Only dense inputs, Lloyd iterations, and the ``"k-means++"`` and
-    ``"random"`` initializers are supported.
+    Only dense inputs and Lloyd iterations are supported.
+
+    The centroid update uses a native scatter-add for PyTorch and CuPy
+    arrays (see :mod:`kmeans_lloyd.backends`) and portable one-hot matrix
+    products for every other array API namespace.
 
     Parameters
     ----------
     n_clusters : int, default=8
         Number of clusters.
-    init : {"k-means++", "random"}, default="k-means++"
-        Initialization strategy.
+    init : {"k-means++", "random"}, callable or array-like, default="k-means++"
+        Initialization strategy. A callable is called as
+        ``init(X, n_clusters, random_state=random_state)``. An array of shape
+        ``(n_clusters, n_features)`` is converted to the namespace and
+        device of ``X``.
     n_init : "auto" or int, default="auto"
         Number of independent initializations. ``"auto"`` uses one run for
-        ``"k-means++"`` and ten runs for ``"random"``.
+        ``"k-means++"`` and explicit centers and ten runs otherwise.
     max_iter : int, default=300
         Maximum Lloyd iterations per initialization.
     tol : float, default=1e-4
@@ -74,7 +83,7 @@ class KMeans(
 
     _parameter_constraints: ClassVar[dict] = {
         "n_clusters": [Interval(numbers.Integral, 1, None, closed="left")],
-        "init": [StrOptions({"k-means++", "random"})],
+        "init": [StrOptions({"k-means++", "random"}), callable, "array-like"],
         "n_init": [
             StrOptions({"auto"}),
             Interval(numbers.Integral, 1, None, closed="left"),
@@ -122,19 +131,21 @@ class KMeans(
             )
 
         rng = self._make_rng()
-        n_init = (
-            (1 if self.init == "k-means++" else 10)
-            if self.n_init == "auto"
-            else int(self.n_init)
-        )
+        n_init = self._resolve_n_init()
         tiles = _tile_schedule(X, int(self.n_clusters))
+        # PyTorch index_add_ and CuPy add.at replace the one-hot update;
+        # any other namespace gets None and the portable fallback.
+        accumulate = native_accumulate(X)
         best = None
         for run in range(n_init):
             centers = self._initialize(X, rng)
 
-            # TODO: Accept an optional assignment factory in a follow-up so a
-            # backend adapter can cache torch.compile or a CuPy RawKernel by
-            # shape and dtype. Keep the default callable array-API-only.
+            # TODO: Accept an optional assignment ``step`` here so a backend
+            # adapter can supply a torch.compile'd score tile (2.1x to 4.8x
+            # faster assignment in journal 013, but with compile latency) or a
+            # CuPy RawKernel that fuses distances with the top-1 reduction
+            # like cuVS. Cache either by shape and dtype; keep the portable
+            # gemm_scores_argmin as the default for other namespaces.
             result = fit_lloyd(
                 X,
                 centers,
@@ -146,12 +157,8 @@ class KMeans(
                 update_tile_n=tiles["update_tile_n"],
                 reassign_empty=True,
                 rng=rng,
+                accumulate=accumulate,
             )
-
-            # TODO: Add a centroid-update hook to fit_lloyd in a follow-up.
-            # PyTorch can implement it with index_add_, and CuPy with
-            # cupyx.scatter_add or a RawKernel. The portable fallback must
-            # remain update_centroids_tiled's one-hot matrix multiplication.
             labels = assign_gemm_tiled(
                 X, result["centers"], tiles["tile_n"], tiles["tile_k"]
             )
@@ -219,16 +226,51 @@ class KMeans(
         labels = self.predict(X)
         return -float(inertia(X, labels, self.cluster_centers_))
 
+    def _resolve_n_init(self):
+        explicit = not isinstance(self.init, str) and not callable(self.init)
+        if self.n_init == "auto":
+            if isinstance(self.init, str) and self.init == "k-means++":
+                return 1
+            return 1 if explicit else 10
+        if explicit and int(self.n_init) != 1:
+            warnings.warn(
+                "Explicit initial center position passed: performing only"
+                f" one init in {self.__class__.__name__} instead of "
+                f"n_init={self.n_init}.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+            return 1
+        return int(self.n_init)
+
     def _initialize(self, X, rng):
         xp = array_namespace(X)
-        if self.init == "k-means++":
+        if isinstance(self.init, str) and self.init == "k-means++":
             return kmeans_plusplus(X, int(self.n_clusters), rng)[0]
-        indices = xp.asarray(
-            rng.choice(int(X.shape[0]), size=int(self.n_clusters), replace=False),
-            dtype=xp.int64,
-            device=device(X),
-        )
-        return xp.take(X, indices, axis=0)
+        if isinstance(self.init, str):
+            indices = xp.asarray(
+                rng.choice(int(X.shape[0]), size=int(self.n_clusters), replace=False),
+                dtype=xp.int64,
+                device=device(X),
+            )
+            return xp.take(X, indices, axis=0)
+        if callable(self.init):
+            random_state = (
+                self.random_state
+                if isinstance(self.random_state, np.random.Generator)
+                else check_random_state(self.random_state)
+            )
+            centers = self.init(X, int(self.n_clusters), random_state=random_state)
+        else:
+            centers = self.init
+        centers = xp.asarray(centers, dtype=X.dtype, device=device(X))
+        expected = (int(self.n_clusters), int(X.shape[1]))
+        if tuple(int(size) for size in centers.shape) != expected:
+            raise ValueError(
+                f"The shape of the initial centers {tuple(centers.shape)} does not "
+                f"match the number of clusters and features {expected}."
+            )
+        return centers
 
     def _make_rng(self):
         if isinstance(self.random_state, np.random.Generator):

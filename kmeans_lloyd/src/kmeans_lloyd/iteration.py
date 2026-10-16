@@ -298,6 +298,7 @@ def update_centroids_tiled(
     reassign_empty=False,
     rng=None,
     stats=None,
+    accumulate=None,
 ):
     """Mean update one centroid tile at a time.
 
@@ -305,6 +306,12 @@ def update_centroids_tiled(
     instead of ``(n_samples, n_clusters)``. ``tile_n`` also splits the
     samples, so that membership has shape ``(tile_n, tile_k)`` and the sums
     are accumulated.
+
+    ``accumulate(X, labels, n_clusters)``, when given, replaces the one-hot
+    tiles. It returns per-cluster feature sums of shape
+    ``(n_clusters, n_features)`` and counts of shape ``(n_clusters,)``, both
+    in ``X.dtype``. The array API has no keyed reduction, so this is where a
+    backend scatter-add can be injected; see :mod:`kmeans_lloyd.backends`.
 
     By default, an empty cluster keeps its previous centroid. With
     ``reassign_empty=True``, the samples farthest from their assigned centers
@@ -318,6 +325,15 @@ def update_centroids_tiled(
     n_features = int(X.shape[1])
     if tile_n is None:
         tile_n = n_samples
+    if accumulate is not None:
+        sums, all_counts = accumulate(X, labels, n_clusters)
+        counts_safe = xp.where(all_counts == 0, xp.ones_like(all_counts), all_counts)
+        updated = xp.where(
+            all_counts[:, None] == 0, centroids, sums / counts_safe[:, None]
+        )
+        return _relocate_empty(
+            xp, X, labels, centroids, updated, all_counts, reassign_empty, tile_n, stats
+        )
     updated = xp.empty_like(centroids)
     all_counts = xp.empty(n_clusters, dtype=X.dtype, device=_device(X))
     for k0 in range(0, n_clusters, tile_k):
@@ -343,6 +359,13 @@ def update_centroids_tiled(
         empty = counts[:, None] == 0
         updated[k0:k1, :] = xp.where(empty, centroids[k0:k1, :], means)
         all_counts[k0:k1] = counts
+    return _relocate_empty(
+        xp, X, labels, centroids, updated, all_counts, reassign_empty, tile_n, stats
+    )
+
+
+def _relocate_empty(xp, X, labels, centroids, updated, all_counts, reassign_empty, tile_n, stats):
+    """Count empty clusters and optionally apply farthest-point relocation."""
     n_empty = int(_item(xp.sum(xp.astype(all_counts == 0, xp.int64))))
     if stats is not None:
         stats["empty_events"] = stats.get("empty_events", 0) + n_empty
@@ -407,19 +430,22 @@ def lloyd_step(
     stats=None,
     step=None,
     recorder=None,
+    accumulate=None,
 ):
     """One Lloyd iteration with a tiled Gram assignment and a tiled update.
 
     ``tile_n`` and ``tile_k`` select the assignment tiles. The update uses
     ``update_tile_k`` centroid columns of the one-hot at a time, defaulting
     to ``tile_k``. ``update_tile_n`` splits the sample axis of that one-hot.
-    The default keeps every sample in one membership matrix.
+    The default keeps every sample in one membership matrix. ``accumulate``
+    replaces the one-hot update, as described in
+    :func:`update_centroids_tiled`.
     """
     if update_tile_k is None:
         update_tile_k = tile_k
-    if recorder is None:
-        labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
-        updated = update_centroids_tiled(
+
+    def update(labels):
+        return update_centroids_tiled(
             X,
             labels,
             centroids,
@@ -428,21 +454,17 @@ def lloyd_step(
             reassign_empty=reassign_empty,
             rng=rng,
             stats=stats,
+            accumulate=accumulate,
         )
+
+    if recorder is None:
+        labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
+        updated = update(labels)
     else:
         with recorder.phase("assign"):
             labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
         with recorder.phase("update"):
-            updated = update_centroids_tiled(
-                X,
-                labels,
-                centroids,
-                update_tile_k,
-                tile_n=update_tile_n,
-                reassign_empty=reassign_empty,
-                rng=rng,
-                stats=stats,
-            )
+            updated = update(labels)
     return updated, labels
 
 
@@ -767,6 +789,7 @@ def fit_lloyd(
     reassign_empty=False,
     rng=None,
     step=None,
+    accumulate=None,
 ):
     """Run Lloyd iterations from caller-provided centers.
 
@@ -775,7 +798,8 @@ def fit_lloyd(
     which isolates assignment, update, and convergence behavior from
     k-means++ sampling differences. ``reassign_empty=True`` enables the
     deterministic farthest-point relocation described by
-    :func:`update_centroids_tiled`.
+    :func:`update_centroids_tiled`. ``accumulate`` optionally replaces the
+    one-hot centroid sums with a backend keyed reduction.
     """
     xp = array_namespace(X, initial_centers)
     if int(max_iter) < 1:
@@ -803,6 +827,7 @@ def fit_lloyd(
             rng=rng,
             stats=stats,
             step=step,
+            accumulate=accumulate,
         )
         shift = _item(xp.sum((updated - centers) ** 2))
         centers = updated
