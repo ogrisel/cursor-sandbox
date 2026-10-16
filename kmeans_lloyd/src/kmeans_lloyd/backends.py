@@ -34,13 +34,25 @@ def use_native_backends(enabled):
     return previous
 
 
-def native_accumulate(X):
-    """Return a keyed sums-and-counts callable for ``X``'s namespace, or None."""
+def native_accumulate(X, n_clusters):
+    """Return a keyed sums-and-counts callable for ``X``'s namespace, or None.
+
+    On CUDA, atomic scatter-adds serialize when many samples share few
+    clusters, while the one-hot GEMM stays bandwidth-bound at small ``k``. The
+    one-hot path is kept for wide data with few clusters: ``16 * k < d`` for
+    PyTorch and ``64 * k < d`` for CuPy, the crossovers measured in journal 015
+    on 0.5 to 2.1 million samples. The CPU scatter-add won on every task.
+    """
     if not _ENABLED:
         return None
+    n_features = int(X.shape[1])
     if is_torch_array(X):
+        if X.device.type == "cuda" and 16 * n_clusters < n_features:
+            return None
         return _torch_accumulate
     if is_cupy_array(X):
+        if 64 * n_clusters < n_features:
+            return None
         return _cupy_accumulate
     return None
 

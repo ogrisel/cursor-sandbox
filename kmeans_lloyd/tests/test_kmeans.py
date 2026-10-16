@@ -92,7 +92,7 @@ def test_explicit_centers_with_wrong_shape_are_rejected():
 
 
 def test_array_api_input_finiteness_check():
-    import array_api_strict as xp
+    xp = pytest.importorskip("array_api_strict")
 
     X = _blobs().astype(np.float32)
     for value in (np.nan, np.inf):
@@ -111,8 +111,8 @@ def test_portable_namespaces_have_no_native_path():
 
     from kmeans_lloyd.backends import native_accumulate
 
-    assert native_accumulate(np.zeros((2, 2))) is None
-    assert native_accumulate(xp.zeros((2, 2))) is None
+    assert native_accumulate(np.zeros((2, 2)), 2) is None
+    assert native_accumulate(xp.zeros((2, 2)), 2) is None
 
 
 def _native_backends():
@@ -159,7 +159,7 @@ def test_native_update_matches_portable_one_hot(backend, dtype):
     # Cluster 4 is empty, so both paths must run the farthest relocation.
     labels = convert(rng.choice([0, 1, 2, 3, 5], size=257).astype(np.int64))
     centers = convert(rng.standard_normal((6, 3)).astype(dtype))
-    accumulate = native_accumulate(X)
+    accumulate = native_accumulate(X, 6)
     assert accumulate is not None
     portable_stats, native_stats = {}, {}
     portable = update_centroids_tiled(
@@ -178,6 +178,22 @@ def test_native_update_matches_portable_one_hot(backend, dtype):
     rtol = 1e-5 if dtype == np.float32 else 1e-12
     np.testing.assert_allclose(_to_host(native), _to_host(portable), rtol=rtol, atol=rtol)
     assert native_stats == portable_stats == {"empty_events": 1, "reassignments": 1}
+
+
+@pytest.mark.parametrize(
+    "backend",
+    [name for name, _ in _native_backends()]
+    or [pytest.param("none", marks=pytest.mark.skip)],
+)
+def test_wide_few_cluster_cuda_inputs_keep_one_hot_update(backend):
+    from kmeans_lloyd.backends import native_accumulate
+
+    X = dict(_native_backends())[backend](np.zeros((4, 1000), dtype=np.float32))
+    assert native_accumulate(X, 100) is not None
+    if backend == "torch-cpu":
+        assert native_accumulate(X, 3) is not None
+    else:
+        assert native_accumulate(X, 3) is None
 
 
 @pytest.mark.parametrize(

@@ -134,8 +134,9 @@ class KMeans(
         n_init = self._resolve_n_init()
         tiles = _tile_schedule(X, int(self.n_clusters))
         # PyTorch index_add_ and CuPy add.at replace the one-hot update;
-        # any other namespace gets None and the portable fallback.
-        accumulate = native_accumulate(X)
+        # any other namespace, or a shape where the one-hot GEMM is faster,
+        # gets None and the portable fallback.
+        accumulate = native_accumulate(X, int(self.n_clusters))
         best = None
         for run in range(n_init):
             centers = self._initialize(X, rng)

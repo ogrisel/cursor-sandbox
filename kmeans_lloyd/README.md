@@ -23,7 +23,9 @@ centers = model.cluster_centers_
 
 The centroid update uses PyTorch `index_add_` or CuPy `add.at` when `X` is a
 PyTorch tensor or CuPy array, and portable one-hot matrix products for every
-other array API namespace. `kmeans_lloyd.backends.use_native_backends(False)`
+other array API namespace. On CUDA, wide inputs with few clusters keep the
+one-hot products, which beat atomic scatter-adds there.
+`kmeans_lloyd.backends.use_native_backends(False)`
 forces the portable path everywhere.
 
 The package also contains lower-level Lloyd primitives and CUDA experiments
