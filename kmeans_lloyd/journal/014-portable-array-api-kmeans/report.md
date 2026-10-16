@@ -104,7 +104,9 @@ for CUDA `atomicAdd` types, including float32 but not float64. Out-of-range
 indices wrap instead of raising. Floating-point atomics are not deterministic.
 The adapter must therefore validate labels, use this path for supported
 dtypes only, and fall back to the portable update for float64 unless a
-separate implementation is validated.
+separate implementation is validated. `cupy.bincount` may also synchronize
+the device, so microbenchmarks must time the complete update rather than infer
+its cost from asynchronous launches.
 
 `cupy.add.at` has the same semantics and nearly identical timing, so it adds
 no useful alternative. The fused `RawKernel` is worth retaining as a second
@@ -124,7 +126,11 @@ assignment is again dominant.
 
 1. Keep the new estimator's default path pure array API.
 2. Add a private optional centroid-update callable to `lloyd_step` and
-   `fit_lloyd`; keep it out of the sklearn-compatible constructor.
+   `fit_lloyd`; keep it out of the sklearn-compatible constructor. Lock down
+   the contract `(X, labels, old_centers) -> updated_centers`: empty clusters
+   keep their old center unless the caller requested farthest-point
+   relocation, in which case the native path must still invoke the shared
+   relocation bookkeeping.
 3. Implement a CuPy adapter with `cupyx.scatter_add` plus `bincount` for
    float32 and strict label validation. Add agreement, empty-center, and
    namespace tests.
