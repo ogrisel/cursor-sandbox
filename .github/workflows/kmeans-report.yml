@@ -36,5 +36,5 @@ jobs:
     uses: ogrisel/cursor-sandbox/.github/workflows/publish-report.yml@main
     with:
       journal-path: kmeans_lloyd/journal
-      site-title: Lloyd k-means fusion journal
+      site-title: Lloyd k-means journal
       comment-marker: "<!-- kmeans-lloyd-report -->"

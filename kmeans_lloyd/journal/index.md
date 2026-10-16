@@ -1,14 +1,41 @@
-# Lloyd k-means, one iteration, kernel fusion
+# Lloyd k-means in the Python array API
 
-## Latest
+## Current result
 
-[007](007-seeded-fixed-centers/index.html) repeats all 17 cases with five seeds and adds shared-center Lloyd runs. On 131072×2048×256, the CUDA array-API fit takes 1.484 ± 0.034 s and 136 MiB, cuML 4.018 ± 0.018 s and about 1.0 GiB, patched scikit-learn 26.60 ± 0.46 s and 2.0 GiB, PyTorch CPU 46.06 ± 1.05 s and 175 MiB, and stock scikit-learn 128.35 ± 6.01 s and 2.0 GiB. Fit quality varies substantially by seed. From identical centers, one Lloyd step agrees within 0.080% across every case and seed; on the largest shape it takes 25 ms on CUDA and 1.85 s on array-API CPU. Longer fixed-center fits can diverge when scikit-learn relocates empty clusters while the array API and cuML preserve them.
+[007](007-seeded-fixed-centers/index.html) is the current comparison. It repeats all 17 datasets from [006](006-breadth/index.html) with seeds 0 through 4: 1,700 successful runs. The array-API numbers are eager PyTorch, on CPU and on CUDA. `torch.compile` is not used in this comparison. Host: NVIDIA L4, float32, TF32 off. A full fit stops after 12 Lloyd iterations or when the center shift falls under `1e-8` times the mean feature variance.
+
+On 131072 samples, 2048 features, and 256 clusters, five-seed means and sample standard deviations are:
+
+| implementation | k-means++ | full fit | fit peak increment | fit inertia |
+| --- | --- | --- | --- | --- |
+| [array API, CUDA](007-seeded-fixed-centers/index.html) | 1.344 ± 0.001 s | 1.484 ± 0.034 s | 135.6 MiB | 2252 ± 144 |
+| [cuML 26.10](007-seeded-fixed-centers/index.html) | 3.966 ± 0.016 s | 4.018 ± 0.018 s | 1042 MiB | 2113 ± 95 |
+| [scikit-learn, PRs 23 and 26](007-seeded-fixed-centers/index.html) | 23.96 ± 0.05 s | 26.60 ± 0.46 s | 2048 MiB | 2288 ± 154 |
+| [array API, CPU](007-seeded-fixed-centers/index.html) | 41.41 ± 1.07 s | 46.06 ± 1.05 s | 175 MiB | 2149 ± 96 |
+| [scikit-learn 1.7.2](007-seeded-fixed-centers/index.html) | 126.80 ± 2.22 s | 128.35 ± 6.01 s | 2048 MiB | 2322 ± 155 |
+
+Eager CUDA is the fastest full fit. cuML has the lowest average inertia, and its error bar overlaps the array-API CPU result. Runtime rankings are stable across seeds. Fit-quality rankings from the single seed in 006 are not.
+
+The same rows of each dataset are given to every implementation for a separate Lloyd track. One Lloyd step then agrees within 0.080% on every case and seed. On the shape above that step takes 0.025 s and 131 MiB on eager CUDA, 0.285 s and about 1.0 GiB in cuML, 1.848 s and 164 MiB for the array API on CPU, and about 2.03 s and 2.0 GiB in both scikit-learn builds.
+
+Longer fits from those shared centers can diverge. Scikit-learn relocates a cluster that becomes empty. The array API keeps the previous center, and cuML followed that result. On one four-cluster seed the resulting mean inertia is 32.02 for scikit-learn and 249.50 for the array API and cuML. The one-step comparison is the measurement that keeps the implementations on the same work.
+
+Peak increments use different meters: PyTorch allocator bytes above the input, first-call `VmHWM` for the CPU libraries, and 1 MiB nvidia-smi samples for cuML.
+
+## Current implementation
+
+The measured path is eager array-API code on branch `cursor/kmeans-lloyd-fusion-8896`. `fit_kmeans` draws k-means++ centers and then calls `fit_lloyd`. The benchmark passes no compiled `step` or `distance` hook.
+
+| solution | source |
+| --- | --- |
+| k-means++ | [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L390-L432) |
+| one tiled Lloyd step | [`lloyd_step`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L326-L353) |
+| Lloyd from given centers | [`fit_lloyd`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L492-L545) |
+| k-means++ plus Lloyd | [`fit_kmeans`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L453-L489) |
+
+## Original question
 
 Does `torch.compile` or `cupy.fuse` fuse nearest-centroid `argmin` into the squared Euclidean distance?
-
-## Answer
-
-Eager execution is the baseline under each library. Host: NVIDIA L4, 23 GiB. PyTorch 2.14.1+cu130, CuPy 14.2.0, array-api-compat 1.15.0. Float32, TF32 off. The assignment is written with the Python array API (`array_api_compat`). Peak memory is bytes allocated above the inputs.
 
 ### PyTorch
 
@@ -39,26 +66,7 @@ The one-centroid fused times below are a single step. The matching eager measure
 | [eager running step, 4 centroids](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232) | two `(n, d)` buffers, difference and square | 360 ms, 8.00 GiB | 180 ms, 4.00 GiB | 360 ms, 8.00 GiB |
 | [`cupy.fuse` one centroid](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232) | one `(n, d)` difference | 606 ms, 4.00 GiB | 293 ms, 2.00 GiB | 585 ms, 4.00 GiB |
 
-## Implementations
-
-Each schedule is one function on branch `cursor/kmeans-lloyd-fusion-8896`. `torch.compile` is applied in [`_compile_torch`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/scripts/run_experiments.py#L255-L276). `cupy.fuse` is applied in [`_try_cupy_fuse`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/scripts/run_experiments.py#L303-L330).
-
-| solution | source |
-| --- | --- |
-| one Lloyd iteration | [`lloyd_iteration`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L21-L53) |
-| centroid update | [`update_centroids`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L160-L171) |
-| naive broadcast distance | [`squared_distances_broadcast`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L174-L177) |
-| naive broadcast and `argmin` | [`broadcast_distance_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L188-L191) |
-| broadcast distance only | [`broadcast_distance_only`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L235-L237) |
-| Gram distance | [`squared_distances_gemm`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L180-L185) |
-| Gram distance and `argmin` | [`gemm_distance_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L194-L197) |
-| broadcast tile | [`tile_broadcast_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L200-L203) |
-| Gram tile | [`tile_gemm_argmin`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L206-L209) |
-| one-centroid distance | [`centroid_squared_distance`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L212-L219) |
-| running `argmin` step | [`running_argmin_step`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L222-L232) |
-| running assignment | [`assign_running`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L106-L127) |
-| running tile of 32 centroids | [`running_tile_distances`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L130-L136) |
-| running tile over every centroid | [`assign_running_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L139-L157) |
+The fusion schedules are linked from [001](001-fusion-probe/index.html), [002](002-large-shape-oom/index.html), and [003](003-resized-shapes/index.html). `torch.compile` is applied in [`_compile_torch`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/scripts/run_experiments.py#L255-L276). `cupy.fuse` is applied in [`_try_cupy_fuse`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/scripts/run_experiments.py#L303-L330). On the later full-fit timing shape, wrapping the Gram tile and candidate distances with `torch.compile` took 2.40 s against 2.33 s eager, at the same 152 MiB peak ([005](005-full-kmeans/index.html)).
 
 ## Iterations
 
@@ -66,13 +74,15 @@ Each schedule is one function on branch `cursor/kmeans-lloyd-fusion-8896`. `torc
 - [002 — large shape, eager out of memory](002-large-shape-oom/index.html). Compiled GEMM still runs; a compiled running tile of 32 centroids does not allocate the distance matrix.
 - [003 — three shapes](003-resized-shapes/index.html) that vary samples, centroids, and features. `torch.compile` writes the Gram distance matrix and folds argmin into its epilogue. A running tile is the schedule that drops that matrix. `cupy.fuse` still stops at `argmin`.
 - [004 — tile sizes, Cython Lloyd, k-means++](004-tile-tradeoff/index.html). A Gram tile of 4096 by 1024 plus a tiled mean update finishes a feature-heavy Lloyd step in 1.70 s, with assignment peak 64.5 MiB and update peak 432 MiB. The compiled running tile is fastest at 32 centroids (5.98 s, 2.56 MiB). On 65536×1024×2048 the L4 step takes 0.071 s and the 4-thread Cython Lloyd step takes 1.53 s, with 1 label differing. k-means++ on 65536×1024×8192 takes 10.3 s after the sample norm is computed once.
-- [005 — full fit, Cython k-means++, cuML](005-full-kmeans/index.html). On 131072×256×2048 the tiled fit takes 2.33 s and 152 MiB above the input (30 iterations). The same k-means++ on 4 CPU threads takes 24.2 s. cuML's k-means++ fit takes 3.98 s and stops at iteration 6. Inertia agrees within 0.02% on that problem, with an explicit note that our center shift has not reached the scikit-learn tolerance. On separated blobs the labels match exactly. `torch.compile` does not shorten the fit.
-- [006 — structure, centroid count, five implementations](006-breadth/index.html). Eager array API, stock scikit-learn, both cakedev0 patches, and cuML, from tight blobs to noise and up to 131072×2048×256. Separated blobs match. Init draws that differ leave a fit gap that further Lloyd steps do not close. On the largest shape the CUDA fit is 1.52 s and the patched CPU fit is 30.3 s.
-- [007 — repeated seeds and shared fixed centers](007-seeded-fixed-centers/index.html). Seeds 0 through 4 add uncertainty bars. A second track gives every implementation identical dataset rows as initial centers. One-step objectives agree within 0.080%; longer runs expose scikit-learn's empty-cluster relocation as a semantic difference from the array API and cuML.
+- [005 — full fit, Cython k-means++, cuML](005-full-kmeans/index.html). On 131072×256×2048 the tiled eager fit takes 2.33 s and 152 MiB above the input (30 iterations). The same k-means++ on 4 CPU threads takes 24.2 s. cuML's k-means++ fit takes 3.98 s and stops at iteration 6. Inertia agrees within 0.02% on that problem, with an explicit note that our center shift has not reached the scikit-learn tolerance. On separated blobs the labels match exactly. `torch.compile` does not shorten the fit.
+- [006 — structure, centroid count, five implementations](006-breadth/index.html). One seed of the eager array API, stock scikit-learn, both cakedev0 patches, and cuML, from tight blobs to noise and up to 131072×2048×256.
+- [007 — repeated seeds and shared fixed centers](007-seeded-fixed-centers/index.html). Seeds 0 through 4 add uncertainty bars. Shared dataset rows isolate one Lloyd step. One-step objectives agree within 0.080%. Longer runs expose scikit-learn's empty-cluster relocation.
 
 ## Cases
 
-The three shapes used in the last iteration:
+The current headline shape is `speed-xl` from the [five-seed report](007-seeded-fixed-centers/index.html): 131072 samples, 2048 features, 256 clusters, separated blobs. That report also covers blob separation, noise, centroid counts from 4 to 128, and the intermediate shapes `tall`, `wide`, `mixed`, `speed-m`, and `speed-l`.
+
+The fusion measurements in 003 use three larger assignment shapes:
 
 | case | samples | centroids | features |
 | --- | --- | --- | --- |
@@ -80,4 +90,4 @@ The three shapes used in the last iteration:
 | centroid-heavy | 65536 | 16384 | 8192 |
 | feature-heavy | 65536 | 4096 | 16384 |
 
-The [probe](001-fusion-probe/index.html) records the kernel names on a problem small enough for the naive broadcast. The [three-shape report](003-resized-shapes/index.html) records every timed call.
+The [probe](001-fusion-probe/index.html) records the kernel names on a problem small enough for the naive broadcast. The [three-shape report](003-resized-shapes/index.html) records every timed fusion call.
