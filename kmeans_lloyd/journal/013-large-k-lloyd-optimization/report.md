@@ -142,15 +142,88 @@ the work is no longer proportional to useful floating-point operations.
 cuVS passes the labels directly to
 [`reduce_rows_by_key` and
 `reduce_cols_by_key`](https://github.com/NVIDIA/cuvs/blob/v26.10.00/cpp/src/cluster/detail/kmeans_common.cuh#L523-L560)
-for feature sums and cluster weights. The array-API implementation has no
-scatter or segmented-reduction primitive, so it constructs a
-`(tile_n, tile_k)` equality matrix, casts it to float, reduces it for counts,
-and multiplies its transpose by `X`. Roughly 400 such tiles are launched per
-iteration on all three large-`k` probes.
+for feature sums and cluster weights. Those are keyed (segmented) reductions:
+for every row, add its feature vector into the bucket named by its label, and
+add one into that bucket's count. No buffer proportional to `n_samples x
+n_clusters` is ever materialized.
 
-This is the dominant limitation of the portable implementation. It explains
-why cuML's cost per iteration stays near 6 ms while the array-API cost rises
-to 101 ms.
+The [Python array API standard](https://data-apis.org/array-api/latest/)
+has no such operation. It defines whole-array reductions (`sum`, `mean`,
+`argmin`, ...) along an axis, but nothing that scatters contributions into
+`n_clusters` buckets named by an arbitrary integer label array. Without a
+keyed reduction, the only portable way to turn "sum rows that share a label"
+into axis reductions is to make the label visible as an axis: build a
+one-hot membership matrix and reduce along its sample axis. That is what
+[`update_centroids_tiled`](https://github.com/ogrisel/cursor-sandbox/blob/92a3f4abba39d8a9a167e959debbdb5065c999f0/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L288-L355)
+does, one `(tile_n, tile_k)` tile at a time:
+
+```python
+# kmeans_lloyd/src/kmeans_lloyd/iteration.py, inside update_centroids_tiled
+ids = xp.arange(k1 - k0, dtype=labels.dtype, device=_device(X)) + k0
+membership = xp.astype(labels[:, None] == ids[None, :], X.dtype)  # (tile_n, tile_k)
+counts = xp.sum(membership, axis=0)
+sums = xp.matmul(xp.matrix_transpose(membership), X)              # (tile_k, n_features)
+```
+
+`labels[:, None] == ids[None, :]` is the only portable stand-in for a
+scatter: it is a whole-array comparison that happens to encode "which bucket
+does this row belong to" as a dense `0`/`1` matrix, which `matmul` can then
+reduce. Every one of the roughly 400 tiles per iteration recomputes this
+matrix and immediately discards it; none of that `tile_n x tile_k` work
+represents a cluster that could not have been added to directly.
+
+PyTorch (and CuPy, through its own non-standard API) does expose the keyed
+reduction cuVS uses, just not through the array API. `Tensor.index_add_` adds
+rows of `X` into `sums` at the row positions given by `labels`, in one
+launch, with no intermediate matrix:
+
+```python
+# kmeans_lloyd/scripts/probe_lloyd_large_k.py, update_index_add
+def update_index_add(X, labels, old):
+    """Torch control for a native scatter-based centroid update."""
+    sums = torch.zeros_like(old)
+    sums.index_add_(0, labels, X)
+    counts = torch.bincount(labels, minlength=old.shape[0]).to(X.dtype)
+    return torch.where(
+        counts[:, None] == 0,
+        old,
+        sums / torch.clamp(counts[:, None], min=1),
+    )
+```
+
+This is not a drop-in replacement inside the array-API code path. `index_add_`
+is a `torch.Tensor` method, not an `array_api_compat` function, so calling it
+means branching on the concrete backend instead of writing one function that
+runs unchanged on PyTorch, CuPy, and NumPy. CuPy has its own equivalent,
+`cupyx.scatter_add(sums, labels, X)`, with the same effect and the same
+unbuffered-add semantics, but a different name and import path. NumPy's is
+`np.add.at(sums, labels, X)`, slower than either because it is not
+vectorized on CPU. None of the three is exposed by the array API standard, so
+today's single code path cannot reach any of them without an
+`if xp is torch: ... elif xp is cupy: ... else: ...` fork, which is what the
+["add an explicit centroid-update hook"](#2-add-an-explicit-centroid-update-hook)
+recommendation below proposes to isolate behind one optional callable rather
+than scatter throughout `update_centroids_tiled`.
+
+The effect of avoiding the one-hot matrix entirely is large. Measured on the
+same three large-`k` probes, with labels and final centers validated against
+the current tiled implementation:
+
+| update phase, 12 iterations of the probe loop | k100-d32 | k550-d6 | k3000-d2 |
+| --- | ---: | ---: | ---: |
+| current one-hot tiles (`k256`, `n4096`) | 44.6 ms | 47.0 ms | 52.3 ms |
+| tuned one-hot tiles (`k100`/`k512`, `n16384`) | 11.2 ms | 8.9 ms | 11.5 ms |
+| native `index_add_` | 3.18 ms | 0.36 ms | 0.24 ms |
+
+Tuning the one-hot tile shape alone, with no backend-specific code, already
+removes most of the gap: it launches about 25 tiles per iteration instead of
+400, each doing more useful work per equality comparison. `index_add_`
+removes the equality comparison altogether, and its cost falls as `k` grows
+instead of rising, because the kernel's work is proportional to
+`n_samples x n_features`, not to the number of one-hot tiles needed to cover
+`n_clusters`. This is the mechanism behind the largest numbers in the
+"Optimization probes" table below: the one-hot matrix is pure overhead that a
+keyed reduction does not pay.
 
 ## Optimization probes
 
