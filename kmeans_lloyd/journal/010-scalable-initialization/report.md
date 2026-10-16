@@ -27,10 +27,10 @@ its float32 reductions have a different order.
 
 | 3000 clusters, shared random rows | seconds | mean inertia |
 | --- | --- | --- |
-| API CUDA, keep empty | 1.176 ± 0.003 | 0.026543 ± 0.000863 |
-| API CUDA, stochastic D² from 008 | 1.230 ± 0.005 | 0.025321 ± 0.000681 |
-| API CUDA, farthest | 1.247 ± 0.048 | 0.024816 ± 0.000694 |
-| sklearn 1.7, farthest | 1.538 ± 0.017 | 0.024833 ± 0.000694 |
+| Array API - Torch CUDA, keep empty | 1.176 ± 0.003 | 0.026543 ± 0.000863 |
+| Array API - Torch CUDA, stochastic D² from 008 | 1.230 ± 0.005 | 0.025321 ± 0.000681 |
+| Array API - Torch CUDA, farthest | 1.247 ± 0.048 | 0.024816 ± 0.000694 |
+| scikit-learn 1.7.2, farthest | 1.538 ± 0.017 | 0.024833 ± 0.000694 |
 
 Farthest relocation lowers inertia by 6.50% relative to keeping empty centers
 and by 1.99% relative to the former stochastic policy. Its mean is 0.07% below
@@ -70,30 +70,30 @@ the array-API implementation.
 ## Initialization duration
 
 All plots show means and sample standard deviations over seeds 0 through 2.
-The left panel repeats greedy k-means++ from 009; the right panel adds the new
-strategies.
+Each figure puts greedy k-means++ from 009 and the new scalable strategy on the
+same axes: bar color identifies the implementation and hatching marks the
+scalable initializer. Random initializers appear only on the quality figure.
 
 ![Consolidated initializer duration](duration.svg)
 
 | implementation | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
 | --- | --- | --- | --- | --- | --- |
-| API CPU, greedy | 2.39 s | 3.49 s | 12.49 s | 13.51 s | 20.37 s |
-| API CPU, scalable | 18.57 s | 9.46 s | 14.77 s | 36.06 s | 47.09 s |
-| sklearn 1.7, greedy | 5.15 s | 7.42 s | 11.44 s | 16.48 s | 27.73 s |
-| sklearn PRs, greedy | 1.28 s | 2.04 s | 1.53 s | 1.95 s | 3.00 s |
-| API CUDA, greedy | 0.25 s | 0.31 s | 0.48 s | 0.74 s | 1.50 s |
-| API CUDA, scalable | 0.94 s | 1.67 s | 1.29 s | 1.26 s | 2.58 s |
-| API CuPy, greedy | 0.18 s | 0.28 s | 0.74 s | 1.38 s | 2.99 s |
-| API CuPy, scalable | 1.61 s | 2.58 s | 1.93 s | 1.88 s | 4.16 s |
-| cuML, greedy | 0.15 s | 0.39 s | 0.48 s | 0.69 s | 0.91 s |
-| cuML, scalable | 0.49 s | 0.27 s | 0.25 s | 0.36 s | 0.91 s |
-| cuML, random upper bound | 0.17 s | 0.08 s | 0.04 s | 0.04 s | 0.04 s |
+| Array API - Torch CPU, greedy | 2.39 s | 3.49 s | 12.49 s | 13.51 s | 20.37 s |
+| Array API - Torch CPU, scalable | 18.57 s | 9.46 s | 14.77 s | 36.06 s | 47.09 s |
+| scikit-learn 1.7.2, greedy | 5.15 s | 7.42 s | 11.44 s | 16.48 s | 27.73 s |
+| scikit-learn PRs 23+26, greedy | 1.28 s | 2.04 s | 1.53 s | 1.95 s | 3.00 s |
+| Array API - Torch CUDA, greedy | 0.25 s | 0.31 s | 0.48 s | 0.74 s | 1.50 s |
+| Array API - Torch CUDA, scalable | 0.94 s | 1.67 s | 1.29 s | 1.26 s | 2.58 s |
+| Array API - CuPy, greedy | 0.18 s | 0.28 s | 0.74 s | 1.38 s | 2.99 s |
+| Array API - CuPy, scalable | 1.61 s | 2.58 s | 1.93 s | 1.88 s | 4.16 s |
+| cuML 26.10, greedy | 0.15 s | 0.39 s | 0.48 s | 0.69 s | 0.91 s |
+| cuML 26.10, scalable | 0.49 s | 0.27 s | 0.25 s | 0.36 s | 0.91 s |
 
 cuML has no standalone Python initializer API. Its `max_iter=0` fit still
 performs a trailing assignment. For greedy and scalable initialization, the
 reported duration subtracts a second zero-iteration fit from the returned
-centers. Random row selection is below that subtraction's timer noise, so its
-table and plot use the complete zero-iteration fit as an upper bound.
+centers. Random row selection is below that subtraction's timer noise. It is
+not a timing contender and is left out of the duration and memory results.
 
 The array-API scalable implementation is slower than its greedy initializer on
 every task. It deliberately performs eight full-data parallel sampling rounds
@@ -107,11 +107,10 @@ than cuML greedy k-means++ from 17 through 550 clusters and ties it at 3000.
 
 | implementation | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
 | --- | --- | --- | --- | --- | --- |
-| API CPU, scalable | 944 MiB | 1455 MiB | 194 MiB | 81 MiB | 70 MiB |
-| API CUDA, scalable | 939 MiB | 1450 MiB | 190 MiB | 48 MiB | 43 MiB |
-| API CuPy, scalable | 939 MiB | 1450 MiB | 189 MiB | 48 MiB | 43 MiB |
-| cuML, scalable | 53 MiB | 128 MiB | 78 MiB | 48 MiB | 17 MiB |
-| cuML, random | 30 MiB | 74 MiB | 44 MiB | 30 MiB | 6 MiB |
+| Array API - Torch CPU, scalable | 944 MiB | 1455 MiB | 194 MiB | 81 MiB | 70 MiB |
+| Array API - Torch CUDA, scalable | 939 MiB | 1450 MiB | 190 MiB | 48 MiB | 43 MiB |
+| Array API - CuPy, scalable | 939 MiB | 1450 MiB | 189 MiB | 48 MiB | 43 MiB |
+| cuML 26.10, scalable | 53 MiB | 128 MiB | 78 MiB | 48 MiB | 17 MiB |
 
 The array-API row-norm feature tile still controls the two widest tasks, so
 scalable and greedy memory are effectively identical there. Candidate and
@@ -128,20 +127,22 @@ subtracted.
 
 ![Consolidated initializer quality](quality.svg)
 
-The plot divides mean inertia by the best initializer mean on each task. The
-shared random-row baseline appears only on this quality figure.
+The plot divides each mean inertia by the best mean of all consolidated
+initializers on that task, greedy, scalable, and random together. The dotted
+line marks that best result. cuML random and the shared random-row baseline
+appear only on this quality figure.
 
 | implementation | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
 | --- | --- | --- | --- | --- | --- |
-| API CPU, greedy | 1911 | 291.8 | 31.51 | 1.086 | 0.02145 |
-| API CPU, scalable | 1901 | 285.3 | 29.91 | 1.096 | 0.02151 |
-| API CUDA, greedy | 1912 | 292.0 | 31.53 | 1.086 | 0.02150 |
-| API CUDA, scalable | 1884 | 281.1 | 29.97 | 1.097 | 0.02157 |
-| API CuPy, greedy | 1911 | 294.1 | 31.48 | 1.086 | 0.02144 |
-| API CuPy, scalable | 1900 | 285.2 | 30.00 | 1.097 | 0.02156 |
-| cuML, greedy | 1893 | 292.9 | 31.08 | 1.085 | 0.02145 |
-| cuML, scalable | 1092 | 188.0 | 26.76 | 1.069 | 0.01960 |
-| cuML, random | 1944 | 305.8 | 34.41 | 1.182 | 0.05502 |
+| Array API - Torch CPU, greedy | 1911 | 291.8 | 31.51 | 1.086 | 0.02145 |
+| Array API - Torch CPU, scalable | 1901 | 285.3 | 29.91 | 1.096 | 0.02151 |
+| Array API - Torch CUDA, greedy | 1912 | 292.0 | 31.53 | 1.086 | 0.02150 |
+| Array API - Torch CUDA, scalable | 1884 | 281.1 | 29.97 | 1.097 | 0.02157 |
+| Array API - CuPy, greedy | 1911 | 294.1 | 31.48 | 1.086 | 0.02144 |
+| Array API - CuPy, scalable | 1900 | 285.2 | 30.00 | 1.097 | 0.02156 |
+| cuML 26.10, greedy | 1893 | 292.9 | 31.08 | 1.085 | 0.02145 |
+| cuML 26.10, scalable | 1092 | 188.0 | 26.76 | 1.069 | 0.01960 |
+| cuML 26.10, random | 1944 | 305.8 | 34.41 | 1.182 | 0.05502 |
 | shared random rows | 1924 | 300.3 | 33.94 | 1.189 | 0.05396 |
 
 Array-API scalable initialization improves on array-API greedy k-means++ by

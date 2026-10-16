@@ -21,16 +21,16 @@ ORDER = (
     "random-baseline",
 )
 LABEL = {
-    "torch-cpu-keep": "API CPU, keep",
-    "torch-cpu-reassign": "API CPU, reassign",
-    "sklearn-vanilla": "sklearn 1.7",
-    "sklearn-optimized": "sklearn PRs",
-    "torch-cuda-keep": "API CUDA, keep",
-    "torch-cuda-reassign": "API CUDA, reassign",
-    "cupy-keep": "API CuPy, keep",
-    "cupy-reassign": "API CuPy, reassign",
-    "cuml": "cuML",
-    "random-baseline": "random baseline",
+    "torch-cpu-keep": "Array API - Torch CPU, keep",
+    "torch-cpu-reassign": "Array API - Torch CPU, reassign",
+    "sklearn-vanilla": "scikit-learn 1.7.2",
+    "sklearn-optimized": "scikit-learn PRs 23+26",
+    "torch-cuda-keep": "Array API - Torch CUDA, keep",
+    "torch-cuda-reassign": "Array API - Torch CUDA, reassign",
+    "cupy-keep": "Array API - CuPy, keep",
+    "cupy-reassign": "Array API - CuPy, reassign",
+    "cuml": "cuML 26.10",
+    "random-baseline": "shared random rows",
 }
 COLOR = {
     name: color

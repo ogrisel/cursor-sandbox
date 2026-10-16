@@ -24,9 +24,9 @@ PyTorch CPU/CUDA and CuPy. All 84 new workers complete within 60 seconds.
 
 | initializer | 3 clusters | 17 clusters | 100 clusters | 550 clusters | 3000 clusters |
 | --- | --- | --- | --- | --- | --- |
-| API CUDA, scalable | 0.94 s | 1.67 s | 1.29 s | 1.26 s | 2.58 s |
-| API CuPy, scalable | 1.61 s | 2.58 s | 1.93 s | 1.88 s | 4.16 s |
-| API CPU, scalable | 18.57 s | 9.46 s | 14.77 s | 36.06 s | 47.09 s |
+| Array API - Torch CUDA, scalable | 0.94 s | 1.67 s | 1.29 s | 1.26 s | 2.58 s |
+| Array API - CuPy, scalable | 1.61 s | 2.58 s | 1.93 s | 1.88 s | 4.16 s |
+| Array API - Torch CPU, scalable | 18.57 s | 9.46 s | 14.77 s | 36.06 s | 47.09 s |
 | cuML, scalable | 0.49 s | 0.27 s | 0.25 s | 0.36 s | 0.91 s |
 
 Main conclusions:

@@ -23,10 +23,10 @@ The `speed-xl` result, 131072 samples by 2048 features and 256 clusters:
 
 | implementation | k-means++ seconds | init inertia | fit seconds | fit peak increment | fit inertia | iterations |
 | --- | --- | --- | --- | --- | --- | --- |
-| API CPU | 41.41 ± 1.07 | 4279 ± 181 | 46.06 ± 1.05 | 175.2 ± 1.5 MiB | 2149 ± 96 | 2.4 ± 0.5 |
-| sklearn 1.7 | 126.80 ± 2.22 | 4602 ± 292 | 128.35 ± 6.01 | 2047.9 ± 0.0 MiB | 2322 ± 155 | 3.6 ± 1.1 |
-| sklearn PRs | 23.96 ± 0.05 | 4602 ± 365 | 26.60 ± 0.46 | 2047.9 ± 0.0 MiB | 2288 ± 154 | 3.0 ± 0.7 |
-| API CUDA | 1.344 ± 0.001 | 4469 ± 269 | 1.484 ± 0.034 | 135.6 ± 0.0 MiB | 2252 ± 144 | 3.0 ± 1.0 |
+| Array API - Torch CPU | 41.41 ± 1.07 | 4279 ± 181 | 46.06 ± 1.05 | 175.2 ± 1.5 MiB | 2149 ± 96 | 2.4 ± 0.5 |
+| scikit-learn 1.7.2 | 126.80 ± 2.22 | 4602 ± 292 | 128.35 ± 6.01 | 2047.9 ± 0.0 MiB | 2322 ± 155 | 3.6 ± 1.1 |
+| scikit-learn PRs 23+26 | 23.96 ± 0.05 | 4602 ± 365 | 26.60 ± 0.46 | 2047.9 ± 0.0 MiB | 2288 ± 154 | 3.0 ± 0.7 |
+| Array API - Torch CUDA | 1.344 ± 0.001 | 4469 ± 269 | 1.484 ± 0.034 | 135.6 ± 0.0 MiB | 2252 ± 144 | 3.0 ± 1.0 |
 | cuML | 3.966 ± 0.016 | 4207 ± 169 | 4.018 ± 0.018 | 1042.0 ± 0.0 MiB | 2113 ± 95 | 2.2 ± 0.4 |
 
 The CUDA array API remains the fastest full fit. cuML has the best average inertia on this case, but its error bar overlaps array-API CPU. The patched scikit-learn initializer remains 5.3 times faster than stock scikit-learn. These are distributions over each implementation's own seeded sampler, not paired identical draws: the libraries consume random state differently, and CPU and CUDA array-API draws can diverge after floating-point rounding changes one weighted sample.
@@ -43,10 +43,10 @@ One Lloyd step is the cleanest isolation. The worst quality spread between imple
 
 | implementation | one-step seconds | peak increment | inertia after step |
 | --- | --- | --- | --- |
-| API CPU | 1.848 ± 0.002 | 163.8 ± 0.4 MiB | 17695.58 ± 350.29 |
-| sklearn 1.7 | 2.027 ± 0.004 | 2047.8 ± 0.1 MiB | 17695.64 ± 350.08 |
-| sklearn PRs | 2.030 ± 0.007 | 2047.9 ± 0.1 MiB | 17695.64 ± 350.08 |
-| API CUDA | 0.025 ± 0.000 | 130.6 ± 0.0 MiB | 17695.02 ± 349.27 |
+| Array API - Torch CPU | 1.848 ± 0.002 | 163.8 ± 0.4 MiB | 17695.58 ± 350.29 |
+| scikit-learn 1.7.2 | 2.027 ± 0.004 | 2047.8 ± 0.1 MiB | 17695.64 ± 350.08 |
+| scikit-learn PRs 23+26 | 2.030 ± 0.007 | 2047.9 ± 0.1 MiB | 17695.64 ± 350.08 |
+| Array API - Torch CUDA | 0.025 ± 0.000 | 130.6 ± 0.0 MiB | 17695.02 ± 349.27 |
 | cuML | 0.285 ± 0.000 | 1036.0 ± 0.0 MiB | 17695.58 ± 350.40 |
 
 The array-API CPU step is 9% faster than both scikit-learn builds and uses about one twelfth their peak increment on `speed-xl`. The optimized scikit-learn patches accelerate initialization, not this Lloyd kernel at this shape. CUDA array API is 11.2 times faster than cuML for the isolated step.
@@ -67,7 +67,7 @@ Shared starts remove k-means++ differences, but they do not force implementation
 | speed-l, seed 0 | 9 | 6629.01 | 6201.32 |
 | speed-xl, seed 0 | 16 | 15456.99 | 15244.74 |
 
-This is the main qualification on the full fixed-center timing. On `speed-xl`, API CUDA takes 0.219 ± 0.029 s and cuML 0.363 ± 0.001 s for their matching 14,725 ± 701 inertia result; API CPU takes 11.51 ± 0.98 s. Scikit-learn takes about 5.1 s but relocates empty centers and averages a different 14,451 ± 756 objective. The one-step table is the performance comparison without this semantic split.
+This is the main qualification on the full fixed-center timing. On `speed-xl`, Array API - Torch CUDA takes 0.219 ± 0.029 s and cuML 0.363 ± 0.001 s for their matching 14,725 ± 701 inertia result; Array API - Torch CPU takes 11.51 ± 0.98 s. Scikit-learn takes about 5.1 s but relocates empty centers and averages a different 14,451 ± 756 objective. The one-step table is the performance comparison without this semantic split.
 
 ## Conclusions
 
