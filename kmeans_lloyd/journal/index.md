@@ -17,26 +17,24 @@ samples. Runs use float32, eager execution, TF32 disabled, three seeds, and a
 
 ## Latest results
 
-[013](013-large-k-lloyd-optimization/index.html) explains why cuML Lloyd is
-faster at large `k`, tests portable and backend-specific optimizations, and
-checks whether fewer scalable-initialization rounds change its trade-off.
+[014](014-portable-array-api-kmeans/index.html) extracts a scikit-learn
+compatible portable `KMeans` estimator and evaluates CuPy-native replacements
+for the one-hot centroid update identified in 013.
 
-| 12 Lloyd iterations, seconds | 100 clusters | 550 clusters | 3000 clusters |
+| one CuPy centroid update | 100 clusters | 550 clusters | 3000 clusters |
 | --- | --- | --- | --- |
-| Array API - Torch CUDA, current | 0.626 s | 0.793 s | 1.001 s |
-| Array API - Torch CUDA, portable tuned | 0.251 s | 0.377 s | 0.508 s |
-| Array API - CuPy, current | 0.992 s | 0.997 s | 1.228 s |
-| Array API - CuPy, portable tuned | 0.461 s | 0.484 s | 0.610 s |
-| PyTorch compiled assignment + native update | 0.091 s | 0.119 s | 0.150 s |
-| cuML, device-resident input | 0.126 s | 0.090 s | 0.086 s |
+| Portable current | 56.95 ms | 60.02 ms | 65.89 ms |
+| Portable tuned | 19.20 ms | 17.66 ms | 18.00 ms |
+| `cupyx.scatter_add` | 1.172 ms | 0.350 ms | 0.365 ms |
+| Fused atomic `RawKernel` | 1.064 ms | 0.161 ms | 0.152 ms |
 
 Main conclusions:
 
-- The current scalable initializer is not competitive here: every 2-, 4-, and 8-round configuration costs more than greedy k-means++, and Lloyd erases its initial-quality gains.
-- cuVS fuses distance evaluation with top-1 reduction and updates centers with keyed reductions. The array-API code materializes score tiles and builds about 400 one-hot membership tiles per iteration.
-- Larger one-hot tiles plus argmin-and-gather make 12 Lloyd iterations 2.0x to 2.5x faster on PyTorch and 2.0x to 2.2x faster on CuPy, with unchanged final inertia.
-- A compiled PyTorch assignment plus native `index_add_` is faster than the cuML times in 011. Device-resident cuML remains faster at 550 and 3000 clusters.
-- The next implementation step is the portable tile change, followed by an optional native centroid-update hook and cached compiled assignment.
+- The public estimator supports only random and greedy k-means++ initialization, dense Lloyd iterations, and the applicable scikit-learn KMeans hyperparameters.
+- It passes the scikit-learn estimator suite, including strict array-API namespace, device, indexing, and dtype checks.
+- The default path remains backend-agnostic and carries explicit TODO boundaries for optional compiled assignment and keyed centroid-update callables.
+- `cupyx.scatter_add` is 16x to 50x faster than the tuned portable update. It is the best first CuPy fast path, subject to its float32 atomic and non-determinism constraints.
+- A custom fused sum/count kernel is another 2.2x to 2.4x faster at large `k`, but should follow the simpler public CuPy primitive rather than precede it.
 
 ## Journal
 
@@ -53,3 +51,4 @@ Main conclusions:
 - [011 — consolidated benchmark](011-consolidated-benchmark/index.html): initialization, Lloyd-only, and full-fit results on one page, plus the scalable-init ablation.
 - [012 — source link audit](012-source-link-audit/index.html): source links pinned to the commits that each report measured.
 - [013 — large-k Lloyd optimization](013-large-k-lloyd-optimization/index.html): scalable-init sensitivity, cuML kernel analysis, optimization probes, and next steps.
+- [014 — portable array-API KMeans](014-portable-array-api-kmeans/index.html): sklearn-compatible estimator extraction and CuPy-native centroid-update probes.

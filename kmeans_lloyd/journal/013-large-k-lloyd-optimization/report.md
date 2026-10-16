@@ -349,3 +349,4 @@ further scalable-seeding work in this PR.
 
 Previous: [source-link audit](../012-source-link-audit/report.md).
 Index: [journal](../index.md).
+Next: [portable array-API KMeans](../014-portable-array-api-kmeans/report.md).
