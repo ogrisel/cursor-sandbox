@@ -21,6 +21,11 @@ labels = model.labels_
 centers = model.cluster_centers_
 ```
 
+The centroid update uses PyTorch `index_add_` or CuPy `add.at` when `X` is a
+PyTorch tensor or CuPy array, and portable one-hot matrix products for every
+other array API namespace. `kmeans_lloyd.backends.use_native_backends(False)`
+forces the portable path everywhere.
+
 The package also contains lower-level Lloyd primitives and CUDA experiments
 on assignment fusion and backend-specific centroid reductions.
 
