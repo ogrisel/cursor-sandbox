@@ -544,8 +544,6 @@ def scalable_kmeans_plusplus(
 
     Returns ``(centers, indices)`` where every center is a row of ``X``.
     """
-    import math
-
     xp = array_namespace(X)
     n_samples = int(X.shape[0])
     n_clusters = int(n_clusters)
@@ -558,6 +556,26 @@ def scalable_kmeans_plusplus(
     if n_rounds < 1:
         raise ValueError("n_rounds must be at least 1")
 
+    candidate_indices, candidates, weights = _scalable_candidates(
+        xp, X, n_clusters, rng, oversampling_factor, n_rounds, tile_n, tile_k
+    )
+    selected = _weighted_kmeans_plusplus(
+        xp,
+        candidates,
+        weights,
+        rng,
+        n_clusters,
+        n_local_trials=n_local_trials,
+    )
+    indices = xp.take(candidate_indices, selected, axis=0)
+    return xp.take(X, indices, axis=0), indices
+
+
+def _scalable_candidates(xp, X, n_clusters, rng, oversampling_factor, n_rounds, tile_n, tile_k):
+    """Return k-means|| candidate indices, rows, and nearest-sample counts."""
+    import math
+
+    n_samples = int(X.shape[0])
     first = int(rng.integers(n_samples))
     candidate_indices = [xp.asarray([first], dtype=xp.int64, device=_device(X))]
     x_norm = _row_squared_norm(xp, X)
@@ -603,16 +621,7 @@ def scalable_kmeans_plusplus(
         tile_k=min(int(tile_k), int(candidates.shape[0])),
     )
     weights = _label_counts(xp, labels, int(candidates.shape[0]), X.dtype)
-    selected = _weighted_kmeans_plusplus(
-        xp,
-        candidates,
-        weights,
-        rng,
-        n_clusters,
-        n_local_trials=n_local_trials,
-    )
-    indices = xp.take(candidate_indices, selected, axis=0)
-    return xp.take(X, indices, axis=0), indices
+    return candidate_indices, candidates, weights
 
 
 def _minimum_squared_distances(xp, X, x_norm, candidates, tile_n, tile_k):

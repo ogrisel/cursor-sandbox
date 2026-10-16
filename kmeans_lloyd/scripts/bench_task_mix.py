@@ -48,11 +48,11 @@ TASKS = [
 
 API_IMPLS = (
     "torch-cpu-keep",
-    "torch-cpu-reassign",
+    "torch-cpu-farthest",
     "torch-cuda-keep",
-    "torch-cuda-reassign",
+    "torch-cuda-farthest",
     "cupy-keep",
-    "cupy-reassign",
+    "cupy-farthest",
 )
 OTHER_IMPLS = ("sklearn-vanilla", "sklearn-optimized", "cuml")
 IMPLS = API_IMPLS + OTHER_IMPLS
@@ -174,7 +174,7 @@ def _to_numpy(array):
 def _worker_api(args, samples, centers0):
     backend = args.impl.split("-")[0]
     gpu = backend in ("torch", "cupy") and "cpu" not in args.impl
-    reassign = args.impl.endswith("-reassign")
+    reassign = args.impl.endswith("-farthest")
     if backend == "torch":
         import torch
 
@@ -232,6 +232,17 @@ def _worker_api(args, samples, centers0):
         )
         if args.init == "plusplus":
             return fit_kmeans(data, args.k, rng, **kwargs)
+        if args.init == "scalable":
+            centers, _ = scalable_kmeans_plusplus(
+                data,
+                args.k,
+                rng,
+                oversampling_factor=args.oversampling_factor,
+                n_rounds=args.init_rounds,
+                tile_n=min(tile_n, 8192),
+                tile_k=tile_k,
+            )
+            return fit_lloyd(data, centers, rng=rng, **kwargs)
         return fit_lloyd(data, fixed, rng=rng, **kwargs)
 
     if gpu:
@@ -422,11 +433,14 @@ def _worker_cuml(args, samples, centers0):
     def call():
         model = KMeans(
             n_clusters=args.k,
-            init="k-means++" if args.init == "plusplus" else centers0,
+            init={"plusplus": "k-means++", "scalable": "scalable-k-means++"}.get(
+                args.init, centers0
+            ),
             n_init=1,
             max_iter=args.max_iter,
             tol=args.tol,
             random_state=args.seed,
+            oversampling_factor=args.oversampling_factor,
             output_type="numpy",
         )
         model.fit(samples)
@@ -542,6 +556,7 @@ def drive(
                 jobs.append(("random-baseline", "random"))
             else:
                 jobs = [(impl, init) for impl in IMPLS for init in ("plusplus", "random")]
+                jobs += [(impl, "scalable") for impl in IMPLS if not impl.startswith("sklearn")]
                 jobs.append(("random-baseline", "random"))
             for impl, init in jobs:
                 if selected_impls and impl not in selected_impls:
