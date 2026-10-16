@@ -1,8 +1,12 @@
-"""Benchmark a bounded mix of KMeans tasks and empty-cluster policies.
+"""Benchmark a bounded mix of KMeans tasks.
 
 The driver stores one dataset and one set of random-row initial centers per
 task/seed. Every implementation in the ``random`` track receives those exact
 centers. Workers are fresh processes and have a hard 60 second wall timeout.
+
+Array-API contenders fit ``kmeans_lloyd.KMeans``. The ``-generic`` variants
+disable the PyTorch and CuPy scatter-add update so the portable one-hot
+fallback is measured on the same arrays.
 """
 
 from __future__ import annotations
@@ -47,24 +51,21 @@ TASKS = [
 ]
 
 API_IMPLS = (
-    "torch-cpu-keep",
-    "torch-cpu-farthest",
-    "torch-cuda-keep",
-    "torch-cuda-farthest",
-    "cupy-keep",
-    "cupy-farthest",
+    "torch-cpu",
+    "torch-cpu-generic",
+    "torch-cuda",
+    "torch-cuda-generic",
+    "cupy",
+    "cupy-generic",
 )
 OTHER_IMPLS = ("sklearn-vanilla", "sklearn-optimized", "cuml")
 IMPLS = API_IMPLS + OTHER_IMPLS
-# Initializer-only contenders. cuML's ``k-means||`` spelling aliases
-# ``scalable-k-means++`` and is therefore not repeated.
+# Initializer-only contenders. cuML's default ``scalable-k-means++`` stays
+# as a reference; the array-API estimator offers only greedy k-means++.
 INIT_JOBS = (
     ("torch-cpu", "plusplus"),
     ("torch-cuda", "plusplus"),
     ("cupy", "plusplus"),
-    ("torch-cpu-scalable", "scalable"),
-    ("torch-cuda-scalable", "scalable"),
-    ("cupy-scalable", "scalable"),
     ("sklearn-vanilla", "plusplus"),
     ("sklearn-optimized", "plusplus"),
     ("cuml-plusplus", "plusplus"),
@@ -77,12 +78,6 @@ def _pythons():
     pixi = HOME / "kmeans_lloyd/.pixi/envs/default/bin/python"
     return {
         **{name: pixi for name in API_IMPLS},
-        "torch-cpu": pixi,
-        "torch-cuda": pixi,
-        "cupy": pixi,
-        "torch-cpu-scalable": pixi,
-        "torch-cuda-scalable": pixi,
-        "cupy-scalable": pixi,
         "random-baseline": pixi,
         "sklearn-vanilla": HOME / "sklearn-vanilla-venv/bin/python",
         "sklearn-optimized": HOME / "sklearn-plusplus-venv/bin/python",
@@ -155,13 +150,6 @@ def _mean_inertia(samples, centers):
     return total / len(samples)
 
 
-def _tiles(n, k, gpu):
-    tile_n = n if n * k * 4 <= 64 * 1024 * 1024 else min(n, 65536)
-    tile_k = min(k, 256)
-    update_n = min(n, 4096) if gpu else min(n, tile_n)
-    return int(tile_n), int(tile_k), int(update_n)
-
-
 def _to_numpy(array):
     module = type(array).__module__
     if module.startswith("torch"):
@@ -174,7 +162,7 @@ def _to_numpy(array):
 def _worker_api(args, samples, centers0):
     backend = args.impl.split("-")[0]
     gpu = backend in ("torch", "cupy") and "cpu" not in args.impl
-    reassign = args.impl.endswith("-farthest")
+    native = not args.impl.endswith("-generic")
     if backend == "torch":
         import torch
 
@@ -197,53 +185,25 @@ def _worker_api(args, samples, centers0):
         cupy.ones((2, 2), dtype=cupy.float32) @ cupy.ones((2, 2), dtype=cupy.float32)
         cupy.cuda.Stream.null.synchronize()
 
+    from kmeans_lloyd import KMeans
+    from kmeans_lloyd.backends import use_native_backends
     from kmeans_lloyd.instrument import measure_call
-    from kmeans_lloyd.iteration import (
-        fit_kmeans,
-        fit_lloyd,
-        kmeans_plusplus,
-        scalable_kmeans_plusplus,
-    )
+    from kmeans_lloyd.iteration import kmeans_plusplus
 
-    tile_n, tile_k, update_n = _tiles(len(samples), args.k, gpu)
+    use_native_backends(native)
 
     def call():
-        rng = np.random.default_rng(args.seed)
         if args.phase == "init":
-            if args.init == "scalable":
-                return scalable_kmeans_plusplus(
-                    data,
-                    args.k,
-                    rng,
-                    oversampling_factor=args.oversampling_factor,
-                    n_rounds=args.init_rounds,
-                    tile_n=min(tile_n, 8192),
-                    tile_k=tile_k,
-                )
-            return kmeans_plusplus(data, args.k, rng)
-        kwargs = dict(
+            return kmeans_plusplus(data, args.k, np.random.default_rng(args.seed))
+        model = KMeans(
+            n_clusters=args.k,
+            init="k-means++" if args.init == "plusplus" else fixed,
+            n_init=1,
             max_iter=args.max_iter,
             tol=args.tol,
-            tile_n=tile_n,
-            tile_k=tile_k,
-            update_tile_k=tile_k,
-            update_tile_n=update_n,
-            reassign_empty=reassign,
+            random_state=args.seed,
         )
-        if args.init == "plusplus":
-            return fit_kmeans(data, args.k, rng, **kwargs)
-        if args.init == "scalable":
-            centers, _ = scalable_kmeans_plusplus(
-                data,
-                args.k,
-                rng,
-                oversampling_factor=args.oversampling_factor,
-                n_rounds=args.init_rounds,
-                tile_n=min(tile_n, 8192),
-                tile_k=tile_k,
-            )
-            return fit_lloyd(data, centers, rng=rng, **kwargs)
-        return fit_lloyd(data, fixed, rng=rng, **kwargs)
+        return model.fit(data)
 
     if gpu:
         result, profile = measure_call(call, (), data)
@@ -269,11 +229,9 @@ def _worker_api(args, samples, centers0):
         "seconds": seconds,
         "mem_increment_bytes": memory,
         "mem_meter": meter,
-        "n_iter": int(result["n_iter"]),
-        "inertia_per_point": _mean_inertia(samples, _to_numpy(result["centers"])),
-        "reassign_empty": reassign,
-        "empty_events": int(result["empty_events"]),
-        "reassignments": int(result["reassignments"]),
+        "n_iter": int(result.n_iter_),
+        "inertia_per_point": _mean_inertia(samples, _to_numpy(result.cluster_centers_)),
+        "native_update": native,
     }
 
 
@@ -556,7 +514,7 @@ def drive(
                 jobs.append(("random-baseline", "random"))
             else:
                 jobs = [(impl, init) for impl in IMPLS for init in ("plusplus", "random")]
-                jobs += [(impl, "scalable") for impl in IMPLS if not impl.startswith("sklearn")]
+                jobs.append(("cuml", "scalable"))
                 jobs.append(("random-baseline", "random"))
             for impl, init in jobs:
                 if selected_impls and impl not in selected_impls:
