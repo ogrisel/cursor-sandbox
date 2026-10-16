@@ -34,6 +34,8 @@ Contenders are eager array API with PyTorch CPU, PyTorch CUDA, and CuPy, each wi
 
 ## Duration and memory
 
+The no-Lloyd random baseline is omitted from the duration and memory plots. It remains on the inertia plots, where its quality gap is visible.
+
 ![Full fit duration across the task mix](duration.svg)
 
 K-means++ plus Lloyd:

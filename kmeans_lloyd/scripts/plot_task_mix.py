@@ -57,11 +57,12 @@ def aggregate(rows, task, impl, init, field):
     return float(np.mean(values)), float(np.std(values, ddof=1)) if len(values) > 1 else 0
 
 
-def grouped(ax, rows, tasks, init, field, title, ylabel, log=False, normalize=False):
+def grouped(ax, rows, tasks, init, field, title, ylabel, log=False, normalize=False, include_baseline=False):
     present = [
         impl
         for impl in ORDER
-        if any(row["impl"] == impl and row["init"] == init and "error" not in row for row in rows)
+        if (include_baseline or impl != "random-baseline")
+        and any(row["impl"] == impl and row["init"] == init and "error" not in row for row in rows)
     ]
     width = 0.88 / len(present)
     xs = np.arange(len(tasks))
@@ -132,6 +133,7 @@ def main():
     grouped(
         axes[1], rows, tasks, "random", "inertia_per_point",
         "Shared random rows + Lloyd", "inertia / best mean", normalize=True,
+        include_baseline=True,
     )
     axes[1].legend(frameon=False, fontsize=7, ncol=2)
     fig.suptitle("Fit quality relative to the best contender per task")
@@ -158,6 +160,7 @@ def main():
     grouped(
         axes[1], rows, [focus], "random", "inertia_per_point",
         "Relocation improves the shared start", "mean inertia",
+        include_baseline=True,
     )
     axes[1].legend(frameon=False, fontsize=7, ncol=2)
     fig.tight_layout()
