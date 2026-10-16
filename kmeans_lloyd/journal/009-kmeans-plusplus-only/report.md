@@ -73,4 +73,4 @@ The six k-means++ implementations land within about 1% of each other from 17 clu
 - The array-API row-norm tile sets the memory peak on the wide tasks, about 0.94 GiB at 1000 features and 1.45 GiB at 2.1 million samples.
 - On isotropic 3-cluster noise, random rows match k-means++. At 3000 clusters, k-means++ cuts the random-row inertia by a factor of 2.52 before any Lloyd iteration.
 
-Previous: [stochastic relocation and the full-fit task mix](../008-empty-reassignment-task-mix/report.md). Index: [journal](../index.md).
+Previous: [stochastic relocation and the full-fit task mix](../008-empty-reassignment-task-mix/report.md). Next: [farthest relocation and scalable initialization](../010-scalable-initialization/report.md). Index: [journal](../index.md).
