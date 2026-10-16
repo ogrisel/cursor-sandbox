@@ -91,6 +91,21 @@ def test_explicit_centers_with_wrong_shape_are_rejected():
         KMeans(3, init=np.zeros((2, 2))).fit(_blobs())
 
 
+def test_array_api_input_finiteness_check():
+    import array_api_strict as xp
+
+    X = _blobs().astype(np.float32)
+    for value in (np.nan, np.inf):
+        bad = X.copy()
+        bad[37, 1] = value
+        with pytest.raises(ValueError, match="NaN or infinity"):
+            KMeans(3).fit(xp.asarray(bad))
+    # Finite values whose column sums overflow float32 take the exact check.
+    huge = np.full((4, 2), np.finfo(np.float32).max, dtype=np.float32)
+    with np.errstate(over="ignore"):
+        assert KMeans(2)._validate_input(xp.asarray(huge), reset=True).shape == (4, 2)
+
+
 def test_portable_namespaces_have_no_native_path():
     import array_api_compat.numpy as xp
 

@@ -300,7 +300,7 @@ class KMeans(
             )
         if int(X.shape[0]) < 1 or int(X.shape[1]) < 1:
             raise ValueError("KMeans requires at least one sample and one feature.")
-        if not bool(xp.all(xp.isfinite(X))):
+        if not _all_finite(xp, X):
             raise ValueError("Input X contains NaN or infinity.")
         if reset:
             self.n_features_in_ = int(X.shape[1])
@@ -317,6 +317,24 @@ class KMeans(
         tags.input_tags.sparse = False
         tags.transformer_tags.preserves_dtype = ["float32", "float64"]
         return tags
+
+
+def _all_finite(xp, X):
+    """Check finiteness without an input-sized temporary.
+
+    Eager ``xp.isfinite(X)`` costs a boolean array as large as ``X``, and
+    PyTorch adds float temporaries on top: 5.4 GiB extra for a 3.8 GB input.
+    Column sums are finite for finite data unless they overflow, so only a
+    non-finite sum triggers the exact check, one row tile at a time.
+    """
+    if bool(xp.all(xp.isfinite(xp.sum(X, axis=0)))):
+        return True
+    n_samples, n_features = map(int, X.shape)
+    tile_n = max(1, (1 << 24) // n_features)
+    for n0 in range(0, n_samples, tile_n):
+        if not bool(xp.all(xp.isfinite(X[n0 : min(n0 + tile_n, n_samples), :]))):
+            return False
+    return True
 
 
 def _tile_schedule(X, n_clusters):
