@@ -34,7 +34,11 @@ explained in the last section.
   seed means; figures add one sample standard deviation.
 - Figures use one color per implementation; hatching marks scalable
   initialization and dots mark random rows. Random initializers appear only
-  on quality figures because they are not timing contenders.
+  on quality figures because they are not timing contenders. Quality is mean
+  inertia divided by the best mean for the same task and section, with a
+  dotted line at 1. Duration and memory use a logarithmic axis because their
+  values span more than a factor of ten; every quality ratio stays below a
+  factor of three, so those axes stay linear.
 
 ## Initialization only
 
@@ -108,8 +112,8 @@ returning.
 ## Lloyd only from shared random rows
 
 Every implementation starts from the same `k` random rows per seed, so this
-section isolates the Lloyd kernel and its empty-center policy. Quality is
-reported as the percentage above the best Lloyd-only mean for the same task.
+section isolates the Lloyd kernel and its empty-center policy. Its quality
+table divides each mean inertia by the best Lloyd-only mean for that task.
 Full-fit results do not contribute to this denominator.
 
 ![Lloyd-only duration](lloyd-duration.svg)
@@ -144,15 +148,15 @@ Full-fit results do not contribute to this denominator.
 
 | configuration | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
 | --- | --- | --- | --- | --- | --- |
-| Array API - Torch CPU, random rows, keep empty | 0.000% | 0.000% | 0.000% | 0.000% | 6.953% |
-| Array API - Torch CPU, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 0.000% |
-| Array API - Torch CUDA, random rows, keep empty | 0.000% | 0.000% | 0.000% | 0.000% | 6.959% |
-| Array API - Torch CUDA, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 0.002% |
-| Array API - CuPy, random rows, keep empty | 0.000% | 0.000% | 0.000% | 0.000% | 6.959% |
-| Array API - CuPy, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 0.002% |
-| scikit-learn 1.7.2, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 0.071% |
-| scikit-learn PRs 23+26, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 0.072% |
-| cuML 26.10, random rows | 0.000% | 0.000% | 0.000% | 0.000% | 6.990% |
+| Array API - Torch CPU, random rows, keep empty | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0695 |
+| Array API - Torch CPU, random rows | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| Array API - Torch CUDA, random rows, keep empty | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0696 |
+| Array API - Torch CUDA, random rows | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| Array API - CuPy, random rows, keep empty | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0696 |
+| Array API - CuPy, random rows | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| scikit-learn 1.7.2, random rows | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0007 |
+| scikit-learn PRs 23+26, random rows | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0007 |
+| cuML 26.10, random rows | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0699 |
 
 PyTorch CUDA is the fastest Lloyd implementation at 3 and 17 clusters, for
 example 0.77 s against 6.85 s for cuML on the 1000-feature task. cuML is
@@ -216,22 +220,22 @@ keeping its empty centers in place.
 
 | configuration | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
 | --- | --- | --- | --- | --- | --- |
-| Array API - Torch CPU, greedy, keep empty | 0.000% | 0.000% | 0.001% | 0.126% | timeout |
-| Array API - Torch CPU, scalable, keep empty | 0.000% | 0.000% | 0.015% | timeout | timeout |
-| Array API - Torch CPU, greedy | 0.000% | 0.000% | 0.001% | 0.126% | timeout |
-| Array API - Torch CPU, scalable | 0.000% | 0.000% | 0.015% | timeout | timeout |
-| Array API - Torch CUDA, greedy, keep empty | 0.000% | 0.000% | 0.009% | 0.125% | 0.220% |
-| Array API - Torch CUDA, scalable, keep empty | 0.000% | 0.001% | 0.005% | 0.150% | 0.162% |
-| Array API - Torch CUDA, greedy | 0.000% | 0.001% | 0.010% | 0.101% | 0.000% |
-| Array API - Torch CUDA, scalable | 0.000% | 0.000% | 0.009% | 0.110% | 0.055% |
-| Array API - CuPy, greedy, keep empty | 0.000% | 0.000% | 0.006% | 0.079% | 0.034% |
-| Array API - CuPy, scalable, keep empty | 0.000% | 0.001% | 0.008% | 0.138% | 0.248% |
-| Array API - CuPy, greedy | 0.000% | 0.000% | 0.006% | 0.079% | 0.034% |
-| Array API - CuPy, scalable | 0.000% | 0.001% | 0.008% | 0.138% | 0.248% |
-| scikit-learn 1.7.2, greedy | 0.000% | 0.000% | 0.003% | 0.090% | 0.398% |
-| scikit-learn PRs 23+26, greedy | 0.000% | 0.000% | 0.000% | 0.126% | 0.108% |
-| cuML 26.10, greedy | 0.000% | 0.000% | 0.000% | 0.090% | 0.107% |
-| cuML 26.10, scalable | 0.052% | 0.110% | 0.002% | 0.000% | 5.575% |
+| Array API - Torch CPU, greedy, keep empty | 1.0000 | 1.0000 | 1.0000 | 1.0013 | timeout |
+| Array API - Torch CPU, scalable, keep empty | 1.0000 | 1.0000 | 1.0001 | timeout | timeout |
+| Array API - Torch CPU, greedy | 1.0000 | 1.0000 | 1.0000 | 1.0013 | timeout |
+| Array API - Torch CPU, scalable | 1.0000 | 1.0000 | 1.0001 | timeout | timeout |
+| Array API - Torch CUDA, greedy, keep empty | 1.0000 | 1.0000 | 1.0001 | 1.0012 | 1.0022 |
+| Array API - Torch CUDA, scalable, keep empty | 1.0000 | 1.0000 | 1.0000 | 1.0015 | 1.0016 |
+| Array API - Torch CUDA, greedy | 1.0000 | 1.0000 | 1.0001 | 1.0010 | 1.0000 |
+| Array API - Torch CUDA, scalable | 1.0000 | 1.0000 | 1.0001 | 1.0011 | 1.0005 |
+| Array API - CuPy, greedy, keep empty | 1.0000 | 1.0000 | 1.0001 | 1.0008 | 1.0003 |
+| Array API - CuPy, scalable, keep empty | 1.0000 | 1.0000 | 1.0001 | 1.0014 | 1.0025 |
+| Array API - CuPy, greedy | 1.0000 | 1.0000 | 1.0001 | 1.0008 | 1.0003 |
+| Array API - CuPy, scalable | 1.0000 | 1.0000 | 1.0001 | 1.0014 | 1.0025 |
+| scikit-learn 1.7.2, greedy | 1.0000 | 1.0000 | 1.0000 | 1.0009 | 1.0040 |
+| scikit-learn PRs 23+26, greedy | 1.0000 | 1.0000 | 1.0000 | 1.0013 | 1.0011 |
+| cuML 26.10, greedy | 1.0000 | 1.0000 | 1.0000 | 1.0009 | 1.0011 |
+| cuML 26.10, scalable | 1.0005 | 1.0011 | 1.0000 | 1.0000 | 1.0557 |
 
 PyTorch CUDA with greedy k-means++ is the fastest full fit at 3 and 17
 clusters, at 0.94 and 1.25 s against 7.18 and 2.52 s for cuML. cuML is
