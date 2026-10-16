@@ -91,7 +91,7 @@ def assign_tiled(X, centroids, tile_n, tile_k, distance="broadcast", step=None):
         n1 = min(n0 + tile_n, n_samples)
         best_tile = best[n0:n1]
         labels_tile = labels[n0:n1]
-        x_tile = X[n0:n1]
+        x_tile = X[n0:n1, :]
         for k0 in range(0, n_clusters, tile_k):
             k1 = min(k0 + tile_k, n_clusters)
             local_labels, local_dist = step(xp, x_tile, centroids[k0:k1])
@@ -247,7 +247,11 @@ def gemm_scores_argmin(xp, X, centroids, c_norm):
     ``centroids``. Ties keep the smallest index.
     """
     scores = c_norm[None, :] - 2 * xp.matmul(X, xp.matrix_transpose(centroids))
-    return xp.argmin(scores, axis=1), xp.min(scores, axis=1)
+    labels = xp.argmin(scores, axis=1)
+    # Gathering the winning score avoids a second reduction over the same
+    # tile. This is portable and was consistently faster on PyTorch and CuPy.
+    values = xp.take_along_axis(scores, labels[:, None], axis=1)[:, 0]
+    return labels, values
 
 
 def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
@@ -269,11 +273,11 @@ def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
     tiles = []
     for k0 in range(0, n_clusters, tile_k):
         k1 = min(k0 + tile_k, n_clusters)
-        c_tile = centroids[k0:k1]
+        c_tile = centroids[k0:k1, :]
         tiles.append((k0, c_tile, xp.sum(c_tile * c_tile, axis=1)))
     for n0 in range(0, n_samples, tile_n):
         n1 = min(n0 + tile_n, n_samples)
-        x_tile = X[n0:n1]
+        x_tile = X[n0:n1, :]
         best = xp.full((n1 - n0,), xp.inf, dtype=X.dtype, device=_device(X))
         local = xp.zeros(n1 - n0, dtype=xp.int64, device=_device(X))
         for k0, c_tile, c_norm in tiles:
@@ -331,11 +335,13 @@ def update_centroids_tiled(
                 n1 = min(n0 + tile_n, n_samples)
                 membership = xp.astype(labels[n0:n1, None] == ids[None, :], X.dtype)
                 counts = counts + xp.sum(membership, axis=0)
-                sums = sums + xp.matmul(xp.matrix_transpose(membership), X[n0:n1])
+                sums = sums + xp.matmul(
+                    xp.matrix_transpose(membership), X[n0:n1, :]
+                )
         counts_safe = xp.where(counts == 0, xp.ones_like(counts), counts)
         means = sums / counts_safe[:, None]
         empty = counts[:, None] == 0
-        updated[k0:k1] = xp.where(empty, centroids[k0:k1], means)
+        updated[k0:k1, :] = xp.where(empty, centroids[k0:k1, :], means)
         all_counts[k0:k1] = counts
     n_empty = int(_item(xp.sum(xp.astype(all_counts == 0, xp.int64))))
     if stats is not None:
@@ -369,11 +375,11 @@ def _reassign_empty_farthest(xp, X, labels, old_centers, updated, counts, tile_n
         picked = int(farthest[index])
         donor = int(labels[picked])
         donor_count = counts[donor]
-        donor_sum = updated[donor] * donor_count
-        updated[donor] = (donor_sum - X[picked]) / (donor_count - 1)
+        donor_sum = updated[donor, :] * donor_count
+        updated[donor, :] = (donor_sum - X[picked, :]) / (donor_count - 1)
         counts[donor] = donor_count - 1
         empty = int(empty_indices[index])
-        updated[empty] = X[picked]
+        updated[empty, :] = X[picked, :]
         counts[empty] = xp.asarray(1, dtype=counts.dtype, device=_device(counts))
     return updated, n_empty
 
@@ -384,7 +390,7 @@ def _assigned_squared_distances(xp, X, labels, centers, tile_n):
     for n0 in range(0, int(X.shape[0]), tile_n):
         n1 = min(n0 + tile_n, int(X.shape[0]))
         assigned = xp.take(centers, labels[n0:n1], axis=0)
-        difference = X[n0:n1] - assigned
+        difference = X[n0:n1, :] - assigned
         distances[n0:n1] = xp.sum(difference * difference, axis=1)
     return distances
 
@@ -502,7 +508,8 @@ def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None, distance=None):
     # One reduction of X * X. Repeating it inside every trial materializes a
     # full copy of the samples for each new center.
     x_norm = _row_squared_norm(xp, X)
-    first = X[chosen[0]]
+    first_index = xp.asarray([chosen[0]], dtype=xp.int64, device=_device(X))
+    first = xp.take(X, first_index, axis=0)[0, :]
     closest = x_norm + xp.sum(first * first) - 2 * xp.matmul(X, first)
     closest = xp.maximum(closest, xp.zeros_like(closest))
     for _ in range(1, n_clusters):
@@ -514,9 +521,8 @@ def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None, distance=None):
         best = int(xp.argmin(potentials))
         closest = updated[:, best]
         chosen.append(int(picks[best]))
-    centers = xp.stack([X[index] for index in chosen])
     indices = xp.asarray(chosen, dtype=xp.int64, device=_device(X))
-    return centers, indices
+    return xp.take(X, indices, axis=0), indices
 
 
 def scalable_kmeans_plusplus(
@@ -587,7 +593,7 @@ def _scalable_candidates(xp, X, n_clusters, rng, oversampling_factor, n_rounds, 
         tile_n=tile_n,
         tile_k=tile_k,
     )
-    draws_per_round = max(1, int(math.ceil(oversampling_factor * n_clusters)))
+    draws_per_round = max(1, math.ceil(oversampling_factor * n_clusters))
     for _ in range(n_rounds):
         if not _item(xp.sum(closest)) > 0:
             break
@@ -700,7 +706,7 @@ def inertia(X, labels, centers, tile_n=8192):
     for n0 in range(0, n_samples, tile_n):
         n1 = min(n0 + tile_n, n_samples)
         assigned = xp.take(centers, labels[n0:n1], axis=0)
-        diff = X[n0:n1] - assigned
+        diff = X[n0:n1, :] - assigned
         part = xp.sum(diff * diff)
         total = part if total is None else total + part
     return total
@@ -822,7 +828,7 @@ def _mean_feature_variance(xp, X, tile_d=128):
     n = xp.asarray(n_samples, dtype=X.dtype, device=_device(X))
     total = xp.asarray(0, dtype=X.dtype, device=_device(X))
     for d0 in range(0, n_features, tile_d):
-        block = X[:, d0 : d0 + tile_d]
+        block = X[:, d0 : min(d0 + tile_d, n_features)]
         mean = xp.mean(block, axis=0)
         centered = block - mean[None, :]
         total = total + xp.sum(centered * centered) / n
@@ -838,7 +844,7 @@ def _row_squared_norm(xp, X, tile_d=256):
     n_features = int(X.shape[1])
     total = None
     for d0 in range(0, n_features, tile_d):
-        block = X[:, d0 : d0 + tile_d]
+        block = X[:, d0 : min(d0 + tile_d, n_features)]
         part = xp.sum(block * block, axis=1)
         total = part if total is None else total + part
     return total

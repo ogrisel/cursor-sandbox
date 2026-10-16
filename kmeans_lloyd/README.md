@@ -1,8 +1,28 @@
-# Lloyd k-means, one iteration, and kernel fusion
+# Portable array-API KMeans and kernel experiments
 
-Array-API implementation of a single Lloyd iteration, plus a CUDA experiment
-on whether PyTorch Inductor (`torch.compile`) and CuPy (`cupy.fuse`) fuse
-nearest-centroid `argmin` into the squared Euclidean distance.
+`kmeans_lloyd.KMeans` is a scikit-learn-compatible dense KMeans estimator
+implemented with Python array API operations. It preserves NumPy, PyTorch, or
+CuPy arrays on their original device and supports the public KMeans
+hyperparameters that apply to dense Lloyd iterations. Initialization is
+restricted to `"k-means++"` and `"random"`; sparse inputs and Elkan are
+intentionally unsupported.
+
+```python
+from kmeans_lloyd import KMeans
+
+model = KMeans(
+    n_clusters=8,
+    init="k-means++",
+    n_init="auto",
+    random_state=0,
+).fit(X)
+
+labels = model.labels_
+centers = model.cluster_centers_
+```
+
+The package also contains lower-level Lloyd primitives and CUDA experiments
+on assignment fusion and backend-specific centroid reductions.
 
 The naive assignment is
 

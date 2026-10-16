@@ -30,9 +30,11 @@ jobs:
         run: python tools/check_source_links.py --repo "${{ github.repository }}" kmeans_lloyd/journal
       - name: CPU tests
         working-directory: kmeans_lloyd
+        env:
+          SCIPY_ARRAY_API: "1"
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "numpy>=2.0" "array-api-compat>=1.11" pytest
+          python -m pip install -e . array-api-strict pytest
           python -m pytest tests
 
   report:

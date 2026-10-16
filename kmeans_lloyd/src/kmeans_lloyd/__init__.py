@@ -14,14 +14,15 @@ from kmeans_lloyd.iteration import (
     kmeans_plusplus,
     lloyd_iteration,
     lloyd_step,
-    scalable_kmeans_plusplus,
     squared_distances_broadcast,
     squared_distances_gemm,
     update_centroids,
     update_centroids_tiled,
 )
+from kmeans_lloyd.kmeans import KMeans
 
 __all__ = [
+    "KMeans",
     "assign_gemm",
     "assign_gemm_tiled",
     "assign_naive",
@@ -35,7 +36,6 @@ __all__ = [
     "kmeans_plusplus",
     "lloyd_iteration",
     "lloyd_step",
-    "scalable_kmeans_plusplus",
     "squared_distances_broadcast",
     "squared_distances_gemm",
     "update_centroids",

@@ -11,6 +11,8 @@ numpy = ">=2.2,<3"
 matplotlib = ">=3.9"
 pytest = "*"
 array-api-compat = ">=1.11"
+array-api-strict = "*"
+scikit-learn = ">=1.6"
 pip = "*"
 
 [pypi-dependencies]
@@ -22,7 +24,7 @@ PYTHONPATH = "src"
 NVIDIA_TF32_OVERRIDE = "0"
 
 [tasks]
-test = "pytest tests"
+test = "SCIPY_ARRAY_API=1 pytest tests"
 probe = "python scripts/run_experiments.py probe"
 bench = "python scripts/run_experiments.py bench"
 all = "python scripts/run_experiments.py all"
