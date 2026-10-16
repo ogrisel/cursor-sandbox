@@ -21,9 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Check journal source links
+        run: python tools/check_source_links.py --repo "${{ github.repository }}" kmeans_lloyd/journal
       - name: CPU tests
         working-directory: kmeans_lloyd
         run: |
