@@ -147,6 +147,7 @@ def test_tiled_update_randomly_reassigns_empty_and_adjusts_donor():
     x = _as_numpy_namespace(x_np)
     labels = array_namespace(x).asarray(labels_np)
     c = _as_numpy_namespace(c_np)
+    stats = {}
     updated = update_centroids_tiled(
         x,
         labels,
@@ -155,11 +156,13 @@ def test_tiled_update_randomly_reassigns_empty_and_adjusts_donor():
         tile_n=2,
         reassign_empty=True,
         rng=np.random.default_rng(0),
+        stats=stats,
     )
     # X[1] is the only row with nonzero assigned distance. As in
     # scikit-learn's relocation bookkeeping, it leaves donor 0 and becomes
     # the singleton center for previously empty cluster 2.
     np.testing.assert_allclose(_to_numpy(updated), [[0.0], [10.0], [2.0]])
+    assert stats == {"empty_events": 1, "reassignments": 1}
 
 
 def test_tiled_update_reassignment_requires_rng():

@@ -32,7 +32,18 @@ TASKS = [
     dict(name="k17-d180", n=2_100_000, d=180, k=17, seed=102),
     dict(name="k100-d32", n=1_500_000, d=32, k=100, seed=103),
     dict(name="k550-d6", n=525_000, d=6, k=550, seed=104),
-    dict(name="k3000-d2", n=135_000, d=2, k=3000, seed=105),
+    dict(
+        name="k3000-d2",
+        n=135_000,
+        d=2,
+        k=3000,
+        seed=105,
+        kind="blobs",
+        true_k=300,
+        separation=4,
+        std=1,
+        quantize=0.05,
+    ),
 ]
 
 API_IMPLS = (
@@ -67,10 +78,24 @@ def generate(task, path):
         path.unlink()
     path.parent.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(task["seed"])
+    truth = None
+    if task.get("kind") == "blobs":
+        truth = (
+            rng.standard_normal((task["true_k"], task["d"])).astype(np.float32)
+            * np.float32(task["separation"])
+        )
     data = np.lib.format.open_memmap(path, mode="w+", dtype=np.float32, shape=(task["n"], task["d"]))
     for start in range(0, task["n"], 8192):
         stop = min(start + 8192, task["n"])
-        data[start:stop] = rng.standard_normal((stop - start, task["d"])).astype(np.float32)
+        noise = rng.standard_normal((stop - start, task["d"])).astype(np.float32)
+        if truth is None:
+            data[start:stop] = noise
+        else:
+            labels = rng.integers(0, task["true_k"], size=stop - start)
+            data[start:stop] = truth[labels] + np.float32(task["std"]) * noise
+        if task.get("quantize"):
+            quantum = np.float32(task["quantize"])
+            data[start:stop] = np.round(data[start:stop] / quantum) * quantum
     del data
 
 
@@ -187,6 +212,8 @@ def _worker_api(args, samples, centers0):
         "n_iter": int(result["n_iter"]),
         "inertia_per_point": _mean_inertia(samples, _to_numpy(result["centers"])),
         "reassign_empty": reassign,
+        "empty_events": int(result["empty_events"]),
+        "reassignments": int(result["reassignments"]),
     }
 
 
@@ -326,7 +353,7 @@ def _append(path, row):
 
 
 def drive(selected_tasks, selected_impls, seeds, out, calibrate=False):
-    data_dir = HOME / "task-mix-data-v2"
+    data_dir = HOME / "task-mix-data-v4"
     env = os.environ.copy()
     env.update(
         PYTHONPATH=str(ROOT / "src"),

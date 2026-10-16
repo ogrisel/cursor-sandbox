@@ -2,7 +2,24 @@
 
 ## Current result
 
-[007](007-seeded-fixed-centers/index.html) is the current comparison. It repeats all 17 datasets from [006](006-breadth/index.html) with seeds 0 through 4: 1,700 successful runs. The array-API numbers are eager PyTorch, on CPU and on CUDA. `torch.compile` is not used in this comparison. Host: NVIDIA L4, float32, TF32 off. A full fit stops after 12 Lloyd iterations or when the center shift falls under `1e-8` times the mean feature variance.
+[008](008-empty-reassignment-task-mix/index.html) adds stochastic empty-center relocation and a five-task mix from 3 to 3000 clusters and 2 to 1000 features. Array-API contenders are eager PyTorch CPU, PyTorch CUDA, and CuPy, each with relocation disabled and enabled. Stock scikit-learn, patched scikit-learn, cuML, and a no-Lloyd random-centroid baseline complete the comparison. Every fresh worker has a hard 60-second limit.
+
+On the quantized 3000-cluster task, shared random starts produce 46 to 55 empty-center events in the array API. Relocation improves mean inertia by 4.60%, from 0.02654 to 0.02532. Scikit-learn's deterministic farthest-point relocation reaches 0.02483; the stochastic D² policy is analogous but not identical. PyTorch CUDA takes 1.230 s with relocation, CuPy 1.429 s, and array-API CPU 53.16 s. cuML takes 0.324 s but follows the keep-empty quality, 0.02655. The no-Lloyd baseline is 0.05396.
+
+| k-means++ + Lloyd | 3 clusters | 17 clusters | 100 clusters | 550 clusters | 3000 clusters |
+| --- | --- | --- | --- | --- | --- |
+| API CUDA | 1.05 s | 1.32 s | 1.18 s | 1.64 s | 2.61 s |
+| API CuPy | 1.62 s | 2.10 s | 1.84 s | 2.41 s | 4.28 s |
+| cuML | 7.18 s | 2.52 s | 0.98 s | 0.99 s | 1.18 s |
+| sklearn PRs | 6.66 s | 5.04 s | 2.94 s | 3.25 s | 4.52 s |
+| sklearn 1.7 | 11.54 s | 10.53 s | 12.89 s | 17.30 s | 27.26 s |
+| API CPU | 17.47 s | 11.35 s | 25.85 s | 55.56 s | timeout |
+
+Only the six array-API CPU k-means++ runs at 3000 clusters time out. The other 279 workers succeed. On the four continuous-noise tasks no center empties, so enabling relocation does not change CPU or CuPy objectives.
+
+## Previous five-seed breadth result
+
+[007](007-seeded-fixed-centers/index.html) repeats all 17 datasets from [006](006-breadth/index.html) with seeds 0 through 4: 1,700 successful runs. The array-API numbers are eager PyTorch, on CPU and on CUDA. `torch.compile` is not used in this comparison. Host: NVIDIA L4, float32, TF32 off. A full fit stops after 12 Lloyd iterations or when the center shift falls under `1e-8` times the mean feature variance.
 
 On 131072 samples, 2048 features, and 256 clusters, five-seed means and sample standard deviations are:
 
@@ -28,10 +45,10 @@ The measured path is eager array-API code on branch `cursor/kmeans-lloyd-fusion-
 
 | solution | source |
 | --- | --- |
-| k-means++ | [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L390-L432) |
-| one tiled Lloyd step | [`lloyd_step`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L326-L353) |
-| Lloyd from given centers | [`fit_lloyd`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L492-L545) |
-| k-means++ plus Lloyd | [`fit_kmeans`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L453-L489) |
+| k-means++ | [`kmeans_plusplus`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L491-L533) |
+| one tiled Lloyd step | [`lloyd_step`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L406-L453) |
+| Lloyd from given centers | [`fit_lloyd`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L597-L657) |
+| k-means++ plus Lloyd | [`fit_kmeans`](https://github.com/ogrisel/cursor-sandbox/blob/cursor/kmeans-lloyd-fusion-8896/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L554-L594) |
 
 ## Original question
 
@@ -81,7 +98,7 @@ The fusion schedules are linked from [001](001-fusion-probe/index.html), [002](0
 
 ## Cases
 
-The current headline shape is `speed-xl` from the [five-seed report](007-seeded-fixed-centers/index.html): 131072 samples, 2048 features, 256 clusters, separated blobs. That report also covers blob separation, noise, centroid counts from 4 to 128, and the intermediate shapes `tall`, `wide`, `mixed`, `speed-m`, and `speed-l`.
+The current [task mix](008-empty-reassignment-task-mix/index.html) spans `(clusters, features)` pairs `(3, 1000)`, `(17, 180)`, `(100, 32)`, `(550, 6)`, and `(3000, 2)`. Sample counts range from 135000 to 2100000 and make stock scikit-learn's k-means++ fit last approximately 10 to 30 seconds. The [five-seed report](007-seeded-fixed-centers/index.html) additionally covers blob separation, noise, and the 131072 by 2048 `speed-xl` shape.
 
 The fusion measurements in 003 use three larger assignment shapes:
 

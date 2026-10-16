@@ -293,6 +293,7 @@ def update_centroids_tiled(
     tile_n=None,
     reassign_empty=False,
     rng=None,
+    stats=None,
 ):
     """Mean update one centroid tile at a time.
 
@@ -339,8 +340,11 @@ def update_centroids_tiled(
         empty = counts[:, None] == 0
         updated[k0:k1] = xp.where(empty, centroids[k0:k1], means)
         all_counts[k0:k1] = counts
-    if reassign_empty:
-        updated = _random_reassign_empty(
+    n_empty = int(_item(xp.sum(xp.astype(all_counts == 0, xp.int64))))
+    if stats is not None:
+        stats["empty_events"] = stats.get("empty_events", 0) + n_empty
+    if reassign_empty and n_empty:
+        updated, n_reassigned = _random_reassign_empty(
             xp,
             X,
             labels,
@@ -350,6 +354,8 @@ def update_centroids_tiled(
             rng,
             tile_n=min(int(tile_n), 8192),
         )
+        if stats is not None:
+            stats["reassignments"] = stats.get("reassignments", 0) + n_reassigned
     return updated
 
 
@@ -358,12 +364,13 @@ def _random_reassign_empty(xp, X, labels, old_centers, updated, counts, rng, til
     empty_indices = xp.nonzero(counts == 0)[0]
     n_empty = int(empty_indices.shape[0])
     if n_empty == 0:
-        return updated
+        return updated, 0
     weights = _assigned_squared_distances(xp, X, labels, old_centers, tile_n)
     # A singleton donor cannot give away its only sample. Such a sample also
     # has zero distance in ordinary Lloyd updates, but mask it explicitly.
     donor_counts = xp.take(counts, labels, axis=0)
     weights = xp.where(donor_counts > 1, weights, xp.zeros_like(weights))
+    n_reassigned = 0
     for index in range(n_empty):
         total = _item(xp.sum(weights))
         if not total > 0:
@@ -377,11 +384,12 @@ def _random_reassign_empty(xp, X, labels, old_centers, updated, counts, rng, til
         empty = int(empty_indices[index])
         updated[empty] = X[picked]
         counts[empty] = xp.asarray(1, dtype=counts.dtype, device=_device(counts))
+        n_reassigned += 1
         available = xp.arange(int(X.shape[0]), device=_device(X)) != picked
         if _item(counts[donor]) <= 1:
             available = available & (labels != donor)
         weights = xp.where(available, weights, xp.zeros_like(weights))
-    return updated
+    return updated, n_reassigned
 
 
 def _assigned_squared_distances(xp, X, labels, centers, tile_n):
@@ -404,6 +412,7 @@ def lloyd_step(
     update_tile_n=None,
     reassign_empty=False,
     rng=None,
+    stats=None,
     step=None,
     recorder=None,
 ):
@@ -426,6 +435,7 @@ def lloyd_step(
             tile_n=update_tile_n,
             reassign_empty=reassign_empty,
             rng=rng,
+            stats=stats,
         )
     else:
         with recorder.phase("assign"):
@@ -439,6 +449,7 @@ def lloyd_step(
                 tile_n=update_tile_n,
                 reassign_empty=reassign_empty,
                 rng=rng,
+                stats=stats,
             )
     return updated, labels
 
@@ -618,6 +629,7 @@ def fit_lloyd(
     threshold = float(tol) * _item(variance)
     labels = None
     n_iter = 0
+    stats = {"empty_events": 0, "reassignments": 0}
     for n_iter in range(1, int(max_iter) + 1):
         updated, labels = lloyd_step(
             X,
@@ -628,6 +640,7 @@ def fit_lloyd(
             update_tile_n=update_tile_n,
             reassign_empty=reassign_empty,
             rng=rng,
+            stats=stats,
             step=step,
         )
         shift = _item(xp.sum((updated - centers) ** 2))
@@ -642,6 +655,8 @@ def fit_lloyd(
         "n_iter": n_iter,
         "shift": shift,
         "threshold": threshold,
+        "empty_events": stats["empty_events"],
+        "reassignments": stats["reassignments"],
     }
 
 
