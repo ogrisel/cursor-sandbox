@@ -1,0 +1,34 @@
+{
+  "shape": {
+    "n_samples": 131072,
+    "n_features": 2048,
+    "n_clusters": 256,
+    "dtype": "float32",
+    "seed": 0
+  },
+  "eager_fit_30": {
+    "seconds": 2.3301,
+    "peak_extra_bytes": 159389184,
+    "inertia": 266495072.0,
+    "n_iter": 30,
+    "shift": 0.1336,
+    "threshold": 0.00010000989437103272
+  },
+  "eager_fit_6": {
+    "seconds": 1.5716,
+    "peak_extra_bytes": 159389184,
+    "inertia": 266535392.0,
+    "n_iter": 6,
+    "shift": 31.4344
+  },
+  "compiled_fit_30": {
+    "seconds": 2.398,
+    "peak_extra_bytes": 159389184,
+    "inertia": 266491984.0,
+    "n_iter": 30,
+    "shift": 0.1993
+  },
+  "variance_tile_peak_bytes": 134221312,
+  "variance_scalar": 1.0000989437103271,
+  "note": "Warmed calls after feature-tiled variance. peak_extra_bytes is PyTorch allocated bytes above the input."
+}

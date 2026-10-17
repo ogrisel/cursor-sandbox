@@ -1,0 +1,46 @@
+name: Render k-means fusion report
+
+on:
+  pull_request:
+    paths:
+      - "kmeans_lloyd/**"
+      - ".github/workflows/kmeans-report.yml"
+
+concurrency:
+  group: kmeans-report-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check journal source links
+        run: python tools/check_source_links.py --repo "${{ github.repository }}" kmeans_lloyd/journal
+      - name: CPU tests
+        working-directory: kmeans_lloyd
+        env:
+          SCIPY_ARRAY_API: "1"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . array-api-strict pytest
+          python -m pytest tests
+
+  report:
+    needs: test
+    uses: ogrisel/cursor-sandbox/.github/workflows/publish-report.yml@main
+    with:
+      journal-path: kmeans_lloyd/journal
+      site-title: Lloyd k-means journal
+      comment-marker: "<!-- kmeans-lloyd-report -->"

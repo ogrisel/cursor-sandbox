@@ -1,0 +1,723 @@
+{
+  "meta": {
+    "python": "3.12.15",
+    "platform": "Linux-7.0.0-1014-aws-x86_64-with-glibc2.39",
+    "numpy": "2.5.4",
+    "array_api_compat": "1.15.0",
+    "torch": "2.14.1+cu130",
+    "torch_cuda": "13.0",
+    "torch_gpu": "NVIDIA L4",
+    "gpu_total_bytes": 23661248512,
+    "tf32_matmul": false,
+    "cupy": "14.2.0",
+    "cupy_runtime": 13020,
+    "cupy_gpu": "NVIDIA L4"
+  },
+  "cases": [
+    {
+      "name": "sample-heavy",
+      "n_samples": 524288,
+      "n_clusters": 2048,
+      "n_features": 4096
+    },
+    {
+      "name": "centroid-heavy",
+      "n_samples": 131072,
+      "n_clusters": 16384,
+      "n_features": 4096
+    },
+    {
+      "name": "feature-heavy",
+      "n_samples": 65536,
+      "n_clusters": 4096,
+      "n_features": 16384
+    }
+  ],
+  "probe": {
+    "name": "probe-broadcast",
+    "n_samples": 4096,
+    "n_clusters": 256,
+    "n_features": 512
+  },
+  "runs": [
+    {
+      "name": "gemm-argmin",
+      "backend": "torch",
+      "case": "sample-heavy",
+      "mode": "eager",
+      "status": "oom",
+      "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 4.00 GiB. GPU 0 has a total capacity of 22.04 GiB of which 1.76 GiB is free. Including non-PyTorch memory, this process has 20.27 GiB memory in use. Of the allocated memory 20.04 GiB is allocated by PyTorch, and 11.87 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)",
+      "theory": {
+        "broadcast_bytes": 17592186044416,
+        "distance_bytes": 4294967296,
+        "labels_bytes": 4194304,
+        "samples_bytes": 8589934592,
+        "centroids_bytes": 33554432,
+        "gemm_flops": 8796093022208
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.896721923828125,
+      "min_seconds": 0.8938792724609375,
+      "median_peak_extra_bytes": 4301266944,
+      "median_retained_extra_bytes": 4194304,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.8965888061523437,
+          "peak_extra_bytes": 4301266944,
+          "retained_extra_bytes": 4194304,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.896721923828125,
+          "peak_extra_bytes": 4301266944,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.898713623046875,
+          "peak_extra_bytes": 4301266944,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.8938792724609375,
+          "peak_extra_bytes": 4301266944,
+          "retained_extra_bytes": 4194304,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "gemm-argmin",
+      "backend": "torch",
+      "case": "sample-heavy",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 2.4663587929999267,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 17592186044416,
+        "distance_bytes": 4294967296,
+        "labels_bytes": 4194304,
+        "samples_bytes": 8589934592,
+        "centroids_bytes": 33554432,
+        "gemm_flops": 8796093022208
+      },
+      "kernels": [
+        {
+          "name": "ampere_sgemm_128x128_tn",
+          "count": 1,
+          "device_time_us": 826333.731
+        },
+        {
+          "name": "triton_red_fused_mul_sum_0",
+          "count": 1,
+          "device_time_us": 32559.774
+        },
+        {
+          "name": "triton_red_fused_add_argmin_mul_sub_transpose_2",
+          "count": 1,
+          "device_time_us": 16349.215000000084
+        },
+        {
+          "name": "triton_red_fused_mul_sum_1",
+          "count": 1,
+          "device_time_us": 34.55999999999767
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.004712128162384034,
+      "min_seconds": 0.004701536178588867,
+      "median_peak_extra_bytes": 536936448,
+      "median_retained_extra_bytes": 6144,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.015446047782897949,
+          "peak_extra_bytes": 536936448,
+          "retained_extra_bytes": 6144,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.004712128162384034,
+          "peak_extra_bytes": 536936448,
+          "retained_extra_bytes": 6144,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.004719583988189697,
+          "peak_extra_bytes": 536936448,
+          "retained_extra_bytes": 6144,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.004701536178588867,
+          "peak_extra_bytes": 536936448,
+          "retained_extra_bytes": 6144,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "broadcast-tile",
+      "backend": "torch",
+      "case": "sample-heavy-broadcast-tile-512x32",
+      "mode": "eager",
+      "fusion": "materialized_broadcast",
+      "theory": {
+        "broadcast_bytes": 268435456,
+        "distance_bytes": 65536,
+        "labels_bytes": 4096,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 134217728
+      },
+      "kernels": [
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 2344.859
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 1205.7889999999998
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 1044.478
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4> >(at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4>)",
+          "count": 1,
+          "device_time_us": 5.695999999999913
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::MinNanFunctor<float> >, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::MinNanFunctor<float> >, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 3.8400000000001455
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.00037593600153923033,
+      "min_seconds": 0.0003646399974822998,
+      "median_peak_extra_bytes": 71680,
+      "median_retained_extra_bytes": 6144,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.00043881601095199584,
+          "peak_extra_bytes": 71680,
+          "retained_extra_bytes": 6144,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0004112640023231506,
+          "peak_extra_bytes": 71680,
+          "retained_extra_bytes": 6144,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0003646399974822998,
+          "peak_extra_bytes": 71680,
+          "retained_extra_bytes": 6144,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.00037593600153923033,
+          "peak_extra_bytes": 71680,
+          "retained_extra_bytes": 6144,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "broadcast-tile",
+      "backend": "torch",
+      "case": "sample-heavy-broadcast-tile-512x32",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 1.2706741830002102,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 268435456,
+        "distance_bytes": 65536,
+        "labels_bytes": 4096,
+        "samples_bytes": 8388608,
+        "centroids_bytes": 524288,
+        "gemm_flops": 134217728
+      },
+      "kernels": [
+        {
+          "name": "triton_red_fused_mul_sub_sum_unsqueeze_0",
+          "count": 1,
+          "device_time_us": 199.615
+        },
+        {
+          "name": "triton_per_fused_amin_argmin_1",
+          "count": 1,
+          "device_time_us": 1.568000000000211
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.007043327808380127,
+      "min_seconds": 0.007001408100128174,
+      "median_peak_extra_bytes": 134242304,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.007037919998168945,
+          "peak_extra_bytes": 134242304,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.007001408100128174,
+          "peak_extra_bytes": 134242304,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.007074111938476562,
+          "peak_extra_bytes": 134242304,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.007043327808380127,
+          "peak_extra_bytes": 134242304,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "gemm-tile",
+      "backend": "torch",
+      "case": "sample-heavy-gemm-tile-n4096",
+      "mode": "eager",
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 137438953472,
+        "distance_bytes": 33554432,
+        "labels_bytes": 32768,
+        "samples_bytes": 67108864,
+        "centroids_bytes": 33554432,
+        "gemm_flops": 68719476736
+      },
+      "kernels": [
+        {
+          "name": "ampere_sgemm_128x128_tn",
+          "count": 1,
+          "device_time_us": 5127.1680000000015
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>, false>(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 2,
+          "device_time_us": 690.0809999999997
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul>, false>(int, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul>)",
+          "count": 1,
+          "device_time_us": 388.6080000000002
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::sum_functor<float, float, float>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, float, 4, 4>)",
+          "count": 2,
+          "device_time_us": 340.1600000000003
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul>, false>(int, at::native::AUnaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul>)",
+          "count": 1,
+          "device_time_us": 262.91200000000026
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctor_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctor_add<float> const&)::{lambda(int)#1})",
+          "count": 1,
+          "device_time_us": 72.44800000000032
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4> >(at::native::ReduceOp<float, at::native::ArgMinOps<float>, unsigned int, long, 4, 4>)",
+          "count": 1,
+          "device_time_us": 42.367999999998574
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::MinNanFunctor<float> >, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::func_wrapper_t<float, at::native::MinNanFunctor<float> >, unsigned int, float, 4, 4>)",
+          "count": 1,
+          "device_time_us": 27.19999999999891
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.0055784001350402835,
+      "min_seconds": 0.005577087879180908,
+      "median_peak_extra_bytes": 33628160,
+      "median_retained_extra_bytes": 49152,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.00562713623046875,
+          "peak_extra_bytes": 33628160,
+          "retained_extra_bytes": 49152,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.005584928035736084,
+          "peak_extra_bytes": 33628160,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.005577087879180908,
+          "peak_extra_bytes": 33628160,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.0055784001350402835,
+          "peak_extra_bytes": 33628160,
+          "retained_extra_bytes": 49152,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "gemm-tile",
+      "backend": "torch",
+      "case": "sample-heavy-gemm-tile-n4096",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.5062175519997254,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 137438953472,
+        "distance_bytes": 33554432,
+        "labels_bytes": 32768,
+        "samples_bytes": 67108864,
+        "centroids_bytes": 33554432,
+        "gemm_flops": 68719476736
+      },
+      "kernels": [
+        {
+          "name": "ampere_sgemm_128x128_tn",
+          "count": 1,
+          "device_time_us": 5179.191
+        },
+        {
+          "name": "triton_red_fused_mul_sum_0",
+          "count": 1,
+          "device_time_us": 207.03999999999996
+        },
+        {
+          "name": "triton_red_fused_add_amin_argmin_mul_sub_transpose_2",
+          "count": 1,
+          "device_time_us": 126.65599999999995
+        },
+        {
+          "name": "triton_red_fused_mul_sum_1",
+          "count": 1,
+          "device_time_us": 32.128000000000156
+        }
+      ]
+    },
+    {
+      "name": "running-step-x4",
+      "backend": "torch",
+      "case": "sample-heavy-running-step",
+      "mode": "eager",
+      "status": "oom",
+      "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 8.00 GiB. GPU 0 has a total capacity of 22.04 GiB of which 5.74 GiB is free. Including non-PyTorch memory, this process has 16.29 GiB memory in use. Of the allocated memory 16.05 GiB is allocated by PyTorch, and 7.87 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)",
+      "theory": {
+        "broadcast_bytes": 8589934592,
+        "distance_bytes": 2097152,
+        "labels_bytes": 4194304,
+        "samples_bytes": 8589934592,
+        "centroids_bytes": 16384,
+        "gemm_flops": 4294967296
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.032675552368164065,
+      "min_seconds": 0.032656864166259764,
+      "median_peak_extra_bytes": 6291456,
+      "median_retained_extra_bytes": 6291456,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.032698558807373046,
+          "peak_extra_bytes": 6291456,
+          "retained_extra_bytes": 6291456,
+          "warmup": true,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.032656864166259764,
+          "peak_extra_bytes": 6291456,
+          "retained_extra_bytes": 6291456,
+          "warmup": false,
+          "iter": 1
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.03267782211303711,
+          "peak_extra_bytes": 6291456,
+          "retained_extra_bytes": 6291456,
+          "warmup": false,
+          "iter": 2
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.032675552368164065,
+          "peak_extra_bytes": 6291456,
+          "retained_extra_bytes": 6291456,
+          "warmup": false,
+          "iter": 3
+        }
+      ],
+      "name": "running-step",
+      "backend": "torch",
+      "case": "sample-heavy-running-step",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 0.26088313700029175,
+        "error": null
+      },
+      "fusion": "materialized_distance",
+      "theory": {
+        "broadcast_bytes": 8589934592,
+        "distance_bytes": 2097152,
+        "labels_bytes": 4194304,
+        "samples_bytes": 8589934592,
+        "centroids_bytes": 16384,
+        "gemm_flops": 4294967296
+      },
+      "kernels": [
+        {
+          "name": "triton_red_fused_lt_mul_sub_sum_where_0",
+          "count": 1,
+          "device_time_us": 32478.784000000003
+        }
+      ]
+    },
+    {
+      "name": "running-tile",
+      "backend": "torch",
+      "case": "sample-heavy-running-tile-k32",
+      "mode": "eager",
+      "status": "oom",
+      "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 8.00 GiB. GPU 0 has a total capacity of 22.04 GiB of which 5.74 GiB is free. Including non-PyTorch memory, this process has 16.29 GiB memory in use. Of the allocated memory 8.05 GiB is allocated by PyTorch, and 8.00 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)",
+      "theory": {
+        "broadcast_bytes": 274877906944,
+        "distance_bytes": 67108864,
+        "labels_bytes": 4194304,
+        "samples_bytes": 8589934592,
+        "centroids_bytes": 524288,
+        "gemm_flops": 137438953472
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.20881366729736328,
+      "min_seconds": 0.20781455993652342,
+      "median_peak_extra_bytes": 6291456,
+      "median_retained_extra_bytes": 6291456,
+      "profiles": [
+        {
+          "backend": "torch",
+          "seconds": 0.20981277465820314,
+          "peak_extra_bytes": 6291456,
+          "retained_extra_bytes": 6291456,
+          "warmup": false,
+          "iter": 0
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.20781455993652342,
+          "peak_extra_bytes": 6291456,
+          "retained_extra_bytes": 6291456,
+          "warmup": false,
+          "iter": 1
+        }
+      ],
+      "name": "running-tile",
+      "backend": "torch",
+      "case": "sample-heavy-running-tile-k32",
+      "mode": "torch.compile",
+      "compile": {
+        "fullgraph": true,
+        "compile_seconds": 7.902813393000088,
+        "error": null
+      },
+      "fusion": "no_distance_matrix",
+      "theory": {
+        "broadcast_bytes": 274877906944,
+        "distance_bytes": 67108864,
+        "labels_bytes": 4194304,
+        "samples_bytes": 8589934592,
+        "centroids_bytes": 524288,
+        "gemm_flops": 137438953472
+      },
+      "kernels": [
+        {
+          "name": "triton_red_fused_full_lift_fresh_lt_mul_select_sub_sum_where_zeros_0",
+          "count": 1,
+          "device_time_us": 206640.52800000002
+        }
+      ]
+    },
+    {
+      "name": "running-tiled-full",
+      "backend": "torch",
+      "case": "sample-heavy",
+      "mode": "torch.compile",
+      "status": "skipped_estimate",
+      "median_seconds": null,
+      "estimated_seconds": 13.36407470703125,
+      "fusion": "not_run",
+      "theory": {
+        "broadcast_bytes": 17592186044416,
+        "distance_bytes": 4294967296,
+        "labels_bytes": 4194304,
+        "samples_bytes": 8589934592,
+        "centroids_bytes": 33554432,
+        "gemm_flops": 8796093022208
+      }
+    },
+    {
+      "name": "lloyd-gemm",
+      "backend": "torch",
+      "case": "sample-heavy",
+      "mode": "eager",
+      "status": "oom",
+      "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 8.00 GiB. GPU 0 has a total capacity of 22.04 GiB of which 5.71 GiB is free. Including non-PyTorch memory, this process has 16.32 GiB memory in use. Of the allocated memory 16.07 GiB is allocated by PyTorch, and 13.87 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)",
+      "theory": {
+        "broadcast_bytes": 17592186044416,
+        "distance_bytes": 4294967296,
+        "labels_bytes": 4194304,
+        "samples_bytes": 8589934592,
+        "centroids_bytes": 33554432,
+        "gemm_flops": 8796093022208
+      }
+    },
+    {
+      "name": "lloyd-naive",
+      "backend": "torch",
+      "case": "sample-heavy",
+      "mode": "eager",
+      "status": "skipped_headroom",
+      "median_seconds": null,
+      "median_peak_extra_bytes": null,
+      "fusion": "not_run",
+      "theory": {
+        "broadcast_bytes": 17592186044416,
+        "distance_bytes": 4294967296,
+        "labels_bytes": 4194304,
+        "samples_bytes": 8589934592,
+        "centroids_bytes": 33554432,
+        "gemm_flops": 8796093022208
+      },
+      "free_bytes": 6133252096,
+      "total_bytes": 23661248512,
+      "estimated_temporary_bytes": 17592186044416
+    },
+    {
+      "name": "inputs",
+      "backend": "torch",
+      "case": "centroid-heavy",
+      "mode": "eager",
+      "status": "skipped_headroom",
+      "free_bytes": 6133252096,
+      "total_bytes": 23661248512,
+      "fusion": "not_run"
+    },
+    {
+      "name": "inputs",
+      "backend": "torch",
+      "case": "feature-heavy",
+      "mode": "eager",
+      "status": "skipped_headroom",
+      "free_bytes": 6133252096,
+      "total_bytes": 23661248512,
+      "fusion": "not_run"
+    },
+    {
+      "name": "inputs",
+      "backend": "cupy",
+      "case": "sample-heavy",
+      "mode": "eager",
+      "status": "skipped_headroom",
+      "free_bytes": 6133252096,
+      "total_bytes": 23661248512,
+      "fusion": "not_run"
+    },
+    {
+      "name": "inputs",
+      "backend": "cupy",
+      "case": "centroid-heavy",
+      "mode": "eager",
+      "status": "skipped_headroom",
+      "free_bytes": 6133252096,
+      "total_bytes": 23661248512,
+      "fusion": "not_run"
+    },
+    {
+      "name": "inputs",
+      "backend": "cupy",
+      "case": "feature-heavy",
+      "mode": "eager",
+      "status": "skipped_headroom",
+      "free_bytes": 6133252096,
+      "total_bytes": 23661248512,
+      "fusion": "not_run"
+    }
+  ]
+}

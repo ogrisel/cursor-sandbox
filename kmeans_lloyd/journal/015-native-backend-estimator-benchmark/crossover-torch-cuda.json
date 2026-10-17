@@ -1,0 +1,442 @@
+[
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 2,
+    "native_seconds": 0.02553951799927745,
+    "portable_seconds": 0.016765257001679856,
+    "native_speedup": 0.6564437512937468
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 3,
+    "native_seconds": 0.031076098002813524,
+    "portable_seconds": 0.016863690998434322,
+    "native_speedup": 0.542657929477103
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 5,
+    "native_seconds": 0.028332259000308113,
+    "portable_seconds": 0.01709630100231152,
+    "native_speedup": 0.6034217392310863
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 8,
+    "native_seconds": 0.02227210599812679,
+    "portable_seconds": 0.017549380998389097,
+    "native_speedup": 0.7879533709055219
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 12,
+    "native_seconds": 0.024106615001073806,
+    "portable_seconds": 0.017711918000713922,
+    "native_speedup": 0.7347326864400067
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 17,
+    "native_seconds": 0.023389595000480767,
+    "portable_seconds": 0.017944047998753376,
+    "native_speedup": 0.7671807912186825
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 24,
+    "native_seconds": 0.02098838000165415,
+    "portable_seconds": 0.018398537002212834,
+    "native_speedup": 0.8766058648053254
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 32,
+    "native_seconds": 0.021372245999373263,
+    "portable_seconds": 0.018923079998785397,
+    "native_speedup": 0.8854043697298034
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 48,
+    "native_seconds": 0.022073656997235958,
+    "portable_seconds": 0.020441675998881692,
+    "native_speedup": 0.9260665779776037
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 64,
+    "native_seconds": 0.02153499400083092,
+    "portable_seconds": 0.021395326999481767,
+    "native_speedup": 0.9935144165192819
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 100,
+    "native_seconds": 0.021402467998996144,
+    "portable_seconds": 0.02950292800233001,
+    "native_speedup": 1.378482519105451
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 2,
+    "native_seconds": 0.05728890200043679,
+    "portable_seconds": 0.014628184002503986,
+    "native_speedup": 0.2553406243043802
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 3,
+    "native_seconds": 0.03552759900048841,
+    "portable_seconds": 0.014829863001068588,
+    "native_speedup": 0.4174181036231781
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 5,
+    "native_seconds": 0.0232252059977327,
+    "portable_seconds": 0.014856503999908455,
+    "native_speedup": 0.639671570678804
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 8,
+    "native_seconds": 0.014798241001699353,
+    "portable_seconds": 0.015834716003155336,
+    "native_speedup": 1.070040419083387
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 12,
+    "native_seconds": 0.010416471999633359,
+    "portable_seconds": 0.015539133997663157,
+    "native_speedup": 1.4917847423014343
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 17,
+    "native_seconds": 0.013325977000931744,
+    "portable_seconds": 0.015679209001973504,
+    "native_speedup": 1.176589829089246
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 24,
+    "native_seconds": 0.014033768002263969,
+    "portable_seconds": 0.015576584999507759,
+    "native_speedup": 1.1099360483225102
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 32,
+    "native_seconds": 0.010742766000475967,
+    "portable_seconds": 0.015473250001377892,
+    "native_speedup": 1.4403413423221112
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 48,
+    "native_seconds": 0.009545744000206469,
+    "portable_seconds": 0.015457720000995323,
+    "native_speedup": 1.6193310862580206
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 64,
+    "native_seconds": 0.009867847998975776,
+    "portable_seconds": 0.015514432998315897,
+    "native_speedup": 1.5722205084559675
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 100,
+    "native_seconds": 0.008369523002329515,
+    "portable_seconds": 0.016662101999827428,
+    "native_speedup": 1.9908066439616467
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 2,
+    "native_seconds": 0.017245097002160037,
+    "portable_seconds": 0.010242463999020401,
+    "native_speedup": 0.5939348440740855
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 3,
+    "native_seconds": 0.011536720001458889,
+    "portable_seconds": 0.010262095001962734,
+    "native_speedup": 0.8895158243127188
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 5,
+    "native_seconds": 0.010374630001024343,
+    "portable_seconds": 0.01035405899892794,
+    "native_speedup": 0.9980171820976389
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 8,
+    "native_seconds": 0.008720088000700343,
+    "portable_seconds": 0.011096441001427593,
+    "native_speedup": 1.2725147957837577
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 12,
+    "native_seconds": 0.005877004001376918,
+    "portable_seconds": 0.011164352999912808,
+    "native_speedup": 1.8996674151144226
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 17,
+    "native_seconds": 0.004229354002745822,
+    "portable_seconds": 0.010884552000788972,
+    "native_speedup": 2.5735731730477984
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 24,
+    "native_seconds": 0.0030891929964127485,
+    "portable_seconds": 0.010942673998215469,
+    "native_speedup": 3.5422435603480866
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 32,
+    "native_seconds": 0.002380753001489211,
+    "portable_seconds": 0.011230725998757407,
+    "native_speedup": 4.717299943224834
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 48,
+    "native_seconds": 0.001657241999055259,
+    "portable_seconds": 0.011184414001036203,
+    "native_speedup": 6.748811584193547
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 64,
+    "native_seconds": 0.0013054770024609752,
+    "portable_seconds": 0.011263717999099754,
+    "native_speedup": 8.62804781537043
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 100,
+    "native_seconds": 0.001564467002026504,
+    "portable_seconds": 0.010874911000428256,
+    "native_speedup": 6.95119231427805
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 2,
+    "native_seconds": 0.0008249959973909426,
+    "portable_seconds": 0.0038797790002718102,
+    "native_speedup": 4.702785240827406
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 3,
+    "native_seconds": 0.0007328820029215422,
+    "portable_seconds": 0.00385759699929622,
+    "native_speedup": 5.263599029473221
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 5,
+    "native_seconds": 0.000634787000308279,
+    "portable_seconds": 0.0038641380015178584,
+    "native_speedup": 6.087298573602283
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 8,
+    "native_seconds": 0.0006974499992793426,
+    "portable_seconds": 0.004142379999393597,
+    "native_speedup": 5.939321820451378
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 12,
+    "native_seconds": 0.0006403080005839001,
+    "portable_seconds": 0.004118528999242699,
+    "native_speedup": 6.432106104385688
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 17,
+    "native_seconds": 0.0005193229990254622,
+    "portable_seconds": 0.004037444999994477,
+    "native_speedup": 7.7744390438531745
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 24,
+    "native_seconds": 0.0005069910002930555,
+    "portable_seconds": 0.004099237001355505,
+    "native_speedup": 8.085423605125193
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 32,
+    "native_seconds": 0.0005905359976168256,
+    "portable_seconds": 0.004044085999339586,
+    "native_speedup": 6.848161696594195
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 48,
+    "native_seconds": 0.00037027600046712905,
+    "portable_seconds": 0.004080937000253471,
+    "native_speedup": 11.021338123737653
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 64,
+    "native_seconds": 0.00037637700006598607,
+    "portable_seconds": 0.004067646001203684,
+    "native_speedup": 10.807371333770524
+  },
+  {
+    "backend": "torch-cuda",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 100,
+    "native_seconds": 0.0002980429999297485,
+    "portable_seconds": 0.004116707998036873,
+    "native_speedup": 13.812463298944177
+  }
+]

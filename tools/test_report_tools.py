@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import check_source_links
 import pages_tree
 import render_journal
 
@@ -38,6 +40,42 @@ class RenderJournalTest(unittest.TestCase):
             self.assertIn('src="plot.svg"', report)
             self.assertTrue((site / "001-first" / "plot.svg").is_file())
             self.assertIn("<title>Trial journal</title>", index)
+
+    def test_wrapped_list_item_stays_in_one_item(self):
+        html = render_journal.markdown_to_html("- first line\n  continued here\n- second\n\nAfter.\n")
+        self.assertIn("<ul><li>first line continued here</li><li>second</li></ul>", html)
+        self.assertIn("<p>After.</p>", html)
+
+    def test_report_link_keeps_its_fragment(self):
+        html = render_journal.markdown_to_html("See [why](../002-x/report.md#why-it-differs).\n")
+        self.assertIn('href="../002-x/index.html#why-it-differs"', html)
+
+
+class CheckSourceLinksTest(unittest.TestCase):
+    def test_pinned_ranges_must_match_their_symbol(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "mod.py").write_text("x = 1\n\n\ndef f():\n    return 1\n")
+            for command in (
+                ["init", "-q"],
+                ["add", "mod.py"],
+                ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "m"],
+            ):
+                subprocess.run(["git", "-C", tmp, *command], check=True)
+            sha = subprocess.check_output(["git", "-C", tmp, "rev-parse", "HEAD"], text=True).strip()
+            base = "https://github.com/o/r/blob"
+            (root / "report.md").write_text(
+                f"[`f`]({base}/{sha}/mod.py#L4-L5) [`f`]({base}/{sha}/mod.py#L1-L5) "
+                f"[step]({base}/{sha}/mod.py#L1-L1) [`f`]({base}/main/mod.py#L4-L5) "
+                f"[file]({base}/{sha}/gone.py)\n"
+            )
+            checked, problems = check_source_links.check([root / "report.md"], "o/r", git_dir=tmp)
+            self.assertEqual(checked, 5)
+            self.assertEqual(len(problems), 4)
+            self.assertIn("does not match f at (4, 5)", problems[0])
+            self.assertIn("not the start of a definition", problems[1])
+            self.assertIn("not a commit SHA", problems[2])
+            self.assertIn("gone.py does not exist", problems[3])
 
 
 class PagesTreeTest(unittest.TestCase):

@@ -37,11 +37,12 @@ img { max-width: 100%; height: auto; }
 
 
 def _href(url):
+    url, hash_mark, fragment = url.partition("#")
     if url.endswith("report.md"):
         url = url[: -len("report.md")] + "index.html"
     elif url.endswith("index.md"):
         url = url[: -len("index.md")] + "index.html"
-    return url
+    return url + hash_mark + fragment
 
 
 def _inline(text):
@@ -101,8 +102,12 @@ def markdown_to_html(source):
         elif line.startswith("- "):
             items = []
             while i < len(lines) and lines[i].startswith("- "):
-                items.append(f"<li>{_inline(lines[i][2:])}</li>")
+                item = [lines[i][2:]]
                 i += 1
+                while i < len(lines) and lines[i].startswith("  ") and lines[i].strip():
+                    item.append(lines[i].strip())
+                    i += 1
+                items.append(f"<li>{_inline(' '.join(item))}</li>")
             out.append("<ul>" + "".join(items) + "</ul>")
             continue
         elif line.startswith("!["):
