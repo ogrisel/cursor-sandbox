@@ -175,4 +175,5 @@ kernel rather than more eager array-expression rearrangement.
    and accumulation hook while preserving the portable array-API fallback.
 
 Previous: [GEMM cancellation fallback](../017-gemm-cancellation-fallback/report.md).
+Next: [CPU and GPU optimization rerun](../019-cpu-gpu-optimization-rerun/report.md).
 Index: [journal](../index.md).

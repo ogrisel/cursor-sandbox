@@ -17,19 +17,23 @@ samples. Runs use float32, eager execution, TF32 disabled, three seeds, and a
 
 ## Latest results
 
-[018](018-cpu-array-api-optimization/index.html) evaluates backend-neutral
-CPU optimizations for initialization, Lloyd iterations, and full fit.
+[019](019-cpu-gpu-optimization-rerun/index.html) measures the 018
+optimizations on Torch CPU, Torch CUDA, and CuPy CUDA for all five tasks,
+with cakedev0's Cython build on the same host.
 
 Main conclusions:
 
-- Labels-only assignment and augmented GEMM recover 1.2–2.5x on three
-  representative CPU tasks.
-- Augmented GEMM is the strongest optimization, but it retains another
-  input-sized array and still needs cancellation-safe direct-distance repair.
-- Larger score tiles, hierarchical sampling, `torch.compile`, and fused
-  Python-level statistics do not provide robust wins.
-- The projected remaining gap to cakedev0 is 2.3–6.1x; closing it likely
-  requires a compiled fused CPU kernel.
+- Augmented GEMM speeds up Lloyd by 1.18–3.15x on every backend when the
+  number of centers is at least the number of features, and is neutral below
+  that.
+- Augmented k-means++ helps only at `k100-d32` and `k550-d6` (1.17–1.65x);
+  it is 22–29% slower at `k3-d1000`.
+- The augmented copy adds an input-sized array, raising `k3-d1000` full-fit
+  peak memory from about 0.95 to 4.5 GiB.
+- On CPU, the best eager method remains 2.0–7.0x slower than cakedev0. On GPU,
+  the best Torch CUDA full fit is 2.9–10x faster than cakedev0 on the host CPU.
+- CuPy copies column-sliced matrix operands before every product. Padding the
+  center coefficients with zeros fixed a 1.8x CuPy regression.
 
 ## Journal
 
@@ -51,3 +55,4 @@ Main conclusions:
 - [016 — GEMM versus broadcast distances](016-gemm-vs-broadcast-distances/index.html): time, memory, and quality across initialization, Lloyd, and full fit on CPU and CUDA.
 - [017 — GEMM cancellation fallback](017-gemm-cancellation-fallback/index.html): translated-data failures, threshold sensitivity, and selective direct-distance repair.
 - [018 — backend-neutral CPU optimizations](018-cpu-array-api-optimization/index.html): labels-only assignment, tiling, interleaving, augmented GEMM, compilation, and sampling experiments.
+- [019 — CPU and GPU optimization rerun](019-cpu-gpu-optimization-rerun/index.html): the 018 optimizations on three backends and five tasks, beside cakedev0 on the same host.
