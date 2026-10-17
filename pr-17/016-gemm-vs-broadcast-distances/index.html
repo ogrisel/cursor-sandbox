@@ -46,7 +46,7 @@
 <p>Every Lloyd and full-fit run executes all 12 iterations, so these quality differences are not caused by different convergence iteration counts.</p>
 <h2 id="conclusion">Conclusion</h2>
 <ul><li>Keep GEMM as the default distance formulation on CPU and CUDA. It is faster in every Lloyd and full-fit cell, usually by a large factor, and uses equal or less peak memory.</li><li>Direct broadcast is competitive only for initializer-only work with extremely low feature dimension: at <code>k3000-d2</code> it is 2% faster on Torch CUDA and 8% faster on CuPy. That narrow win does not survive the Lloyd phase and does not justify a second production path.</li><li>Broadcast is not a memory optimization even with a strict 128 MiB tile cap. Its eager 3D intermediates raise measured CUDA peaks by as much as 3.9x.</li><li>Quality is effectively neutral: formulation roundoff perturbs stochastic initialization and quantized ties, but final inertia stays within 0.23%.</li></ul>
-<p>Previous: <a href="../015-native-backend-estimator-benchmark/index.html">native backend updates in the estimator</a>. Index: <a href="../index.html">journal</a>.</p>
+<p>Previous: <a href="../015-native-backend-estimator-benchmark/index.html">native backend updates in the estimator</a>. Next: <a href="../017-gemm-cancellation-fallback/index.html">GEMM cancellation fallback</a>. Index: <a href="../index.html">journal</a>.</p>
 </main>
 </body>
 </html>
