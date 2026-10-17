@@ -74,7 +74,7 @@ def ratio(rows, phase, backend, task, field):
     return np.nan, False
 
 
-def impact_figure(path, rows, field, ylabel):
+def impact_figure(path, rows, field, ylabel, percent_delta=False):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -88,7 +88,12 @@ def impact_figure(path, rows, field, ylabel):
         for index, backend in enumerate(BACKENDS):
             positions = xs + (index - 1) * width
             pairs = [ratio(rows, phase, backend, task, field) for task in TASKS]
-            means = [pair[0] for pair in pairs]
+            means = [
+                (pair[0] - 1) * 100
+                if percent_delta and np.isfinite(pair[0])
+                else pair[0]
+                for pair in pairs
+            ]
             all_values += [value for value in means if np.isfinite(value)]
             bars = ax.bar(
                 positions,
@@ -110,7 +115,7 @@ def impact_figure(path, rows, field, ylabel):
                         va="bottom",
                         fontsize=9,
                     )
-        ax.axhline(1, color="#333333", linewidth=0.8)
+        ax.axhline(0 if percent_delta else 1, color="#333333", linewidth=0.8)
         ax.set_xticks(xs, TASKS)
         ax.set_ylabel(ylabel)
         ax.set_title(
@@ -123,7 +128,11 @@ def impact_figure(path, rows, field, ylabel):
         )
         ax.spines[["top", "right"]].set_visible(False)
         positive = [value for value in all_values if value > 0]
-        if positive and max(positive) / min(positive) >= 10:
+        if (
+            not percent_delta
+            and positive
+            and max(positive) / min(positive) >= 10
+        ):
             ax.set_yscale("log")
     handles, labels = axes[0, 0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False)
@@ -152,7 +161,12 @@ def raw_table(rows, phase, field, unit):
                     else:
                         cells.append(f"{mean:.2f} ± {std:.2f} s")
                 elif failed:
-                    cells.append(f">{failed[0].get('timeout_seconds', 60)} s")
+                    if field == "seconds":
+                        cells.append(
+                            f">{failed[0].get('timeout_seconds', 60)} s"
+                        )
+                    else:
+                        cells.append("timeout")
                 else:
                     cells.append("–")
             lines.append(
@@ -171,7 +185,10 @@ def ratio_table(rows, phase, field):
         for task in TASKS:
             value, lower_bound = ratio(rows, phase, backend, task, field)
             marker = ">" if lower_bound else ""
-            cells.append(f"{marker}{value:.3f}x" if np.isfinite(value) else "–")
+            digits = 6 if field == "inertia_per_point" else 2
+            cells.append(
+                f"{marker}{value:.{digits}f}x" if np.isfinite(value) else "–"
+            )
         lines.append(f"| {LABELS[backend]} | " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
@@ -196,7 +213,8 @@ def main():
         out / "quality-impact.svg",
         rows,
         "inertia_per_point",
-        "broadcast / GEMM inertia",
+        "broadcast inertia change (%)",
+        percent_delta=True,
     )
     sections = []
     for phase in PHASES:

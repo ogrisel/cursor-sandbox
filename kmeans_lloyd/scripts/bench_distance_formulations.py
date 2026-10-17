@@ -261,7 +261,7 @@ def _tail_text(value, size):
     return (value or "")[-size:]
 
 
-def drive(tasks, backends, methods, phases, seeds, out):
+def drive(tasks, backends, methods, phases, seeds, out, timeout):
     data_dir = HOME / "task-mix-data-v4"
     env = os.environ.copy()
     env.update(
@@ -317,7 +317,7 @@ def drive(tasks, backends, methods, phases, seeds, out):
                                 env=env,
                                 text=True,
                                 capture_output=True,
-                                timeout=TIMEOUT,
+                                timeout=timeout,
                                 check=False,
                             )
                         except subprocess.TimeoutExpired as error:
@@ -328,7 +328,7 @@ def drive(tasks, backends, methods, phases, seeds, out):
                                 "method": method,
                                 "phase": phase,
                                 "error": "timeout",
-                                "timeout_seconds": TIMEOUT,
+                                "timeout_seconds": timeout,
                                 "stderr": _tail_text(error.stderr, 1000),
                             }
                             _append(out, row)
@@ -367,6 +367,7 @@ def main():
     parser.add_argument("--methods", default=",".join(METHODS))
     parser.add_argument("--phases", default=",".join(PHASES))
     parser.add_argument("--seeds", default="0,1,2")
+    parser.add_argument("--timeout", type=int, default=TIMEOUT)
     parser.add_argument("--out", default=str(HOME / "distance-results.jsonl"))
     args, _ = parser.parse_known_args()
     if args.worker:
@@ -379,6 +380,7 @@ def main():
         [value for value in args.phases.split(",") if value],
         [int(value) for value in args.seeds.split(",") if value],
         Path(args.out),
+        args.timeout,
     )
 
 
