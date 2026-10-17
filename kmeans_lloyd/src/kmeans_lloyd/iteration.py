@@ -254,6 +254,12 @@ def gemm_scores_argmin(xp, X, centroids, c_norm):
     return labels, values
 
 
+def gemm_labels(xp, X, centroids, c_norm):
+    """Nearest-center indices when one GEMM contains every centroid."""
+    scores = c_norm[None, :] - 2 * xp.matmul(X, xp.matrix_transpose(centroids))
+    return xp.argmin(scores, axis=1)
+
+
 def broadcast_scores_argmin(xp, X, centroids, c_norm=None):
     """Broadcast squared distances and return the winning index and value.
 
@@ -338,7 +344,9 @@ def stable_gemm_scores_argmin(
     return labels, values
 
 
-def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
+def assign_gemm_tiled(
+    X, centroids, tile_n, tile_k, step=None, label_step=None
+):
     """Gram assignment over sample tiles and centroid tiles.
 
     Each tile is one matrix product of shape ``(tile_n, n_features)`` by
@@ -350,7 +358,12 @@ def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
     """
     xp = array_namespace(X, centroids)
     if step is None:
-        step = lambda x_tile, c_tile, c_norm: gemm_scores_argmin(xp, x_tile, c_tile, c_norm)
+        def step(x_tile, c_tile, c_norm):
+            return gemm_scores_argmin(xp, x_tile, c_tile, c_norm)
+
+        if label_step is None:
+            def label_step(x_tile, c_tile, c_norm):
+                return gemm_labels(xp, x_tile, c_tile, c_norm)
     n_samples = int(X.shape[0])
     n_clusters = int(centroids.shape[0])
     labels = xp.zeros(n_samples, dtype=xp.int64, device=_device(X))
@@ -359,6 +372,12 @@ def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
         k1 = min(k0 + tile_k, n_clusters)
         c_tile = centroids[k0:k1, :]
         tiles.append((k0, c_tile, xp.sum(c_tile * c_tile, axis=1)))
+    if label_step is not None and len(tiles) == 1:
+        _, c_tile, c_norm = tiles[0]
+        for n0 in range(0, n_samples, tile_n):
+            n1 = min(n0 + tile_n, n_samples)
+            labels[n0:n1] = label_step(X[n0:n1, :], c_tile, c_norm)
+        return labels
     for n0 in range(0, n_samples, tile_n):
         n1 = min(n0 + tile_n, n_samples)
         x_tile = X[n0:n1, :]
@@ -366,6 +385,65 @@ def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
         local = xp.zeros(n1 - n0, dtype=xp.int64, device=_device(X))
         for k0, c_tile, c_norm in tiles:
             tile_labels, tile_scores = step(x_tile, c_tile, c_norm)
+            better = tile_scores < best
+            best = xp.where(better, tile_scores, best)
+            local = xp.where(better, tile_labels + k0, local)
+        labels[n0:n1] = local
+    return labels
+
+
+def augment_for_gemm_scores(xp, X):
+    """Append a ones column so center norms can be folded into GEMM."""
+    ones = xp.ones(
+        (int(X.shape[0]), 1),
+        dtype=X.dtype,
+        device=_device(X),
+    )
+    return xp.concat((X, ones), axis=1)
+
+
+def assign_homogeneous_tiled(X_augmented, centroids, tile_n, tile_k):
+    """Assign with ``[-2 C, ||C||²]`` folded into one augmented GEMM.
+
+    ``X_augmented`` is :func:`augment_for_gemm_scores` applied once to the
+    samples and can be reused across Lloyd iterations. This removes the
+    elementwise multiply and center-norm addition after every matrix product
+    while remaining expressible with portable array API operations.
+    """
+    xp = array_namespace(X_augmented, centroids)
+    n_samples = int(X_augmented.shape[0])
+    n_clusters = int(centroids.shape[0])
+    labels = xp.zeros(n_samples, dtype=xp.int64, device=_device(X_augmented))
+    tiles = []
+    for k0 in range(0, n_clusters, tile_k):
+        k1 = min(k0 + tile_k, n_clusters)
+        c_tile = centroids[k0:k1, :]
+        c_norm = xp.sum(c_tile * c_tile, axis=1)
+        transformed = xp.concat(
+            (-2 * c_tile, c_norm[:, None]),
+            axis=1,
+        )
+        tiles.append((k0, transformed))
+    for n0 in range(0, n_samples, tile_n):
+        n1 = min(n0 + tile_n, n_samples)
+        scores = xp.matmul(
+            X_augmented[n0:n1, :],
+            xp.matrix_transpose(tiles[0][1]),
+        )
+        local = xp.argmin(scores, axis=1)
+        if len(tiles) == 1:
+            labels[n0:n1] = local
+            continue
+        best = xp.take_along_axis(scores, local[:, None], axis=1)[:, 0]
+        for k0, transformed in tiles[1:]:
+            scores = xp.matmul(
+                X_augmented[n0:n1, :],
+                xp.matrix_transpose(transformed),
+            )
+            tile_labels = xp.argmin(scores, axis=1)
+            tile_scores = xp.take_along_axis(
+                scores, tile_labels[:, None], axis=1
+            )[:, 0]
             better = tile_scores < best
             best = xp.where(better, tile_scores, best)
             local = xp.where(better, tile_labels + k0, local)
@@ -513,6 +591,8 @@ def lloyd_step(
     rng=None,
     stats=None,
     step=None,
+    label_step=None,
+    assigner=None,
     recorder=None,
     accumulate=None,
 ):
@@ -541,15 +621,144 @@ def lloyd_step(
             accumulate=accumulate,
         )
 
+    def assign():
+        if assigner is not None:
+            return assigner(centroids, tile_n, tile_k)
+        return assign_gemm_tiled(
+            X, centroids, tile_n, tile_k, step=step, label_step=label_step
+        )
+
     if recorder is None:
-        labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
+        labels = assign()
         updated = update(labels)
     else:
         with recorder.phase("assign"):
-            labels = assign_gemm_tiled(X, centroids, tile_n, tile_k, step=step)
+            labels = assign()
         with recorder.phase("update"):
             updated = update(labels)
     return updated, labels
+
+
+def lloyd_step_interleaved(
+    X,
+    centroids,
+    tile_n,
+    tile_k,
+    update_tile_k=None,
+    update_tile_n=None,
+    reassign_empty=False,
+    rng=None,
+    stats=None,
+    step=None,
+    label_step=None,
+    assigner=None,
+    recorder=None,
+    accumulate=None,
+):
+    """Assign and accumulate one sample tile at a time.
+
+    Interleaving keeps each sample tile hot between its GEMM assignment and
+    centroid accumulation. It also provides a backend-agnostic fusion point:
+    ``step`` can compile the distance/top-1 operation and ``accumulate`` can
+    provide a keyed reduction. Without those callables, all operations remain
+    portable array API operations.
+    """
+    del rng, update_tile_n
+    if assigner is not None:
+        raise ValueError(
+            "lloyd_step_interleaved cannot use a whole-array assigner"
+        )
+    xp = array_namespace(X, centroids)
+    n_samples = int(X.shape[0])
+    n_clusters = int(centroids.shape[0])
+    if update_tile_k is None:
+        update_tile_k = tile_k
+    if step is None:
+        def step(x_tile, c_tile, c_norm):
+            return gemm_scores_argmin(xp, x_tile, c_tile, c_norm)
+
+        if label_step is None:
+            def label_step(x_tile, c_tile, c_norm):
+                return gemm_labels(xp, x_tile, c_tile, c_norm)
+    center_tiles = []
+    for k0 in range(0, n_clusters, tile_k):
+        k1 = min(k0 + tile_k, n_clusters)
+        c_tile = centroids[k0:k1, :]
+        center_tiles.append((k0, c_tile, xp.sum(c_tile * c_tile, axis=1)))
+
+    labels = xp.empty(n_samples, dtype=xp.int64, device=_device(X))
+    sums = xp.zeros_like(centroids)
+    counts = xp.zeros(n_clusters, dtype=X.dtype, device=_device(X))
+
+    def assign_and_accumulate():
+        for n0 in range(0, n_samples, tile_n):
+            n1 = min(n0 + tile_n, n_samples)
+            x_tile = X[n0:n1, :]
+            if label_step is not None and len(center_tiles) == 1:
+                _, c_tile, c_norm = center_tiles[0]
+                local = label_step(x_tile, c_tile, c_norm)
+            else:
+                best = xp.full(
+                    (n1 - n0,), xp.inf, dtype=X.dtype, device=_device(X)
+                )
+                local = xp.zeros(
+                    n1 - n0, dtype=xp.int64, device=_device(X)
+                )
+                for k0, c_tile, c_norm in center_tiles:
+                    tile_labels, tile_scores = step(
+                        x_tile, c_tile, c_norm
+                    )
+                    better = tile_scores < best
+                    best = xp.where(better, tile_scores, best)
+                    local = xp.where(better, tile_labels + k0, local)
+            labels[n0:n1] = local
+            if accumulate is not None:
+                part_sums, part_counts = accumulate(x_tile, local, n_clusters)
+                sums[:] = sums + part_sums
+                counts[:] = counts + part_counts
+                continue
+            for k0 in range(0, n_clusters, update_tile_k):
+                k1 = min(k0 + update_tile_k, n_clusters)
+                ids = (
+                    xp.arange(
+                        k1 - k0,
+                        dtype=labels.dtype,
+                        device=_device(labels),
+                    )
+                    + k0
+                )
+                membership = xp.astype(local[:, None] == ids[None, :], X.dtype)
+                counts[k0:k1] = counts[k0:k1] + xp.sum(membership, axis=0)
+                sums[k0:k1, :] = sums[k0:k1, :] + xp.matmul(
+                    xp.matrix_transpose(membership), x_tile
+                )
+
+    if recorder is None:
+        assign_and_accumulate()
+    else:
+        with recorder.phase("assign-update"):
+            assign_and_accumulate()
+
+    counts_safe = xp.where(counts == 0, xp.ones_like(counts), counts)
+    updated = xp.where(
+        counts[:, None] == 0,
+        centroids,
+        sums / counts_safe[:, None],
+    )
+    return (
+        _relocate_empty(
+            xp,
+            X,
+            labels,
+            centroids,
+            updated,
+            counts,
+            reassign_empty,
+            tile_n,
+            stats,
+        ),
+        labels,
+    )
 
 
 def running_tile_update(X, centroids, best_dist, best_idx, offset):
@@ -586,7 +795,15 @@ def assign_running_stateful(X, centroids, tile_k, block=None):
     return labels
 
 
-def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None, distance=None):
+def kmeans_plusplus(
+    X,
+    n_clusters,
+    rng,
+    n_local_trials=None,
+    distance=None,
+    draw=None,
+    x_norm=None,
+):
     """k-means++ initialization in the array API.
 
     The first center is a uniform draw from ``rng`` (a
@@ -611,10 +828,13 @@ def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None, distance=None):
     custom_distance = distance is not None
     if distance is None:
         distance = _distances_to_candidates
+    if draw is None:
+        draw = _weighted_draw
     chosen = [int(rng.integers(n_samples))]
     # One reduction of X * X. Repeating it inside every trial materializes a
     # full copy of the samples for each new center.
-    x_norm = _row_squared_norm(xp, X)
+    if x_norm is None:
+        x_norm = _row_squared_norm(xp, X)
     first_index = xp.asarray([chosen[0]], dtype=xp.int64, device=_device(X))
     first = xp.take(X, first_index, axis=0)
     if custom_distance:
@@ -626,7 +846,7 @@ def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None, distance=None):
         )
         closest = xp.maximum(closest, xp.zeros_like(closest))
     for _ in range(1, n_clusters):
-        picks = _weighted_draw(xp, closest, rng, n_local_trials)
+        picks = draw(xp, closest, rng, n_local_trials)
         candidates = xp.take(X, picks, axis=0)
         distances = distance(xp, X, x_norm, candidates)
         updated = xp.minimum(closest[:, None], distances)
@@ -837,7 +1057,13 @@ def fit_kmeans(
     update_tile_n=None,
     reassign_empty=False,
     step=None,
+    label_step=None,
+    assigner=None,
     distance=None,
+    draw=None,
+    iteration=None,
+    x_norm=None,
+    variance=None,
 ):
     """k-means++ initialization followed by Lloyd iterations until convergence.
 
@@ -850,7 +1076,14 @@ def fit_kmeans(
     are optional callables a benchmark may wrap with ``torch.compile``; both
     default to the array-API implementations.
     """
-    centers, indices = kmeans_plusplus(X, n_clusters, rng, distance=distance)
+    centers, indices = kmeans_plusplus(
+        X,
+        n_clusters,
+        rng,
+        distance=distance,
+        draw=draw,
+        x_norm=x_norm,
+    )
     result = fit_lloyd(
         X,
         centers,
@@ -863,6 +1096,10 @@ def fit_kmeans(
         reassign_empty=reassign_empty,
         rng=rng,
         step=step,
+        label_step=label_step,
+        assigner=assigner,
+        iteration=iteration,
+        variance=variance,
     )
     result["indices"] = indices
     return result
@@ -880,7 +1117,11 @@ def fit_lloyd(
     reassign_empty=False,
     rng=None,
     step=None,
+    label_step=None,
+    assigner=None,
     accumulate=None,
+    iteration=None,
+    variance=None,
 ):
     """Run Lloyd iterations from caller-provided centers.
 
@@ -898,16 +1139,19 @@ def fit_lloyd(
     if update_tile_n is None:
         update_tile_n = min(int(tile_n), 4096)
     centers = initial_centers
+    if iteration is None:
+        iteration = lloyd_step
     # ``mean(var(X, axis=0))`` with the library reduction allocates a large
     # workspace (512 MiB on the timing shape). Feature tiles compute the same
     # scalar, which is the scikit-learn scale for ``tol``.
-    variance = _mean_feature_variance(xp, X)
+    if variance is None:
+        variance = _mean_feature_variance(xp, X)
     threshold = float(tol) * _item(variance)
     labels = None
     n_iter = 0
     stats = {"empty_events": 0, "reassignments": 0}
     for n_iter in range(1, int(max_iter) + 1):
-        updated, labels = lloyd_step(
+        updated, labels = iteration(
             X,
             centers,
             tile_n,
@@ -918,6 +1162,8 @@ def fit_lloyd(
             rng=rng,
             stats=stats,
             step=step,
+            label_step=label_step,
+            assigner=assigner,
             accumulate=accumulate,
         )
         shift = _item(xp.sum((updated - centers) ** 2))
@@ -964,6 +1210,25 @@ def _row_squared_norm(xp, X, tile_d=256):
         part = xp.sum(block * block, axis=1)
         total = part if total is None else total + part
     return total
+
+
+def _row_norm_and_variance(xp, X, tile_d=128):
+    """Compute initialization row norms and Lloyd tolerance scale together."""
+    n_samples = int(X.shape[0])
+    n_features = int(X.shape[1])
+    n = xp.asarray(n_samples, dtype=X.dtype, device=_device(X))
+    row_norm = xp.zeros(n_samples, dtype=X.dtype, device=_device(X))
+    variance_sum = xp.asarray(0, dtype=X.dtype, device=_device(X))
+    for d0 in range(0, n_features, tile_d):
+        block = X[:, d0 : min(d0 + tile_d, n_features)]
+        row_norm = row_norm + xp.sum(block * block, axis=1)
+        mean = xp.mean(block, axis=0)
+        centered = block - mean[None, :]
+        variance_sum = variance_sum + xp.sum(centered * centered) / n
+    variance = variance_sum / xp.asarray(
+        n_features, dtype=X.dtype, device=_device(X)
+    )
+    return row_norm, variance
 
 
 def _distances_to_candidates(xp, X, x_norm, candidates):
@@ -1029,6 +1294,46 @@ def _weighted_draw(xp, weights, rng, n_draws):
     found = xp.searchsorted(cumulative, draws, side="left")
     last = xp.asarray(n_samples - 1, dtype=found.dtype, device=_device(found))
     return xp.minimum(found, last)
+
+
+def hierarchical_weighted_draw(
+    xp, weights, rng, n_draws, chunk_size=256
+):
+    """Draw from chunk sums, then from weights inside the selected chunks.
+
+    This is distributionally equivalent to a cumulative sum over every
+    sample, but writes a cumulative array of length ``ceil(n / chunk_size)``
+    instead of one of length ``n``. It follows the two-level sampling shape
+    used by cakedev0's chunked k-means++ implementation. The selected chunk
+    indices are read by Python so this is intended for CPU backends.
+    """
+    n_samples = int(weights.shape[0])
+    chunk_size = max(1, int(chunk_size))
+    n_full = n_samples // chunk_size
+    pieces = []
+    if n_full:
+        full = xp.reshape(weights[: n_full * chunk_size], (n_full, chunk_size))
+        pieces.append(xp.sum(full, axis=1))
+    if n_full * chunk_size < n_samples:
+        pieces.append(
+            xp.reshape(xp.sum(weights[n_full * chunk_size :]), (1,))
+        )
+    chunk_weights = pieces[0] if len(pieces) == 1 else xp.concat(pieces)
+    if not _item(xp.sum(chunk_weights)) > 0:
+        return xp.asarray(
+            rng.integers(n_samples, size=n_draws),
+            dtype=xp.int64,
+            device=_device(weights),
+        )
+    selected_chunks = _weighted_draw(xp, chunk_weights, rng, n_draws)
+    selected = []
+    for draw_index in range(int(n_draws)):
+        chunk = int(selected_chunks[draw_index])
+        start = chunk * chunk_size
+        stop = min(start + chunk_size, n_samples)
+        local = _weighted_draw(xp, weights[start:stop], rng, 1)
+        selected.append(local + start)
+    return xp.concat(selected)
 
 
 def _assign(X, centroids, assign, recorder=None, **assign_kwargs):

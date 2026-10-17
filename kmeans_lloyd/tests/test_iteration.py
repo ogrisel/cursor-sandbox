@@ -9,19 +9,23 @@ from array_api_compat import array_namespace
 from kmeans_lloyd.iteration import (
     assign_gemm,
     assign_gemm_tiled,
+    assign_homogeneous_tiled,
     assign_naive,
     assign_running,
     assign_running_stateful,
     assign_running_tiled,
     assign_tiled,
+    augment_for_gemm_scores,
     broadcast_distances_to_candidates_tiled,
     broadcast_scores_argmin,
     fit_kmeans,
     fit_lloyd,
+    hierarchical_weighted_draw,
     inertia,
     kmeans_plusplus,
     lloyd_iteration,
     lloyd_step,
+    lloyd_step_interleaved,
     scalable_kmeans_plusplus,
     stable_distances_to_candidates,
     stable_gemm_scores_argmin,
@@ -128,6 +132,41 @@ def test_gemm_tiled_matches_naive_when_tiles_do_not_divide():
     stateful = _to_numpy(assign_running_stateful(x, c, tile_k=2))
     np.testing.assert_array_equal(tiled, reference)
     np.testing.assert_array_equal(stateful, reference)
+
+
+def test_homogeneous_gemm_matches_tiled_assignment():
+    x_np, c_np = _blobs(n_per=9, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    xp = array_namespace(x)
+    expected = assign_gemm_tiled(x, c, tile_n=5, tile_k=2)
+    actual = assign_homogeneous_tiled(
+        augment_for_gemm_scores(xp, x),
+        c,
+        tile_n=5,
+        tile_k=2,
+    )
+    np.testing.assert_array_equal(_to_numpy(actual), _to_numpy(expected))
+    augmented = augment_for_gemm_scores(xp, x)
+    expected_centers, expected_labels = lloyd_step(
+        x, c, tile_n=5, tile_k=2, update_tile_k=2
+    )
+    actual_centers, actual_labels = lloyd_step(
+        x,
+        c,
+        tile_n=5,
+        tile_k=2,
+        update_tile_k=2,
+        assigner=lambda centers, tile_n, tile_k: assign_homogeneous_tiled(
+            augmented, centers, tile_n, tile_k
+        ),
+    )
+    np.testing.assert_array_equal(
+        _to_numpy(actual_labels), _to_numpy(expected_labels)
+    )
+    np.testing.assert_allclose(
+        _to_numpy(actual_centers), _to_numpy(expected_centers)
+    )
 
 
 def test_broadcast_hooks_match_direct_distances():
@@ -249,6 +288,50 @@ def test_lloyd_step_matches_naive_iteration():
     np.testing.assert_allclose(_to_numpy(updated), _to_numpy(reference))
 
 
+def test_interleaved_lloyd_step_matches_separate_phases():
+    x_np, c_np = _blobs(n_per=8, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    expected, expected_labels = lloyd_step(
+        x, c, tile_n=5, tile_k=2, update_tile_k=2
+    )
+    actual, actual_labels = lloyd_step_interleaved(
+        x, c, tile_n=5, tile_k=2, update_tile_k=2
+    )
+    np.testing.assert_array_equal(
+        _to_numpy(actual_labels), _to_numpy(expected_labels)
+    )
+    np.testing.assert_allclose(_to_numpy(actual), _to_numpy(expected))
+
+
+def test_hierarchical_weighted_draw_uses_positive_support():
+    weights = _as_numpy_namespace(
+        np.array([0.0, 0.0, 1.0, 0.0, 3.0, 0.0, 0.0], dtype=np.float64)
+    )
+    xp = array_namespace(weights)
+    selected = hierarchical_weighted_draw(
+        xp,
+        weights,
+        np.random.default_rng(0),
+        100,
+        chunk_size=3,
+    )
+    assert set(_to_numpy(selected).tolist()) <= {2, 4}
+
+
+def test_hierarchical_weighted_draw_handles_zero_total():
+    weights = _as_numpy_namespace(np.zeros(7, dtype=np.float64))
+    xp = array_namespace(weights)
+    selected = hierarchical_weighted_draw(
+        xp,
+        weights,
+        np.random.default_rng(0),
+        100,
+        chunk_size=3,
+    )
+    assert np.all((_to_numpy(selected) >= 0) & (_to_numpy(selected) < 7))
+
+
 def test_kmeans_plusplus_second_center_is_far_from_the_first():
     x_np = np.array([[0.0, 0.0], [0.1, 0.0], [10.0, 10.0], [10.2, 9.8]], dtype=np.float64)
     x = _as_numpy_namespace(x_np)
@@ -276,6 +359,17 @@ def test_kmeans_plusplus_is_deterministic_for_a_generator():
     second = _to_numpy(kmeans_plusplus(x, 3, np.random.default_rng(4))[1])
     np.testing.assert_array_equal(first, second)
     assert len(set(first.tolist())) == 3
+
+    xp = array_namespace(x)
+    precomputed = _to_numpy(
+        kmeans_plusplus(
+            x,
+            3,
+            np.random.default_rng(4),
+            x_norm=xp.sum(x * x, axis=1),
+        )[1]
+    )
+    np.testing.assert_array_equal(first, precomputed)
 
 
 def test_scalable_kmeans_plusplus_is_deterministic_and_selects_rows():
