@@ -409,21 +409,31 @@ def assign_homogeneous_tiled(X_augmented, centroids, tile_n, tile_k):
     samples and can be reused across Lloyd iterations. This removes the
     elementwise multiply and center-norm addition after every matrix product
     while remaining expressible with portable array API operations.
+
+    Columns after the ones column, such as row norms kept for k-means++, get
+    zero coefficients. Column-slicing them away instead makes the matrix
+    operand non-contiguous, which CuPy copies before every product.
     """
     xp = array_namespace(X_augmented, centroids)
     n_samples = int(X_augmented.shape[0])
     n_clusters = int(centroids.shape[0])
+    n_extra = int(X_augmented.shape[1]) - int(centroids.shape[1]) - 1
     labels = xp.zeros(n_samples, dtype=xp.int64, device=_device(X_augmented))
     tiles = []
     for k0 in range(0, n_clusters, tile_k):
         k1 = min(k0 + tile_k, n_clusters)
         c_tile = centroids[k0:k1, :]
         c_norm = xp.sum(c_tile * c_tile, axis=1)
-        transformed = xp.concat(
-            (-2 * c_tile, c_norm[:, None]),
-            axis=1,
-        )
-        tiles.append((k0, transformed))
+        parts = [-2 * c_tile, c_norm[:, None]]
+        if n_extra:
+            parts.append(
+                xp.zeros(
+                    (k1 - k0, n_extra),
+                    dtype=c_tile.dtype,
+                    device=_device(c_tile),
+                )
+            )
+        tiles.append((k0, xp.concat(parts, axis=1)))
     for n0 in range(0, n_samples, tile_n):
         n1 = min(n0 + tile_n, n_samples)
         scores = xp.matmul(

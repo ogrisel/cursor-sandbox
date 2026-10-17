@@ -1,4 +1,8 @@
-"""Benchmark backend-agnostic CPU optimization controls for KMeans."""
+"""Benchmark backend-agnostic KMeans optimization controls on CPU and GPU.
+
+GPU rows use the estimator's device tile schedule for every method, so only
+the assignment formulation or loop shape differs between methods.
+"""
 
 from __future__ import annotations
 
@@ -26,6 +30,7 @@ from bench_task_mix import (
 
 ROOT = Path(__file__).resolve().parents[1]
 SCORE_BUDGET = 128 * 2**20
+BACKENDS = ("torch-cpu", "torch-cuda", "cupy")
 METHODS = (
     "legacy",
     "baseline",
@@ -51,8 +56,17 @@ METHODS = (
 PHASES = ("init", "lloyd", "fit")
 
 
+def _is_cpu(X):
+    return "cpu" in str(device(X)).lower()
+
+
 def _tiles(X, k, method):
     n = int(X.shape[0])
+    if not _is_cpu(X):
+        from kmeans_lloyd.kmeans import _tile_schedule
+
+        schedule = _tile_schedule(X, k)
+        return schedule["tile_n"], schedule["tile_k"]
     if method in {
         "homogeneous",
         "homogeneous-lloyd",
@@ -116,9 +130,8 @@ def _hooks(X, method, tile_n, tile_k, fixed):
             nonlocal augmented
             if augmented is None:
                 augmented = augment_for_gemm_scores(xp, X)
-            assignment_data = augmented[:, : int(X.shape[1]) + 1]
             return assign_homogeneous_tiled(
-                assignment_data,
+                augmented,
                 centers,
                 selected_tile_n,
                 selected_tile_k,
@@ -221,6 +234,13 @@ def _fit(
     from kmeans_lloyd.iteration import assign_gemm_tiled, fit_lloyd, inertia
 
     accumulate = native_accumulate(X, k)
+    update_tile_n, update_tile_k = tile_n, tile_k
+    if not _is_cpu(X):
+        from kmeans_lloyd.kmeans import _tile_schedule
+
+        schedule = _tile_schedule(X, k)
+        update_tile_n = schedule["update_tile_n"]
+        update_tile_k = schedule["update_tile_k"]
     result = fit_lloyd(
         X,
         centers,
@@ -228,8 +248,8 @@ def _fit(
         tol=TOL,
         tile_n=tile_n,
         tile_k=tile_k,
-        update_tile_n=tile_n,
-        update_tile_k=tile_k,
+        update_tile_n=update_tile_n,
+        update_tile_k=update_tile_k,
         reassign_empty=True,
         rng=rng,
         step=step,
@@ -332,9 +352,48 @@ def _call(args, X, fixed):
     return centers, n_iter, objective, tile_n, tile_k, compile_seconds
 
 
+def _arrays(backend, samples, centers):
+    if backend.startswith("torch"):
+        import torch
+
+        torch.set_num_threads(4)
+        target = "cuda" if backend == "torch-cuda" else "cpu"
+        if target == "cuda":
+            torch.backends.cuda.matmul.allow_tf32 = False
+            torch.backends.cudnn.allow_tf32 = False
+        return (
+            torch.as_tensor(samples, device=target),
+            torch.as_tensor(centers, device=target),
+        )
+    import cupy
+
+    return cupy.asarray(samples), cupy.asarray(centers)
+
+
+def _synchronize(backend):
+    if backend == "torch-cuda":
+        import torch
+
+        torch.cuda.synchronize()
+    elif backend == "cupy":
+        import cupy
+
+        cupy.cuda.Stream.null.synchronize()
+
+
+def _warm_gpu(args, X, fixed):
+    """Run the selected method on a small slice so kernel setup is untimed."""
+    n = min(int(X.shape[0]), 4096)
+    k = min(args.k, 8)
+    small = argparse.Namespace(**{**vars(args), "k": k})
+    _call(small, X[:n, :], fixed[:k, :])
+    _synchronize(args.backend)
+
+
 def worker(argv):
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("--worker", action="store_true")
+    parser.add_argument("--backend", choices=BACKENDS, default="torch-cpu")
     parser.add_argument("--method", choices=METHODS, required=True)
     parser.add_argument("--phase", choices=PHASES, required=True)
     parser.add_argument("--data", required=True)
@@ -342,27 +401,37 @@ def worker(argv):
     parser.add_argument("--k", type=int, required=True)
     parser.add_argument("--seed", type=int, required=True)
     args = parser.parse_args(argv)
+    if args.backend != "torch-cpu" and "compiled" in args.method:
+        raise ValueError("compiled methods are CPU-only experiments")
 
-    import torch
-
-    torch.set_num_threads(4)
     samples = np.load(args.data)
     centers0 = np.load(args.centers)
-    X = torch.as_tensor(samples)
-    fixed = torch.as_tensor(centers0)
-    before = _hwm_bytes()
-    started = time.perf_counter()
-    centers, n_iter, objective, tile_n, tile_k, compile_seconds = _call(
-        args, X, fixed
-    )
-    seconds = time.perf_counter() - started
-    memory = max(0, _hwm_bytes() - before)
+    X, fixed = _arrays(args.backend, samples, centers0)
+    if args.backend == "torch-cpu":
+        before = _hwm_bytes()
+        started = time.perf_counter()
+        centers, n_iter, objective, tile_n, tile_k, compile_seconds = _call(
+            args, X, fixed
+        )
+        seconds = time.perf_counter() - started
+        memory = max(0, _hwm_bytes() - before)
+        meter = "vmhwm"
+    else:
+        from kmeans_lloyd.instrument import measure_call
+
+        _synchronize(args.backend)
+        _warm_gpu(args, X, fixed)
+        output, profile = measure_call(lambda: _call(args, X, fixed), (), X)
+        centers, n_iter, objective, tile_n, tile_k, compile_seconds = output
+        seconds = profile["seconds"]
+        memory = profile["peak_extra_bytes"]
+        meter = args.backend.split("-")[0] + "-pool"
     if objective is None:
         objective = _mean_inertia(samples, _to_numpy(centers)) * len(samples)
     print(
         json.dumps(
             {
-                "backend": "torch-cpu",
+                "backend": args.backend,
                 "method": args.method,
                 "phase": args.phase,
                 "seed": args.seed,
@@ -370,7 +439,7 @@ def worker(argv):
                 "seconds": seconds,
                 "compile_seconds": compile_seconds,
                 "mem_increment_bytes": memory,
-                "mem_meter": "vmhwm",
+                "mem_meter": meter,
                 "inertia_per_point": objective / len(samples),
                 "n_iter": n_iter,
                 "tile_n": tile_n,
@@ -386,11 +455,12 @@ def _append(path, row):
         stream.write(json.dumps(row) + "\n")
 
 
-def drive(tasks, methods, phases, seeds, out, timeout):
+def drive(tasks, backends, methods, phases, seeds, out, timeout):
     data_dir = HOME / "task-mix-data-v4"
     env = os.environ.copy()
     env.update(
         PYTHONPATH=str(ROOT / "src"),
+        NVIDIA_TF32_OVERRIDE="0",
         OMP_NUM_THREADS="4",
         MKL_NUM_THREADS="4",
         OPENBLAS_NUM_THREADS="4",
@@ -408,79 +478,93 @@ def drive(tasks, methods, phases, seeds, out, timeout):
                 ordered_methods = list(methods)
                 if seed % 2:
                     ordered_methods.reverse()
-                for method in ordered_methods:
-                    command = [
-                        str(python),
-                        str(Path(__file__).resolve()),
-                        "--worker",
-                        "--method",
-                        method,
-                        "--phase",
-                        phase,
-                        "--data",
-                        str(data_path),
-                        "--centers",
-                        str(centers_path),
-                        "--k",
-                        str(task["k"]),
-                        "--seed",
-                        str(seed),
-                    ]
-                    print(
-                        f"start {task['name']} seed={seed} {phase} {method}",
-                        flush=True,
-                    )
-                    started = time.perf_counter()
-                    try:
-                        completed = subprocess.run(
-                            command,
-                            cwd=ROOT,
-                            env=env,
-                            text=True,
-                            capture_output=True,
-                            timeout=timeout,
-                            check=False,
+                for backend in backends:
+                    for method in ordered_methods:
+                        _run(
+                            python, env, out, timeout, task, seed, phase,
+                            backend, method, data_path, centers_path,
                         )
-                    except subprocess.TimeoutExpired as error:
-                        row = {
-                            "task": task,
-                            "seed": seed,
-                            "method": method,
-                            "phase": phase,
-                            "error": "timeout",
-                            "timeout_seconds": timeout,
-                            "stderr": (error.stderr or "")[-1000:],
-                        }
-                        _append(out, row)
-                        print("  timeout", flush=True)
-                        continue
-                    lines = completed.stdout.strip().splitlines()
-                    if completed.returncode or not lines:
-                        row = {
-                            "task": task,
-                            "seed": seed,
-                            "method": method,
-                            "phase": phase,
-                            "error": f"exit {completed.returncode}",
-                            "stderr": completed.stderr[-2000:],
-                        }
-                        print(row["error"], row["stderr"][-300:], flush=True)
-                    else:
-                        row = json.loads(lines[-1])
-                        row["task"] = task
-                        row["wall_seconds"] = time.perf_counter() - started
-                        print(
-                            f"  {row['seconds']:.3f}s "
-                            f"inertia={row['inertia_per_point']:.6g}",
-                            flush=True,
-                        )
-                    _append(out, row)
+
+
+def _run(
+    python, env, out, timeout, task, seed, phase, backend, method,
+    data_path, centers_path,
+):
+    command = [
+        str(python),
+        str(Path(__file__).resolve()),
+        "--worker",
+        "--backend",
+        backend,
+        "--method",
+        method,
+        "--phase",
+        phase,
+        "--data",
+        str(data_path),
+        "--centers",
+        str(centers_path),
+        "--k",
+        str(task["k"]),
+        "--seed",
+        str(seed),
+    ]
+    print(
+        f"start {task['name']} seed={seed} {phase} {backend} {method}",
+        flush=True,
+    )
+    started = time.perf_counter()
+    failure = {
+        "task": task,
+        "seed": seed,
+        "backend": backend,
+        "method": method,
+        "phase": phase,
+    }
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=ROOT,
+            env=env,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        stderr = error.stderr or ""
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode(errors="replace")
+        failure.update(
+            error="timeout", timeout_seconds=timeout, stderr=stderr[-1000:]
+        )
+        _append(out, failure)
+        print("  timeout", flush=True)
+        return
+    lines = completed.stdout.strip().splitlines()
+    if completed.returncode or not lines:
+        failure.update(
+            error=f"exit {completed.returncode}",
+            stderr=completed.stderr[-2000:],
+        )
+        print(failure["error"], failure["stderr"][-300:], flush=True)
+        _append(out, failure)
+        return
+    row = json.loads(lines[-1])
+    row["task"] = task
+    row["wall_seconds"] = time.perf_counter() - started
+    print(
+        f"  {row['seconds']:.3f}s inertia={row['inertia_per_point']:.6g}",
+        flush=True,
+    )
+    _append(out, row)
 
 
 def main():
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("--worker", action="store_true")
     parser.add_argument("--tasks", default="")
+    parser.add_argument("--backends", default="torch-cpu")
     parser.add_argument("--methods", default=",".join(METHODS))
     parser.add_argument("--phases", default=",".join(PHASES))
     parser.add_argument("--seeds", default="0,1,2")
@@ -492,6 +576,7 @@ def main():
         return
     drive(
         {value for value in args.tasks.split(",") if value},
+        [value for value in args.backends.split(",") if value],
         [value for value in args.methods.split(",") if value],
         [value for value in args.phases.split(",") if value],
         [int(value) for value in args.seeds.split(",") if value],

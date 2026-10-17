@@ -147,6 +147,14 @@ def test_homogeneous_gemm_matches_tiled_assignment():
         tile_k=2,
     )
     np.testing.assert_array_equal(_to_numpy(actual), _to_numpy(expected))
+    with_norms = xp.concat(
+        (augment_for_gemm_scores(xp, x), xp.sum(x * x, axis=1)[:, None]),
+        axis=1,
+    )
+    np.testing.assert_array_equal(
+        _to_numpy(assign_homogeneous_tiled(with_norms, c, tile_n=5, tile_k=2)),
+        _to_numpy(expected),
+    )
     augmented = augment_for_gemm_scores(xp, x)
     expected_centers, expected_labels = lloyd_step(
         x, c, tile_n=5, tile_k=2, update_tile_k=2
