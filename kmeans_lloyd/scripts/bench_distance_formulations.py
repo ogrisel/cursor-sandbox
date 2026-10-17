@@ -200,7 +200,9 @@ def worker(argv):
     parser.add_argument("--seed", type=int, required=True)
     args = parser.parse_args(argv)
 
-    samples = np.load(args.data, mmap_mode="r")
+    # Load before timing so CPU VmHWM measures algorithm temporaries rather
+    # than demand-paging the input, matching ``bench_task_mix.py``.
+    samples = np.load(args.data)
     centers0 = np.load(args.centers)
     X, fixed = _arrays(args.backend, samples, centers0)
     _synchronize(args.backend)
