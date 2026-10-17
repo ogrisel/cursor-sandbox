@@ -17,25 +17,22 @@ samples. Runs use float32, eager execution, TF32 disabled, three seeds, and a
 
 ## Latest results
 
-[015](015-native-backend-estimator-benchmark/index.html) adds PyTorch
-`index_add_` and CuPy `add.at` centroid updates to the portable `KMeans`
-estimator, keeps the one-hot update for other namespaces, and reruns the full
-benchmark through the estimator.
+[016](016-gemm-vs-broadcast-distances/index.html) compares bounded direct
+broadcast distances with the GEMM/Gram identity in initialization, Lloyd
+iterations, and full fits on CPU and CUDA.
 
-| shared-start fit, 12 Lloyd iterations | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
+| full-fit broadcast / GEMM time | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Array API - Torch CUDA | 0.89 s | 0.64 s | 0.39 s | 0.49 s | 0.62 s |
-| Array API - Torch CUDA, generic update | 0.89 s | 0.63 s | 0.46 s | 0.59 s | 0.75 s |
-| Array API - CuPy | 1.06 s | 0.67 s | 0.39 s | 0.42 s | 0.58 s |
-| Array API - CuPy, generic update | 1.00 s | 0.87 s | 0.58 s | 0.60 s | 0.76 s |
-| cuML 26.10 | 6.88 s | 2.12 s | 0.54 s | 0.35 s | 0.32 s |
+| Torch CPU | 6.14x | 20.22x | 11.67x | 6.27x | 1.77x |
+| Torch CUDA | 4.32x | 10.79x | 10.24x | 3.11x | 1.26x |
+| CuPy CUDA | 3.96x | 9.85x | 6.88x | 2.27x | 1.06x |
 
 Main conclusions:
 
-- The native update speeds up CUDA fits by 1.06x to 1.47x from 17 clusters up on CuPy and 100 clusters up on PyTorch, and Torch CPU fits by up to 4.6x.
-- With few clusters and many features, atomic contention makes the CUDA scatter-add slower than the one-hot GEMM, so the dispatch keeps the portable update there.
-- The first run also found a PyTorch finiteness check that used 5.3 GiB of temporaries on the widest task; the estimator now checks column sums first.
-- The array-API backends now beat cuML's Lloyd iterations up to 100 clusters; cuML stays 1.2x to 1.9x faster at 550 and 3000 clusters.
+- GEMM is faster in all 15 Lloyd and all 15 full-fit cells, by 1.1x to 25.2x.
+- Broadcast only wins initializer-only at 3000 clusters and 2 features: 1.02x on Torch CUDA and 1.09x on CuPy.
+- Even with a 128 MiB difference-tensor tile cap, broadcast raises CUDA peak memory by up to 3.9x.
+- Final inertia stays within 0.23%; neither formula has a consistent quality advantage.
 
 ## Journal
 
@@ -54,3 +51,4 @@ Main conclusions:
 - [013 — large-k Lloyd optimization](013-large-k-lloyd-optimization/index.html): scalable-init sensitivity, cuML kernel analysis, optimization probes, and next steps.
 - [014 — portable array-API KMeans](014-portable-array-api-kmeans/index.html): sklearn-compatible estimator extraction and CuPy-native centroid-update probes.
 - [015 — native backend updates in the estimator](015-native-backend-estimator-benchmark/index.html): PyTorch and CuPy scatter-add updates, the CUDA contention crossover, and the full benchmark rerun.
+- [016 — GEMM versus broadcast distances](016-gemm-vs-broadcast-distances/index.html): time, memory, and quality across initialization, Lloyd, and full fit on CPU and CUDA.

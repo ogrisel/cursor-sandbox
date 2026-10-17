@@ -291,4 +291,5 @@ they repeat 011's conclusions.
   scatter-add.
 
 Previous: [portable array-API KMeans](../014-portable-array-api-kmeans/report.md).
+Next: [GEMM versus broadcast distances](../016-gemm-vs-broadcast-distances/report.md).
 Index: [journal](../index.md).
