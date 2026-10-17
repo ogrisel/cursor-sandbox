@@ -268,6 +268,76 @@ def broadcast_scores_argmin(xp, X, centroids, c_norm=None):
     return labels, values
 
 
+def stable_gemm_distances(
+    xp,
+    X,
+    x_norm,
+    centroids,
+    c_norm=None,
+    *,
+    threshold=None,
+    max_pair_bytes=128 * 2**20,
+    stats=None,
+):
+    """GEMM distances with direct recomputation of cancellation-prone pairs.
+
+    The relative test and defaults follow cakedev0/scikit-learn#23: recompute
+    when the Gram residual is below ``1e-2 * (||x||² + ||c||²)`` in float32,
+    or ``1e-8`` in float64. Selected pairs are gathered and evaluated as
+    ``sum((x - c) ** 2)`` in bounded chunks. This helper intentionally uses
+    advanced indexed assignment, outside the strict array API, and is an
+    experimental PyTorch/CuPy/NumPy path rather than the portable default.
+    """
+    if c_norm is None:
+        c_norm = xp.sum(centroids * centroids, axis=1)
+    if threshold is None:
+        threshold = 1e-2 if "32" in str(X.dtype) else 1e-8
+    norms = x_norm[:, None] + c_norm[None, :]
+    distances = norms - 2 * xp.matmul(X, xp.matrix_transpose(centroids))
+    suspicious = distances < threshold * norms
+    flat = xp.nonzero(xp.reshape(suspicious, (-1,)))[0]
+    n_pairs = int(flat.shape[0])
+    n_centroids = int(centroids.shape[0])
+    n_features = int(X.shape[1])
+    itemsize = X.element_size() if hasattr(X, "element_size") else X.itemsize
+    pair_tile = max(1, max_pair_bytes // max(1, 2 * itemsize * n_features))
+    for p0 in range(0, n_pairs, pair_tile):
+        selected = flat[p0 : min(p0 + pair_tile, n_pairs)]
+        sample_indices = selected // n_centroids
+        center_indices = selected % n_centroids
+        rows = xp.take(X, sample_indices, axis=0)
+        centers = xp.take(centroids, center_indices, axis=0)
+        difference = rows - centers
+        exact = xp.sum(difference * difference, axis=1)
+        distances[sample_indices, center_indices] = exact
+    if stats is not None:
+        stats["distance_pairs"] = stats.get("distance_pairs", 0) + int(
+            X.shape[0]
+        ) * n_centroids
+        stats["recomputed_pairs"] = stats.get("recomputed_pairs", 0) + n_pairs
+        stats["distance_calls"] = stats.get("distance_calls", 0) + 1
+    return distances
+
+
+def stable_gemm_scores_argmin(
+    xp, X, centroids, c_norm, *, threshold=None, stats=None
+):
+    """Argmin and winning value after stable GEMM distance recomputation."""
+    x_norm = xp.sum(X * X, axis=1)
+    distances = stable_gemm_distances(
+        xp,
+        X,
+        x_norm,
+        centroids,
+        c_norm,
+        threshold=threshold,
+        stats=stats,
+    )
+    labels = xp.argmin(distances, axis=1)
+    values = xp.take_along_axis(distances, labels[:, None], axis=1)[:, 0]
+    return labels, values
+
+
 def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
     """Gram assignment over sample tiles and centroid tiles.
 
@@ -902,6 +972,20 @@ def _distances_to_candidates(xp, X, x_norm, candidates):
     dots = xp.matmul(X, xp.matrix_transpose(candidates))
     distances = x_norm[:, None] + centroid_norm[None, :] - 2 * dots
     return xp.maximum(distances, xp.zeros_like(distances))
+
+
+def stable_distances_to_candidates(
+    xp, X, x_norm, candidates, *, threshold=None, stats=None
+):
+    """Stable GEMM distances with the k-means++ distance-hook signature."""
+    return stable_gemm_distances(
+        xp,
+        X,
+        x_norm,
+        candidates,
+        threshold=threshold,
+        stats=stats,
+    )
 
 
 def broadcast_distances_to_candidates_tiled(

@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TIMEOUT = 60
 BROADCAST_TILE_BYTES = 128 * 2**20
 BACKENDS = ("torch-cpu", "torch-cuda", "cupy")
-METHODS = ("gemm", "broadcast")
+METHODS = ("gemm", "stable", "broadcast")
 PHASES = ("init", "lloyd", "fit")
 
 
@@ -80,17 +80,35 @@ def _synchronize(backend):
 
 def _distance_hooks(X, method, tile_n, tile_k, n_clusters):
     if method == "gemm":
-        return None, None, tile_n
+        return None, None, tile_n, {}
 
     from array_api_compat import array_namespace
 
     from kmeans_lloyd.iteration import (
         broadcast_distances_to_candidates_tiled,
         broadcast_scores_argmin,
+        stable_distances_to_candidates,
+        stable_gemm_scores_argmin,
     )
 
     xp = array_namespace(X)
+    stats = {}
+    if method == "stable":
+
+        def step(x_tile, c_tile, c_norm):
+            return stable_gemm_scores_argmin(
+                xp, x_tile, c_tile, c_norm, stats=stats
+            )
+
+        def distance(xp, data, x_norm, candidates):
+            return stable_distances_to_candidates(
+                xp, data, x_norm, candidates, stats=stats
+            )
+
+        return step, distance, tile_n, stats
+
     assign_tile_n = min(tile_n, _broadcast_tile_n(X, tile_k))
+
     def step(x_tile, c_tile, c_norm):
         return broadcast_scores_argmin(xp, x_tile, c_tile, c_norm)
 
@@ -103,7 +121,7 @@ def _distance_hooks(X, method, tile_n, tile_k, n_clusters):
             _broadcast_tile_n(data, int(candidates.shape[0])),
         )
 
-    return step, distance, assign_tile_n
+    return step, distance, assign_tile_n, stats
 
 
 def _fit(X, centers, rng, tiles, step, accumulate):
@@ -140,7 +158,7 @@ def _call(args, X, fixed):
     from kmeans_lloyd.kmeans import _tile_schedule
 
     tiles = _tile_schedule(X, args.k)
-    step, distance, tiles["tile_n"] = _distance_hooks(
+    step, distance, tiles["tile_n"], stats = _distance_hooks(
         X, args.method, tiles["tile_n"], tiles["tile_k"], args.k
     )
     accumulate = native_accumulate(X, args.k)
@@ -148,17 +166,17 @@ def _call(args, X, fixed):
 
     if args.phase == "init":
         centers, _ = kmeans_plusplus(X, args.k, rng, distance=distance)
-        return centers, 0, None, tiles
+        return centers, 0, None, tiles, stats
     if args.phase == "lloyd":
         centers, n_iter, objective = _fit(
             X, fixed, rng, tiles, step, accumulate
         )
-        return centers, n_iter, objective, tiles
+        return centers, n_iter, objective, tiles, stats
     centers, _ = kmeans_plusplus(X, args.k, rng, distance=distance)
     centers, n_iter, objective = _fit(
         X, centers, rng, tiles, step, accumulate
     )
-    return centers, n_iter, objective, tiles
+    return centers, n_iter, objective, tiles, stats
 
 
 def _warm_gpu(args, X, fixed):
@@ -171,6 +189,8 @@ def _warm_gpu(args, X, fixed):
         broadcast_distances_to_candidates_tiled,
         broadcast_scores_argmin,
         gemm_scores_argmin,
+        stable_distances_to_candidates,
+        stable_gemm_scores_argmin,
     )
 
     xp = array_namespace(X)
@@ -180,10 +200,15 @@ def _warm_gpu(args, X, fixed):
     if args.method == "gemm":
         gemm_scores_argmin(xp, x, c, c_norm)
         _distances_to_candidates(xp, x, xp.sum(x * x, axis=1), c)
-    else:
+    elif args.method == "broadcast":
         broadcast_scores_argmin(xp, x, c, c_norm)
         broadcast_distances_to_candidates_tiled(
             xp, x, xp.sum(x * x, axis=1), c, 128
+        )
+    else:
+        stable_gemm_scores_argmin(xp, x, c, c_norm)
+        stable_distances_to_candidates(
+            xp, x, xp.sum(x * x, axis=1), c
         )
     _synchronize(args.backend)
 
@@ -211,7 +236,7 @@ def worker(argv):
     if args.backend == "torch-cpu":
         before = _hwm_bytes()
         started = time.perf_counter()
-        centers, n_iter, objective, tiles = _call(args, X, fixed)
+        centers, n_iter, objective, tiles, stats = _call(args, X, fixed)
         seconds = time.perf_counter() - started
         memory = max(0, _hwm_bytes() - before)
         meter = "vmhwm"
@@ -221,7 +246,7 @@ def worker(argv):
         output, profile = measure_call(
             lambda: _call(args, X, fixed), (), X
         )
-        centers, n_iter, objective, tiles = output
+        centers, n_iter, objective, tiles, stats = output
         seconds = profile["seconds"]
         memory = profile["peak_extra_bytes"]
         meter = args.backend.split("-")[0] + "-pool"
@@ -244,6 +269,8 @@ def worker(argv):
                 "tile_n": tiles["tile_n"],
                 "tile_k": tiles["tile_k"],
                 "broadcast_tile_bytes": BROADCAST_TILE_BYTES,
+                "distance_pairs": stats.get("distance_pairs", 0),
+                "recomputed_pairs": stats.get("recomputed_pairs", 0),
             }
         ),
         flush=True,

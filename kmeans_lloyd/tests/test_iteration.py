@@ -23,6 +23,8 @@ from kmeans_lloyd.iteration import (
     lloyd_iteration,
     lloyd_step,
     scalable_kmeans_plusplus,
+    stable_distances_to_candidates,
+    stable_gemm_scores_argmin,
     update_centroids,
     update_centroids_tiled,
 )
@@ -150,6 +152,40 @@ def test_broadcast_hooks_match_direct_distances():
         xp, x, xp.sum(x * x, axis=1), candidates, tile_n=5
     )
     np.testing.assert_allclose(_to_numpy(actual), expected)
+
+
+def test_stable_gemm_recomputes_far_origin_distances():
+    rng = np.random.default_rng(0)
+    unique = (rng.uniform(size=(10, 2)) + 1e3).astype(np.float32)
+    x = _as_numpy_namespace(np.repeat(unique, 50, axis=0))
+    xp = array_namespace(x)
+    stats = {}
+    labels, distances = stable_gemm_scores_argmin(
+        xp,
+        x,
+        x[:3, :],
+        xp.sum(x[:3, :] * x[:3, :], axis=1),
+        stats=stats,
+    )
+    expected = np.sum(
+        (np.asarray(x)[:, None, :] - np.asarray(x)[:3][None, :, :]) ** 2,
+        axis=2,
+    )
+    np.testing.assert_array_equal(_to_numpy(labels), np.argmin(expected, axis=1))
+    np.testing.assert_allclose(
+        _to_numpy(distances), np.min(expected, axis=1), rtol=1e-6
+    )
+    assert stats["recomputed_pairs"] > 0
+
+    centers, _ = kmeans_plusplus(
+        x,
+        10,
+        np.random.default_rng(0),
+        distance=lambda xp, X, x_norm, candidates: stable_distances_to_candidates(
+            xp, X, x_norm, candidates
+        ),
+    )
+    assert np.unique(_to_numpy(centers), axis=0).shape[0] == 10
 
 
 def test_tiled_update_matches_one_hot_update():
