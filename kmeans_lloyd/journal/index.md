@@ -17,22 +17,19 @@ samples. Runs use float32, eager execution, TF32 disabled, three seeds, and a
 
 ## Latest results
 
-[017](017-gemm-cancellation-fallback/index.html) evaluates catastrophic
-cancellation in GEMM distances and the selective direct-distance safeguard
-used by cakedev0's Cython implementation.
+[018](018-cpu-array-api-optimization/index.html) evaluates backend-neutral
+CPU optimizations for initialization, Lloyd iterations, and full fit.
 
 Main conclusions:
 
-- Translation by `1e3` makes plain float32 GEMM choose the wrong center for
-  about 97% of a 100,000-row assignment benchmark and raises inertia 1.63–1.64x.
-- The `1e-2` relative-threshold fallback fixes every tested float32 assignment
-  and recovers all 10 unique k-means++ centers on CPU and CUDA.
-- Sparse fallback keeps most of GEMM's advantage over broadcast, but the
-  Python gather/scatter prototype is 1.7–2.9x slower than bounded broadcast
-  when all pairs trigger.
-- A production path should use selective repair for sparse triggers, switch
-  dense-trigger tiles to bounded broadcast, or fuse the repair into a
-  backend-specific kernel.
+- Labels-only assignment and augmented GEMM recover 1.2–2.5x on three
+  representative CPU tasks.
+- Augmented GEMM is the strongest optimization, but it retains another
+  input-sized array and still needs cancellation-safe direct-distance repair.
+- Larger score tiles, hierarchical sampling, `torch.compile`, and fused
+  Python-level statistics do not provide robust wins.
+- The projected remaining gap to cakedev0 is 2.3–6.1x; closing it likely
+  requires a compiled fused CPU kernel.
 
 ## Journal
 
@@ -53,3 +50,4 @@ Main conclusions:
 - [015 — native backend updates in the estimator](015-native-backend-estimator-benchmark/index.html): PyTorch and CuPy scatter-add updates, the CUDA contention crossover, and the full benchmark rerun.
 - [016 — GEMM versus broadcast distances](016-gemm-vs-broadcast-distances/index.html): time, memory, and quality across initialization, Lloyd, and full fit on CPU and CUDA.
 - [017 — GEMM cancellation fallback](017-gemm-cancellation-fallback/index.html): translated-data failures, threshold sensitivity, and selective direct-distance repair.
+- [018 — backend-neutral CPU optimizations](018-cpu-array-api-optimization/index.html): labels-only assignment, tiling, interleaving, augmented GEMM, compilation, and sampling experiments.

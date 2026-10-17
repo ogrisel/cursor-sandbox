@@ -175,4 +175,5 @@ standalone k-means++ and precomputed or externally supplied centers still need
 stable distances.
 
 Previous: [GEMM versus broadcast distances](../016-gemm-vs-broadcast-distances/report.md).
+Next: [backend-neutral CPU optimizations](../018-cpu-array-api-optimization/report.md).
 Index: [journal](../index.md).
