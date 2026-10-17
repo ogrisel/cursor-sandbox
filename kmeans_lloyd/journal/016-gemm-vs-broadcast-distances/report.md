@@ -170,4 +170,5 @@ differences are not caused by different convergence iteration counts.
   initialization and quantized ties, but final inertia stays within 0.23%.
 
 Previous: [native backend updates in the estimator](../015-native-backend-estimator-benchmark/report.md).
+Next: [GEMM cancellation fallback](../017-gemm-cancellation-fallback/report.md).
 Index: [journal](../index.md).

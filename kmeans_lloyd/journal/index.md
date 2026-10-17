@@ -17,22 +17,22 @@ samples. Runs use float32, eager execution, TF32 disabled, three seeds, and a
 
 ## Latest results
 
-[016](016-gemm-vs-broadcast-distances/index.html) compares bounded direct
-broadcast distances with the GEMM/Gram identity in initialization, Lloyd
-iterations, and full fits on CPU and CUDA.
-
-| full-fit broadcast / GEMM time | k3-d1000 | k17-d180 | k100-d32 | k550-d6 | k3000-d2 |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Torch CPU | 6.14x | 20.22x | 11.67x | 6.27x | 1.77x |
-| Torch CUDA | 4.32x | 10.79x | 10.24x | 3.11x | 1.26x |
-| CuPy CUDA | 3.96x | 9.85x | 6.88x | 2.27x | 1.06x |
+[017](017-gemm-cancellation-fallback/index.html) evaluates catastrophic
+cancellation in GEMM distances and the selective direct-distance safeguard
+used by cakedev0's Cython implementation.
 
 Main conclusions:
 
-- GEMM is faster in all 15 Lloyd and all 15 full-fit cells, by 1.1x to 25.2x.
-- Broadcast only wins initializer-only at 3000 clusters and 2 features: 1.02x on Torch CUDA and 1.09x on CuPy.
-- Even with a 128 MiB difference-tensor tile cap, broadcast raises CUDA peak memory by up to 3.9x.
-- Final inertia stays within 0.23%; neither formula has a consistent quality advantage.
+- Translation by `1e3` makes plain float32 GEMM choose the wrong center for
+  about 97% of a 100,000-row assignment benchmark and raises inertia 1.63–1.64x.
+- The `1e-2` relative-threshold fallback fixes every tested float32 assignment
+  and recovers all 10 unique k-means++ centers on CPU and CUDA.
+- Sparse fallback keeps most of GEMM's advantage over broadcast, but the
+  Python gather/scatter prototype is 1.7–2.9x slower than bounded broadcast
+  when all pairs trigger.
+- A production path should use selective repair for sparse triggers, switch
+  dense-trigger tiles to bounded broadcast, or fuse the repair into a
+  backend-specific kernel.
 
 ## Journal
 
@@ -52,3 +52,4 @@ Main conclusions:
 - [014 — portable array-API KMeans](014-portable-array-api-kmeans/index.html): sklearn-compatible estimator extraction and CuPy-native centroid-update probes.
 - [015 — native backend updates in the estimator](015-native-backend-estimator-benchmark/index.html): PyTorch and CuPy scatter-add updates, the CUDA contention crossover, and the full benchmark rerun.
 - [016 — GEMM versus broadcast distances](016-gemm-vs-broadcast-distances/index.html): time, memory, and quality across initialization, Lloyd, and full fit on CPU and CUDA.
+- [017 — GEMM cancellation fallback](017-gemm-cancellation-fallback/index.html): translated-data failures, threshold sensitivity, and selective direct-distance repair.
