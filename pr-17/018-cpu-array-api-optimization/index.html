@@ -50,7 +50,7 @@
 <p>The optimizations recover a meaningful 1.2–2.5x, but they do not close the gap. Cakedev0 still benefits from OpenMP chunk parallelism, BLAS alpha/beta into reusable buffers, fused top-1 and per-thread accumulation, and far fewer Python dispatches. Matching it is likely to require a compiled fused CPU kernel rather than more eager array-expression rearrangement.</p>
 <h2 id="recommendation">Recommendation</h2>
 <p>1. Keep the labels-only single-center-tile path as the production default. 2. Retain augmented GEMM as an experimental path until it has a memory-budget    guard and cancellation-safe fallback. 3. Keep interleaving as a secondary low-dimensional option. 4. Do not adopt globally larger score tiles, hierarchical sampling,    compilation, or fused Python-level statistics based on these results. 5. If CPU parity with cakedev0 is required, add a compiled fused assignment    and accumulation hook while preserving the portable array-API fallback.</p>
-<p>Previous: <a href="../017-gemm-cancellation-fallback/index.html">GEMM cancellation fallback</a>. Index: <a href="../index.html">journal</a>.</p>
+<p>Previous: <a href="../017-gemm-cancellation-fallback/index.html">GEMM cancellation fallback</a>. Next: <a href="../019-cpu-gpu-optimization-rerun/index.html">CPU and GPU optimization rerun</a>. Index: <a href="../index.html">journal</a>.</p>
 </main>
 </body>
 </html>
