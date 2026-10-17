@@ -52,7 +52,7 @@
 <p>The current Python gather/scatter prototype is suitable evidence, not the preferred production shape:</p>
 <p>1. Use pair-selective direct recomputation while the suspicious fraction is    low, preserving GEMM&#x27;s time and memory advantages. 2. If a tile has a high suspicious fraction, discard its GEMM result and    recompute the whole tile with bounded direct broadcast. This avoids large    index and gathered-row buffers. 3. Prefer a backend-fused implementation longer term. Cakedev0&#x27;s Cython loop    tests and repairs each pair in place, avoiding the eager indexing overhead    measured here.</p>
 <p>Centering dense training data before fitting reduces the risk, as in scikit-learn&#x27;s estimator, but it is not a complete API-level solution: standalone k-means++ and precomputed or externally supplied centers still need stable distances.</p>
-<p>Previous: <a href="../016-gemm-vs-broadcast-distances/index.html">GEMM versus broadcast distances</a>. Index: <a href="../index.html">journal</a>.</p>
+<p>Previous: <a href="../016-gemm-vs-broadcast-distances/index.html">GEMM versus broadcast distances</a>. Next: <a href="../018-cpu-array-api-optimization/index.html">backend-neutral CPU optimizations</a>. Index: <a href="../index.html">journal</a>.</p>
 </main>
 </body>
 </html>

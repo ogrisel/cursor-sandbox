@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>018-cpu-array-api-optimization</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="018-backend-neutral-cpu-optimization-experiments">018 — Backend-neutral CPU optimization experiments</h1>
+<p>The previous CPU benchmark left the Python array-API estimator 3.4–13.5 times slower than cakedev0&#x27;s Cython implementation, depending on phase and task. This iteration tests how much of that gap can be recovered without adding a backend-specific compiled kernel. The experiments intentionally leave the catastrophic-cancellation repair from <a href="../017-gemm-cancellation-fallback/index.html">017</a> aside so that dispatch, tiling, and buffer costs can be isolated.</p>
+<p>The implementation and benchmark are pinned to commit <a href="https://github.com/ogrisel/cursor-sandbox/tree/6c25822d4beb6671e335a8f64af109b8aa7a8eac/kmeans_lloyd"><code>6c25822</code></a>:</p>
+<ul><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/6c25822d4beb6671e335a8f64af109b8aa7a8eac/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L257-L260"><code>gemm_labels</code></a> removes the winning-score gather when assignment needs labels only;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/6c25822d4beb6671e335a8f64af109b8aa7a8eac/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L405-L451"><code>assign_homogeneous_tiled</code></a> folds the center norms into an augmented matrix product;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/6c25822d4beb6671e335a8f64af109b8aa7a8eac/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L642-L761"><code>lloyd_step_interleaved</code></a> assigns and accumulates one sample tile at a time;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/6c25822d4beb6671e335a8f64af109b8aa7a8eac/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L1215-L1231"><code>_row_norm_and_variance</code></a> computes two input statistics in one feature-tiled pass;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/6c25822d4beb6671e335a8f64af109b8aa7a8eac/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L1299-L1336"><code>hierarchical_weighted_draw</code></a> prototypes cakedev0-style two-level sampling;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/6c25822d4beb6671e335a8f64af109b8aa7a8eac/kmeans_lloyd/scripts/bench_cpu_optimizations.py#L335-L381"><code>worker</code></a> measures each method in a fresh process.</li></ul>
+<p><a href="results.json">results.json</a> preserves all three exploratory iterations and the final repeated run. <a href="tables.md">tables.md</a> contains the compact timing summary.</p>
+<h2 id="setup">Setup</h2>
+<ul><li>PyTorch CPU, float32, four CPU threads, three seeds, 12 Lloyd iterations, <code>tol=1e-8</code>, and a fresh process for every row.</li><li>Three representative tasks: 1,500,000 by 32 with 100 clusters; 525,000 by 6 with 550 clusters; and 135,000 by 2 with 3,000 clusters.</li><li>Initialization measures greedy k-means++ only. Lloyd starts from the same saved rows. Full fit includes initialization and Lloyd.</li><li>Quality is direct assigned-distance inertia, not the cancellation-prone GEMM score.</li><li>Peak memory is the process high-water mark above the post-input baseline.</li><li>The two wide tasks from the five-task suite were omitted because retaining an extra augmented copy would not preserve the required 20% host-memory headroom.</li></ul>
+<h2 id="iteration-1-reduce-assignment-bookkeeping">Iteration 1 — reduce assignment bookkeeping</h2>
+<p>The first change recognizes the common case where every center fits in one centroid tile. Assignment then needs only <code>argmin(GEMM scores)</code>: it does not need to gather each winning score or merge running minima across center tiles. This labels-only path is a safe default because it is mathematically the same assignment and does not allocate a new input-sized buffer.</p>
+<p>It gives modest Lloyd improvements: 12% at <code>k100-d32</code>, 1% at <code>k550-d6</code>, and 4% at <code>k3000-d2</code>. Larger score tiles are not a general solution. A <code>1024 × all-k</code> tile occasionally helps at 550 clusters, but full-cluster tiles at 3,000 clusters take 15–19 seconds, compared with about 12 seconds for the existing <code>4096 × 256</code> schedule. More GEMM work per call does not offset the cache pressure and much larger score matrix.</p>
+<h2 id="iteration-2-move-and-combine-work">Iteration 2 — move and combine work</h2>
+<p>Interleaving assignment and accumulation improves locality for the low-dimensional tasks. It reduces Lloyd from 3.70 to 2.83 seconds at <code>k550-d6</code> and from 11.05 to 9.57 seconds at <code>k3000-d2</code>, but regresses <code>k100-d32</code> from 2.98 to 3.11 seconds. It is useful as an optional execution shape, not a universal default.</p>
+<p>Two ideas modeled on cakedev0 did not transfer well to eager array operations:</p>
+<ul><li>Hierarchical weighted sampling is consistently slower than the backend&#x27;s optimized full cumulative sum and changes the random-number stream.</li><li>Combining row norms and feature variance into one Python-tiled traversal is slightly slower than separate backend reductions.</li></ul>
+<p><code>torch.compile</code> also does not pay on these CPU workloads. Compilation costs 2.4–3.1 seconds, and the compiled callable remains slower than the augmented GEMM path even when compilation time is excluded. The hook remains useful for experimentation, but compilation should not be enabled by default.</p>
+<h2 id="iteration-3-fold-score-arithmetic-into-gemm">Iteration 3 — fold score arithmetic into GEMM</h2>
+<p>For assignment, the row norm is constant across centers, so the relevant score is</p>
+<pre><code>-2 X @ C.T + ||C||².</code></pre>
+<p>Appending a column of ones to <code>X</code> and appending <code>||C||²</code> to <code>-2 C</code> evaluates that score with one matrix product. The augmented sample matrix is built once and reused throughout initialization or Lloyd. This removes one multiply and one add over every score tile while using only standard array-API operations.</p>
+<img alt="Time relative to the labels-only baseline" src="time-ratios.svg" />
+<p>The resulting mean times are:</p>
+<table><thead><tr><th>phase</th><th>task</th><th>previous or labels-only</th><th>augmented GEMM</th><th>speedup</th></tr></thead><tbody><tr><td>initialization</td><td>k100-d32</td><td>5.778 s</td><td>3.271 s</td><td>1.77x</td></tr><tr><td>initialization</td><td>k550-d6</td><td>3.612 s</td><td>3.077 s</td><td>1.17x</td></tr><tr><td>initialization</td><td>k3000-d2</td><td>7.238 s</td><td>6.129 s</td><td>1.18x</td></tr><tr><td>Lloyd</td><td>k100-d32</td><td>3.399 s</td><td>2.336 s</td><td>1.46x</td></tr><tr><td>Lloyd</td><td>k550-d6</td><td>3.729 s</td><td>2.502 s</td><td>1.49x</td></tr><tr><td>Lloyd</td><td>k3000-d2</td><td>11.473 s</td><td>4.631 s</td><td>2.48x</td></tr><tr><td>full fit</td><td>k100-d32</td><td>8.056 s</td><td>5.072 s</td><td>1.59x</td></tr><tr><td>full fit</td><td>k550-d6</td><td>6.882 s</td><td>5.355 s</td><td>1.29x</td></tr><tr><td>full fit</td><td>k3000-d2</td><td>18.921 s</td><td>10.695 s</td><td>1.77x</td></tr></tbody></table>
+<p>For <code>k3000-d2</code>, using standard k-means++ and augmented Lloyd takes 11.629 seconds, a 1.63x full-fit speedup while preserving the baseline initializer exactly.</p>
+<h2 id="memory-and-quality">Memory and quality</h2>
+<img alt="Peak-memory ratios" src="memory-ratios.svg" />
+<p>The augmented representation has a workload-dependent memory cost. At <code>k100-d32</code>, initialization peak increment grows from 298 to 396 MiB and full fit from 453 to 654 MiB. On the low-dimensional tasks it is neutral or lower within process high-water-mark effects: full-fit increments change from 225 to 162 MiB at <code>k550-d6</code> and from 123 to 109 MiB at <code>k3000-d2</code>. Augmented Lloyd alone adds about 6 MiB and 14 MiB on those two tasks.</p>
+<p>This is not a free transformation: it retains another <code>(n, d + 1)</code> array. A production dispatch needs an explicit memory budget, especially for the omitted wide tasks. The Python array API offers neither an <code>out=</code> matrix product nor a reusable output-buffer contract, so cakedev0-style score-buffer reuse cannot be expressed portably.</p>
+<img alt="Inertia change relative to labels-only" src="quality-impact.svg" />
+<p>At <code>k100-d32</code>, augmented full fit matches baseline inertia exactly across all seeds. Mean inertia changes by +0.019% at <code>k550-d6</code> and +0.244% at <code>k3000-d2</code>, because small initialization-score differences change weighted sampling. Applying augmentation only to Lloyd preserves baseline initialization and quality. Interleaving changes results only at small reduction-order levels.</p>
+<p>The augmented identity has the same catastrophic-cancellation issue as the ordinary GEMM identity. It must eventually be combined with the selective direct-distance repair and dense-trigger broadcast fallback recommended in <a href="../017-gemm-cancellation-fallback/index.html">017</a>.</p>
+<h2 id="comparison-with-cakedev0">Comparison with cakedev0</h2>
+<p>The CUDA benchmark host containing the cakedev0 PR 23+26 build was unreachable for the final run. Therefore, this report does not claim a new same-host comparison. Applying the measured local speedups to the historical same-host gaps from <a href="../015-native-backend-estimator-benchmark/index.html">015</a> gives a projection, not a measurement:</p>
+<table><thead><tr><th>phase</th><th>projected optimized / cakedev0 range</th></tr></thead><tbody><tr><td>initialization</td><td>4.7–6.1x</td></tr><tr><td>Lloyd</td><td>2.3–5.5x</td></tr><tr><td>full fit</td><td>3.6–5.4x</td></tr></tbody></table>
+<p>The optimizations recover a meaningful 1.2–2.5x, but they do not close the gap. Cakedev0 still benefits from OpenMP chunk parallelism, BLAS alpha/beta into reusable buffers, fused top-1 and per-thread accumulation, and far fewer Python dispatches. Matching it is likely to require a compiled fused CPU kernel rather than more eager array-expression rearrangement.</p>
+<h2 id="recommendation">Recommendation</h2>
+<p>1. Keep the labels-only single-center-tile path as the production default. 2. Retain augmented GEMM as an experimental path until it has a memory-budget    guard and cancellation-safe fallback. 3. Keep interleaving as a secondary low-dimensional option. 4. Do not adopt globally larger score tiles, hierarchical sampling,    compilation, or fused Python-level statistics based on these results. 5. If CPU parity with cakedev0 is required, add a compiled fused assignment    and accumulation hook while preserving the portable array-API fallback.</p>
+<p>Previous: <a href="../017-gemm-cancellation-fallback/index.html">GEMM cancellation fallback</a>. Index: <a href="../index.html">journal</a>.</p>
+</main>
+</body>
+</html>
