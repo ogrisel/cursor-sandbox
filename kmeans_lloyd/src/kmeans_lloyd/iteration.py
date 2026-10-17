@@ -254,6 +254,20 @@ def gemm_scores_argmin(xp, X, centroids, c_norm):
     return labels, values
 
 
+def broadcast_scores_argmin(xp, X, centroids, c_norm=None):
+    """Broadcast squared distances and return the winning index and value.
+
+    ``c_norm`` is accepted for compatibility with :func:`assign_gemm_tiled`'s
+    step protocol. The caller must choose sample and centroid tiles that keep
+    the ``(tile_n, tile_k, n_features)`` difference tensor bounded.
+    """
+    del c_norm
+    distances = squared_distances_broadcast(xp, X, centroids)
+    labels = xp.argmin(distances, axis=1)
+    values = xp.take_along_axis(distances, labels[:, None], axis=1)[:, 0]
+    return labels, values
+
+
 def assign_gemm_tiled(X, centroids, tile_n, tile_k, step=None):
     """Gram assignment over sample tiles and centroid tiles.
 
@@ -524,6 +538,7 @@ def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None, distance=None):
     if n_local_trials is None:
         n_local_trials = 2 + int(math.log(n_clusters))
     n_local_trials = max(1, min(int(n_local_trials), n_samples))
+    custom_distance = distance is not None
     if distance is None:
         distance = _distances_to_candidates
     chosen = [int(rng.integers(n_samples))]
@@ -531,9 +546,15 @@ def kmeans_plusplus(X, n_clusters, rng, n_local_trials=None, distance=None):
     # full copy of the samples for each new center.
     x_norm = _row_squared_norm(xp, X)
     first_index = xp.asarray([chosen[0]], dtype=xp.int64, device=_device(X))
-    first = xp.take(X, first_index, axis=0)[0, :]
-    closest = x_norm + xp.sum(first * first) - 2 * xp.matmul(X, first)
-    closest = xp.maximum(closest, xp.zeros_like(closest))
+    first = xp.take(X, first_index, axis=0)
+    if custom_distance:
+        closest = distance(xp, X, x_norm, first)[:, 0]
+    else:
+        first_row = first[0, :]
+        closest = x_norm + xp.sum(first_row * first_row) - 2 * xp.matmul(
+            X, first_row
+        )
+        closest = xp.maximum(closest, xp.zeros_like(closest))
     for _ in range(1, n_clusters):
         picks = _weighted_draw(xp, closest, rng, n_local_trials)
         candidates = xp.take(X, picks, axis=0)
@@ -881,6 +902,30 @@ def _distances_to_candidates(xp, X, x_norm, candidates):
     dots = xp.matmul(X, xp.matrix_transpose(candidates))
     distances = x_norm[:, None] + centroid_norm[None, :] - 2 * dots
     return xp.maximum(distances, xp.zeros_like(distances))
+
+
+def broadcast_distances_to_candidates_tiled(
+    xp, X, x_norm, candidates, tile_n
+):
+    """Broadcast candidate distances while bounding the 3D temporary.
+
+    The ``x_norm`` argument makes this callable compatible with
+    :func:`kmeans_plusplus`'s distance hook; direct differences do not use it.
+    The returned ``(n_samples, n_candidates)`` matrix is small because greedy
+    k-means++ evaluates only ``2 + floor(log(k))`` candidates per round.
+    """
+    del x_norm
+    n_samples = int(X.shape[0])
+    n_candidates = int(candidates.shape[0])
+    distances = xp.empty(
+        (n_samples, n_candidates), dtype=X.dtype, device=_device(X)
+    )
+    for n0 in range(0, n_samples, tile_n):
+        n1 = min(n0 + tile_n, n_samples)
+        distances[n0:n1, :] = squared_distances_broadcast(
+            xp, X[n0:n1, :], candidates
+        )
+    return distances
 
 
 def _item(array):

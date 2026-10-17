@@ -14,6 +14,8 @@ from kmeans_lloyd.iteration import (
     assign_running_stateful,
     assign_running_tiled,
     assign_tiled,
+    broadcast_distances_to_candidates_tiled,
+    broadcast_scores_argmin,
     fit_kmeans,
     fit_lloyd,
     inertia,
@@ -124,6 +126,30 @@ def test_gemm_tiled_matches_naive_when_tiles_do_not_divide():
     stateful = _to_numpy(assign_running_stateful(x, c, tile_k=2))
     np.testing.assert_array_equal(tiled, reference)
     np.testing.assert_array_equal(stateful, reference)
+
+
+def test_broadcast_hooks_match_direct_distances():
+    x_np, c_np = _blobs(n_per=9, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    xp = array_namespace(x)
+    labels = assign_gemm_tiled(
+        x,
+        c,
+        tile_n=5,
+        tile_k=2,
+        step=lambda x_tile, c_tile, c_norm: broadcast_scores_argmin(
+            xp, x_tile, c_tile, c_norm
+        ),
+    )
+    np.testing.assert_array_equal(_to_numpy(labels), _to_numpy(assign_naive(x, c)))
+
+    candidates = c[:2, :]
+    expected = np.sum((x_np[:, None, :] - c_np[None, :2, :]) ** 2, axis=2)
+    actual = broadcast_distances_to_candidates_tiled(
+        xp, x, xp.sum(x * x, axis=1), candidates, tile_n=5
+    )
+    np.testing.assert_allclose(_to_numpy(actual), expected)
 
 
 def test_tiled_update_matches_one_hot_update():
