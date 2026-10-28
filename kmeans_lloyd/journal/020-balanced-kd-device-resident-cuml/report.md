@@ -18,8 +18,8 @@ shared-random-row centers are CuPy arrays on the NVIDIA L4. `output_type="cupy"`
 keeps the fitted centers on the device, and their transfer for the
 host-side inertia check happens after timing. This matches the existing
 PyTorch and CuPy array-API paths. The relevant code is
-[`_worker_cuml`](https://github.com/ogrisel/cursor-sandbox/blob/6cd77af81e4d1a11a9191cee85a149ac16413b61/kmeans_lloyd/scripts/bench_task_mix.py#L392-L431)
-and [`_pythons`](https://github.com/ogrisel/cursor-sandbox/blob/6cd77af81e4d1a11a9191cee85a149ac16413b61/kmeans_lloyd/scripts/bench_task_mix.py#L83-L94).
+[`_worker_cuml`](https://github.com/ogrisel/cursor-sandbox/blob/6cd77af81e4d1a11a9191cee85a149ac16413b61/kmeans_lloyd/scripts/bench_task_mix.py#L393-L430)
+and [`_pythons`](https://github.com/ogrisel/cursor-sandbox/blob/6cd77af81e4d1a11a9191cee85a149ac16413b61/kmeans_lloyd/scripts/bench_task_mix.py#L81-L92).
 
 ## Setup
 
