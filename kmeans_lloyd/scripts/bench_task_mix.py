@@ -79,7 +79,7 @@ INIT_JOBS = (
 
 
 def _pythons():
-    pixi = HOME / "kmeans_lloyd/.pixi/envs/default/bin/python"
+    pixi = ROOT / ".pixi/envs/default/bin/python"
     return {
         **{name: pixi for name in API_IMPLS},
         "random-baseline": pixi,
