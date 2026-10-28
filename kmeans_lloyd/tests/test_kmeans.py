@@ -123,6 +123,8 @@ def _native_backends():
         backends.append(("torch-cpu", lambda a: torch.as_tensor(a)))
         if torch.cuda.is_available():
             backends.append(("torch-cuda", lambda a: torch.as_tensor(a, device="cuda")))
+        if hasattr(torch, "xpu") and torch.xpu.is_available():
+            backends.append(("torch-xpu", lambda a: torch.as_tensor(a, device="xpu")))
     except ImportError:
         pass
     try:
@@ -190,7 +192,9 @@ def test_wide_few_cluster_cuda_inputs_keep_one_hot_update(backend):
 
     X = dict(_native_backends())[backend](np.zeros((4, 1000), dtype=np.float32))
     assert native_accumulate(X, 100) is not None
-    if backend == "torch-cpu":
+    # The few-cluster one-hot cutoff is a CUDA measurement. XPU has no
+    # cutoff, so it keeps the scatter-add on this wide shape.
+    if backend in ("torch-cpu", "torch-xpu"):
         assert native_accumulate(X, 3) is not None
     else:
         assert native_accumulate(X, 3) is None
@@ -254,3 +258,21 @@ def test_cuda_backends_preserve_namespace_and_dtype(backend):
     assert model.cluster_centers_.dtype == X.dtype
     assert model.predict(X).shape == (X.shape[0],)
     assert model.transform(X).shape == (X.shape[0], 3)
+
+
+def test_dpnp_gpu_uses_portable_update_and_matches_numpy():
+    dpnp = pytest.importorskip("dpnp")
+    from kmeans_lloyd.backends import native_accumulate
+
+    host = _blobs().astype(np.float32)
+    X = dpnp.asarray(host, device="gpu")
+    assert native_accumulate(X, 3) is None
+    model = KMeans(3, n_init=1, random_state=0).fit(X)
+    reference = KMeans(3, n_init=1, random_state=0).fit(host)
+    assert str(model.cluster_centers_.sycl_device.device_type) == "device_type.gpu"
+    np.testing.assert_allclose(
+        dpnp.asnumpy(model.cluster_centers_),
+        reference.cluster_centers_,
+        rtol=1e-4,
+        atol=1e-4,
+    )

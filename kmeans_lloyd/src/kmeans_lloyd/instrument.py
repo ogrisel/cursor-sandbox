@@ -52,22 +52,40 @@ def measure_call(fn, args, example):
     return output, profile
 
 
+def _torch_runtime(example):
+    """Return the device runtime for a CUDA or XPU tensor, else None.
+
+    CPU tensors are timed with ``perf_counter`` by the caller. Peak-memory
+    counters live on the device runtime, and an XPU-only build has no CUDA
+    context to synchronize.
+    """
+    import torch
+
+    kind = getattr(getattr(example, "device", None), "type", None)
+    if kind == "cuda":
+        return torch.cuda
+    if kind == "xpu":
+        return torch.xpu
+    return None
+
+
 def _start(example):
     backend = array_backend(example)
     if backend == "torch":
-        import torch
-
-        torch.cuda.synchronize()
-        torch.cuda.reset_peak_memory_stats()
-        start = torch.cuda.Event(enable_timing=True)
-        end = torch.cuda.Event(enable_timing=True)
-        start.record()
-        return {
-            "backend": backend,
-            "before": torch.cuda.memory_allocated(),
-            "start": start,
-            "end": end,
-        }
+        runtime = _torch_runtime(example)
+        if runtime is not None:
+            runtime.synchronize()
+            runtime.reset_peak_memory_stats()
+            start = runtime.Event(enable_timing=True)
+            end = runtime.Event(enable_timing=True)
+            start.record()
+            return {
+                "backend": backend,
+                "runtime": runtime,
+                "before": runtime.memory_allocated(),
+                "start": start,
+                "end": end,
+            }
     if backend == "cupy":
         import cupy
 
@@ -93,13 +111,12 @@ def _start(example):
 
 def _stop(example, token):
     backend = token["backend"]
-    if backend == "torch":
+    if backend == "torch" and "runtime" in token:
+        runtime = token["runtime"]
         token["end"].record()
         token["end"].synchronize()
-        import torch
-
-        peak = torch.cuda.max_memory_allocated()
-        after = torch.cuda.memory_allocated()
+        peak = runtime.max_memory_allocated()
+        after = runtime.memory_allocated()
         return {
             "backend": backend,
             "seconds": token["start"].elapsed_time(token["end"]) / 1000.0,

@@ -42,6 +42,9 @@ def native_accumulate(X, n_clusters):
     one-hot path is kept for wide data with few clusters: ``16 * k < d`` for
     PyTorch and ``64 * k < d`` for CuPy, the crossovers measured in journal 015
     on 0.5 to 2.1 million samples. The CPU scatter-add won on every task.
+    XPU has no measured cutoff yet, so it keeps the scatter-add at every
+    shape unless :func:`use_native_backends` is disabled. dpnp has no
+    keyed reduction hooked up here, so it always takes the portable update.
     """
     if not _ENABLED:
         return None

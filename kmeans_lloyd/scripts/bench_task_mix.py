@@ -59,6 +59,9 @@ API_IMPLS = (
     "torch-cpu-generic",
     "torch-cuda",
     "torch-cuda-generic",
+    "torch-xpu",
+    "torch-xpu-generic",
+    "dpnp",
     "cupy",
     "cupy-generic",
 )
@@ -69,6 +72,7 @@ IMPLS = API_IMPLS + OTHER_IMPLS
 INIT_JOBS = (
     ("torch-cpu", "plusplus"),
     ("torch-cuda", "plusplus"),
+    ("torch-xpu", "plusplus"),
     ("cupy", "plusplus"),
     ("sklearn-vanilla", "plusplus"),
     ("sklearn-optimized", "plusplus"),
@@ -80,16 +84,40 @@ INIT_JOBS = (
 
 def _pythons():
     pixi = ROOT / ".pixi/envs/default/bin/python"
-    return {
-        **{name: pixi for name in API_IMPLS},
-        "random-baseline": pixi,
-        "sklearn-vanilla": HOME / "sklearn-vanilla-venv/bin/python",
-        "sklearn-optimized": HOME / "sklearn-plusplus-venv/bin/python",
-        "cuml": HOME / "cuml-venv/bin/python",
-        "cuml-plusplus": HOME / "cuml-venv/bin/python",
-        "cuml-scalable": HOME / "cuml-venv/bin/python",
-        "cuml-random": HOME / "cuml-venv/bin/python",
-    }
+    default_python = Path(os.environ.get("KMEANS_PYTHON", str(pixi)))
+    xpu_override = os.environ.get("KMEANS_XPU_PYTHON")
+    if xpu_override:
+        xpu = Path(xpu_override)
+    else:
+        candidate = HOME / "venvs/kmeans-lloyd-xpu/bin/python"
+        xpu = candidate if candidate.exists() else default_python
+    sklearn = Path(
+        os.environ.get(
+            "KMEANS_SKLEARN_PYTHON",
+            str(HOME / "sklearn-vanilla-venv/bin/python"),
+        )
+    )
+    pythons = {name: default_python for name in API_IMPLS}
+    pythons["torch-xpu"] = xpu
+    pythons["torch-xpu-generic"] = xpu
+    pythons["dpnp"] = xpu
+    pythons.update(
+        {
+            "random-baseline": pixi,
+            "sklearn-vanilla": sklearn,
+            "sklearn-optimized": Path(
+                os.environ.get(
+                    "KMEANS_SKLEARN_OPTIMIZED_PYTHON",
+                    str(HOME / "sklearn-plusplus-venv/bin/python"),
+                )
+            ),
+            "cuml": HOME / "cuml-venv/bin/python",
+            "cuml-plusplus": HOME / "cuml-venv/bin/python",
+            "cuml-scalable": HOME / "cuml-venv/bin/python",
+            "cuml-random": HOME / "cuml-venv/bin/python",
+        }
+    )
+    return pythons
 
 
 def generate(task, path):
@@ -160,24 +188,65 @@ def _to_numpy(array):
         return array.detach().cpu().numpy()
     if module.startswith("cupy"):
         return array.get()
+    if module.startswith("dpnp"):
+        import dpnp
+
+        return dpnp.asnumpy(array)
     return np.asarray(array)
+
+
+def _torch_target(impl):
+    """Return ``cpu``, ``cuda``, or ``xpu`` for a PyTorch contender name."""
+    if "xpu" in impl:
+        return "xpu"
+    if "cpu" in impl:
+        return "cpu"
+    return "cuda"
+
+
+def _sync_dpnp(result):
+    """Wait for the queue that owns the fitted centers or initializer output."""
+    array = result.cluster_centers_ if hasattr(result, "cluster_centers_") else result[0]
+    array.sycl_queue.wait()
 
 
 def _worker_api(args, samples, centers0):
     backend = args.impl.split("-")[0]
-    gpu = backend in ("torch", "cupy") and "cpu" not in args.impl
-    native = not args.impl.endswith("-generic")
-    if backend == "torch":
+    target = _torch_target(args.impl) if backend == "torch" else "cuda"
+    gpu = backend != "dpnp" and target in ("cuda", "xpu")
+    # dpnp has no hooked keyed reduction, so the portable update always runs.
+    native = backend != "dpnp" and not args.impl.endswith("-generic")
+    versions = {}
+    if backend == "dpnp":
+        import dpnp
+
+        versions["dpnp"] = dpnp.__version__
+        versions["device"] = "gpu"
+        data = dpnp.asarray(samples, device="gpu")
+        fixed = dpnp.asarray(centers0, device="gpu")
+        versions["sycl_device"] = str(data.sycl_device)
+        warm = dpnp.ones((2, 2), dtype=dpnp.float32, device="gpu")
+        (warm @ warm).sycl_queue.wait()
+    elif backend == "torch":
         import torch
 
         torch.set_num_threads(4)
-        if gpu:
+        torch.set_float32_matmul_precision("highest")
+        versions["torch"] = torch.__version__
+        versions["device"] = target
+        if target == "cuda":
             torch.backends.cuda.matmul.allow_tf32 = False
             torch.backends.cudnn.allow_tf32 = False
             data = torch.as_tensor(samples, device="cuda")
             fixed = torch.as_tensor(centers0, device="cuda")
             torch.ones((2, 2), device="cuda") @ torch.ones((2, 2), device="cuda")
             torch.cuda.synchronize()
+        elif target == "xpu":
+            versions["xpu_name"] = torch.xpu.get_device_name(0)
+            data = torch.as_tensor(samples, device="xpu")
+            fixed = torch.as_tensor(centers0, device="xpu")
+            torch.ones((2, 2), device="xpu") @ torch.ones((2, 2), device="xpu")
+            torch.xpu.synchronize()
         else:
             data = torch.as_tensor(samples)
             fixed = torch.as_tensor(centers0)
@@ -209,11 +278,20 @@ def _worker_api(args, samples, centers0):
         )
         return model.fit(data)
 
-    if gpu:
+    if backend == "dpnp":
+        data.sycl_queue.wait()
+        before = _hwm_bytes()
+        started = time.perf_counter()
+        result = call()
+        _sync_dpnp(result)
+        seconds = time.perf_counter() - started
+        memory = max(0, _hwm_bytes() - before)
+        meter = "vmhwm"
+    elif gpu:
         result, profile = measure_call(call, (), data)
         seconds = profile["seconds"]
         memory = profile["peak_extra_bytes"]
-        meter = f"{backend}-pool"
+        meter = "xpu-pool" if target == "xpu" else f"{backend}-pool"
     else:
         before = _hwm_bytes()
         started = time.perf_counter()
@@ -221,22 +299,20 @@ def _worker_api(args, samples, centers0):
         seconds = time.perf_counter() - started
         memory = max(0, _hwm_bytes() - before)
         meter = "vmhwm"
-    if args.phase == "init":
-        return {
-            "seconds": seconds,
-            "mem_increment_bytes": memory,
-            "mem_meter": meter,
-            "n_iter": 0,
-            "inertia_per_point": _mean_inertia(samples, _to_numpy(result[0])),
-        }
-    return {
+    payload = {
         "seconds": seconds,
         "mem_increment_bytes": memory,
         "mem_meter": meter,
-        "n_iter": int(result.n_iter_),
-        "inertia_per_point": _mean_inertia(samples, _to_numpy(result.cluster_centers_)),
-        "native_update": native,
+        "n_iter": 0 if args.phase == "init" else int(result.n_iter_),
+        "inertia_per_point": _mean_inertia(
+            samples,
+            _to_numpy(result[0] if args.phase == "init" else result.cluster_centers_),
+        ),
+        **versions,
     }
+    if args.phase != "init":
+        payload["native_update"] = native
+    return payload
 
 
 def _worker_sklearn(args, samples, centers0):
@@ -464,7 +540,7 @@ def worker(argv):
     samples = np.load(args.data)
     centers0 = np.load(args.centers)
     indices = np.load(args.indices)
-    if args.impl.startswith(("torch", "cupy")):
+    if args.impl.startswith(("torch", "cupy", "dpnp")):
         payload = _worker_api(args, samples, centers0)
     elif args.impl.startswith("sklearn"):
         payload = _worker_sklearn(args, samples, centers0)
@@ -493,6 +569,29 @@ def _append(path, row):
         stream.write(json.dumps(row) + "\n")
 
 
+def _cpu_affinity(impl):
+    """Pin host contenders to ``KMEANS_CPUSET`` when that variable is set.
+
+    XPU and CUDA workers are left unpinned so the device runtime can use the
+    rest of the host. An empty variable keeps the historical unbound behavior.
+    """
+    cpuset = os.environ.get("KMEANS_CPUSET", "")
+    if not cpuset or not impl.startswith(("torch-cpu", "sklearn", "random")):
+        return []
+    return ["taskset", "-c", cpuset]
+
+
+def _run_worker(command, env, timeout):
+    return subprocess.run(
+        command,
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        timeout=timeout,
+    )
+
+
 def drive(
     selected_tasks,
     selected_impls,
@@ -503,6 +602,7 @@ def drive(
     phase="fit",
     oversampling_factor=2.0,
     init_rounds=8,
+    timeout=TIMEOUT,
 ):
     data_dir = HOME / "task-mix-data-v4"
     env = os.environ.copy()
@@ -536,6 +636,7 @@ def drive(
                 if selected_inits and init not in selected_inits:
                     continue
                 command = [
+                    *_cpu_affinity(impl),
                     str(pythons[impl]),
                     str(Path(__file__).resolve()),
                     "--worker",
@@ -560,17 +661,23 @@ def drive(
                     "--init-rounds",
                     str(init_rounds),
                 ]
+                if (
+                    os.environ.get("KMEANS_WARMUP") == "1"
+                    and impl.startswith(("torch-xpu", "dpnp"))
+                    and seed == seeds[0]
+                ):
+                    print(f"warmup {task['name']} {phase} {impl} {init}", flush=True)
+                    warm_started = time.perf_counter()
+                    try:
+                        _run_worker(command, env, max(timeout, 300))
+                    except subprocess.TimeoutExpired:
+                        print("  warmup timeout", flush=True)
+                    else:
+                        print(f"  warmup {time.perf_counter() - warm_started:.1f}s", flush=True)
                 print(f"start {task['name']} seed={seed} {phase} {impl} {init}", flush=True)
                 wall_started = time.perf_counter()
                 try:
-                    completed = subprocess.run(
-                        command,
-                        cwd=ROOT,
-                        env=env,
-                        text=True,
-                        capture_output=True,
-                        timeout=TIMEOUT,
-                    )
+                    completed = _run_worker(command, env, timeout)
                 except subprocess.TimeoutExpired as error:
                     row = {
                         "task": task,
@@ -579,7 +686,7 @@ def drive(
                         "init": init,
                         "phase": phase,
                         "error": "timeout",
-                        "timeout_seconds": TIMEOUT,
+                        "timeout_seconds": timeout,
                         "stderr": (error.stderr or "")[-1000:],
                     }
                     _append(out, row)
@@ -623,6 +730,7 @@ def main():
     parser.add_argument("--phase", choices=("fit", "init"), default="fit")
     parser.add_argument("--oversampling-factor", type=float, default=2.0)
     parser.add_argument("--init-rounds", type=int, default=8)
+    parser.add_argument("--timeout", type=int, default=TIMEOUT)
     args, _ = parser.parse_known_args()
     if args.worker:
         worker(sys.argv[1:])
@@ -641,6 +749,7 @@ def main():
         phase=args.phase,
         oversampling_factor=args.oversampling_factor,
         init_rounds=args.init_rounds,
+        timeout=args.timeout,
     )
 
 

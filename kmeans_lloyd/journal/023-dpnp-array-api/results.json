@@ -1,0 +1,264 @@
+{
+  "host": "xps-ultra-x7",
+  "cpu": "Intel Core Ultra X7 358H",
+  "gpu": "Intel Arc B390",
+  "dpnp": "0.19.1+1.gcc1019cbc92",
+  "dpctl": "0.21.1",
+  "device": "level_zero:gpu:0",
+  "threads": 4,
+  "compared_to": "022-intel-arc-xpu",
+  "means": [
+    {
+      "task": "k3-d1000",
+      "impl": "dpnp",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 4.827144154968361,
+      "seconds_stdev": 0.1672616240628444,
+      "seconds": [
+        4.6614366308785975,
+        4.824078110046685,
+        4.995917723979801
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8669031578947,
+      "mem_increment_bytes_max": 27631616,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "dpnp",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 4.201114864554256,
+      "seconds_stdev": 0.15933868815708088,
+      "seconds": [
+        4.320809600874782,
+        4.26227863272652,
+        4.020256360061467
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8682185964913,
+      "mem_increment_bytes_max": 23388160,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "dpnp",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 2.56672819564119,
+      "seconds_stdev": 0.09359620628745087,
+      "seconds": [
+        2.589130532927811,
+        2.6470904001034796,
+        2.4639636538922787
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53462972718253,
+      "mem_increment_bytes_max": 44851200,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "dpnp",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 2.105037176515907,
+      "seconds_stdev": 0.06522624026159056,
+      "seconds": [
+        2.100972662679851,
+        2.0419382411055267,
+        2.1722006257623434
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53427963789682,
+      "mem_increment_bytes_max": 39415808,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "dpnp",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 2.7067702513498566,
+      "seconds_stdev": 0.03660984946705011,
+      "seconds": [
+        2.7490421677939594,
+        2.6853262539952993,
+        2.6859423322603106
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.915791547743055,
+      "mem_increment_bytes_max": 74805248,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "dpnp",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.9498006293239694,
+      "seconds_stdev": 0.16928937572271252,
+      "seconds": [
+        2.0213217423297465,
+        1.7564886827021837,
+        2.0715914629399776
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.916854817274302,
+      "mem_increment_bytes_max": 65196032,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "dpnp",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 1.1115123777029414,
+      "seconds_stdev": 0.00965179703215353,
+      "seconds": [
+        1.1004108930937946,
+        1.1162116709165275,
+        1.1179145690985024
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.92298701388889,
+      "mem_increment_bytes_max": 84922368,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "dpnp",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 0.4706400480742256,
+      "seconds_stdev": 0.006626820461699129,
+      "seconds": [
+        0.46744496189057827,
+        0.4782590791583061,
+        0.46621610317379236
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.96002166666666,
+      "mem_increment_bytes_max": 74547200,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "dpnp",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 5.7415567683056,
+      "seconds_stdev": 0.13704405456551166,
+      "seconds": [
+        5.58513805270195,
+        5.799006503075361,
+        5.840525749139488
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.024244079124814,
+      "mem_increment_bytes_max": 125362176,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "dpnp",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 3.5558727093351385,
+      "seconds_stdev": 0.10740732262692858,
+      "seconds": [
+        3.4340755599550903,
+        3.5965123660862446,
+        3.6370302019640803
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0272063420371405,
+      "mem_increment_bytes_max": 110346240,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "dpnp",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 11.28195241295422,
+      "seconds_stdev": 0.8178456073061222,
+      "seconds": [
+        10.886820985935628,
+        10.736702668946236,
+        12.222333583980799
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.018173853019431783,
+      "mem_increment_bytes_max": 109473792,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "dpnp",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 4.825760963062446,
+      "seconds_stdev": 0.06920269955491172,
+      "seconds": [
+        4.814424818847328,
+        4.899931827094406,
+        4.762926243245602
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.02481573136883018,
+      "mem_increment_bytes_max": 94031872,
+      "mem_meter": "vmhwm"
+    }
+  ]
+}

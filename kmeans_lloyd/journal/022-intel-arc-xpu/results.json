@@ -1,0 +1,1526 @@
+{
+  "host": "xps-ultra-x7",
+  "cpu": "Intel Core Ultra X7 358H",
+  "cpu_pin": "0-3",
+  "gpu": "Intel Arc B390",
+  "torch": "2.11.0+xpu",
+  "sklearn": "1.9.1",
+  "cakedev0": "1.10.dev0",
+  "cakedev0_commit": "7e26a5c37e1fa8031bef7da0ee43b633b07c8b9b",
+  "float32_matmul_precision": "highest",
+  "threads": 4,
+  "means": [
+    {
+      "task": "k100-d32",
+      "impl": "sklearn-optimized",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 1.9184130635112524,
+      "seconds_stdev": 0.04152956954272922,
+      "seconds": [
+        1.8754196148365736,
+        1.958304832689464,
+        1.9215147430077195
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.915205551649308,
+      "mem_increment_bytes_max": 383959040,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "sklearn-optimized",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 0.9457424972206354,
+      "seconds_stdev": 0.005045327854892492,
+      "seconds": [
+        0.9408685718663037,
+        0.9454155908897519,
+        0.9509433289058506
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.916845322916668,
+      "mem_increment_bytes_max": 383987712,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "sklearn-vanilla",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 8.952920159635445,
+      "seconds_stdev": 0.07232862146959293,
+      "seconds": [
+        8.916729426011443,
+        8.905830385629088,
+        9.036200667265803
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.916537798177085,
+      "mem_increment_bytes_max": 384073728,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "sklearn-vanilla",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 0.877643239373962,
+      "seconds_stdev": 0.00045886961219276164,
+      "seconds": [
+        0.8771647922694683,
+        0.8780796369537711,
+        0.8776852888986468
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.916844141493055,
+      "mem_increment_bytes_max": 384102400,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "torch-cpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 5.122588974268486,
+      "seconds_stdev": 0.1008213872408247,
+      "seconds": [
+        5.239003560040146,
+        5.065209503751248,
+        5.063553859014064
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.915581263888885,
+      "mem_increment_bytes_max": 404807680,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "torch-cpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.688879042242964,
+      "seconds_stdev": 0.10922949513618535,
+      "seconds": [
+        1.776300414931029,
+        1.5664332918822765,
+        1.7239034199155867
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.916853743055555,
+      "mem_increment_bytes_max": 389947392,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "torch-cpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 5.790797904289017,
+      "seconds_stdev": 0.04999497713135123,
+      "seconds": [
+        5.736862752120942,
+        5.799940013792366,
+        5.835590946953744
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.91557744010417,
+      "mem_increment_bytes_max": 404783104,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "torch-cpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 2.338878366164863,
+      "seconds_stdev": 0.11021718825941416,
+      "seconds": [
+        2.2864190470427275,
+        2.2646896834485233,
+        2.4655263680033386
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.916846137586806,
+      "mem_increment_bytes_max": 389799936,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "torch-xpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 2.9757756426666666,
+      "seconds_stdev": 0.011788072941535528,
+      "seconds": [
+        2.984001488,
+        2.9622706880000003,
+        2.981054752
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.915194266927084,
+      "mem_increment_bytes_max": 385892352,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "torch-xpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 2.2417501079999997,
+      "seconds_stdev": 0.003151127873630008,
+      "seconds": [
+        2.2394242519999996,
+        2.2453363399999997,
+        2.240489732
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.916853423177084,
+      "mem_increment_bytes_max": 385879552,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "torch-xpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 2.7778777866666666,
+      "seconds_stdev": 0.01155157719351503,
+      "seconds": [
+        2.766231,
+        2.78933174,
+        2.77807062
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.915183885850695,
+      "mem_increment_bytes_max": 385892352,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k100-d32",
+      "impl": "torch-xpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 2.0523844986666666,
+      "seconds_stdev": 0.001318937833848406,
+      "seconds": [
+        2.0536418239999996,
+        2.0525001119999997,
+        2.05101156
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.91685485199653,
+      "mem_increment_bytes_max": 385879552,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "sklearn-optimized",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 2.3535674698650837,
+      "seconds_stdev": 0.094534114531748,
+      "seconds": [
+        2.2951605902053416,
+        2.302907425444573,
+        2.4626343939453363
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.5335809573413,
+      "mem_increment_bytes_max": 3023982592,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "sklearn-optimized",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.8021406386978924,
+      "seconds_stdev": 0.019662086647075912,
+      "seconds": [
+        1.7951352749951184,
+        1.786940611898899,
+        1.8243460291996598
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.5342729563492,
+      "mem_increment_bytes_max": 3023966208,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "sklearn-vanilla",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 7.307879033808907,
+      "seconds_stdev": 0.23344592194751074,
+      "seconds": [
+        7.167522257193923,
+        7.178753684274852,
+        7.577361159957945
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53518844742064,
+      "mem_increment_bytes_max": 3024084992,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "sklearn-vanilla",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.7971329035547872,
+      "seconds_stdev": 0.017103798528553333,
+      "seconds": [
+        1.7834973419085145,
+        1.7915775878354907,
+        1.8163237809203565
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.5342734672619,
+      "mem_increment_bytes_max": 3024019456,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "torch-cpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 3.820370716508478,
+      "seconds_stdev": 0.06807837984793526,
+      "seconds": [
+        3.8906825007870793,
+        3.754770522005856,
+        3.8156591267324984
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.5334166121032,
+      "mem_increment_bytes_max": 2176221184,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "torch-cpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 2.6635759021155536,
+      "seconds_stdev": 0.012588900769825074,
+      "seconds": [
+        2.6779095958918333,
+        2.6543139801360667,
+        2.658504130318761
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53427700396824,
+      "mem_increment_bytes_max": 2156822528,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "torch-cpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 4.154821317332487,
+      "seconds_stdev": 0.2851534528795402,
+      "seconds": [
+        4.338896261993796,
+        3.826352453790605,
+        4.299215236213058
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53341748015873,
+      "mem_increment_bytes_max": 2176249856,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "torch-cpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 2.8295777230523527,
+      "seconds_stdev": 0.1551359810629334,
+      "seconds": [
+        2.919931812211871,
+        2.650444429833442,
+        2.918356927111745
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53427631944444,
+      "mem_increment_bytes_max": 2156814336,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "torch-xpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 3.3619067559999998,
+      "seconds_stdev": 0.007024466642595773,
+      "seconds": [
+        3.359647408,
+        3.3562899760000002,
+        3.3697828839999997
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53449526785712,
+      "mem_increment_bytes_max": 2151058432,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "torch-xpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 2.948486129333333,
+      "seconds_stdev": 0.0049516016288750336,
+      "seconds": [
+        2.9427688159999996,
+        2.951293748,
+        2.9513958239999996
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53427600198413,
+      "mem_increment_bytes_max": 2151685120,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "torch-xpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 2.828390066666666,
+      "seconds_stdev": 0.4329709802812453,
+      "seconds": [
+        2.58469042,
+        3.328289796,
+        2.572189984
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.5344983234127,
+      "mem_increment_bytes_max": 2151058432,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k17-d180",
+      "impl": "torch-xpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 2.229669312,
+      "seconds_stdev": 0.15261394384492824,
+      "seconds": [
+        2.400988408,
+        2.1082558639999998,
+        2.179763664
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53427633928573,
+      "mem_increment_bytes_max": 2151685120,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "sklearn-optimized",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 1.057250856111447,
+      "seconds_stdev": 0.020640491999457857,
+      "seconds": [
+        1.0704822656698525,
+        1.0334675288759172,
+        1.0678027737885714
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.92984361111111,
+      "mem_increment_bytes_max": 153493504,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "sklearn-optimized",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 0.46278012233475846,
+      "seconds_stdev": 0.0015468072579400592,
+      "seconds": [
+        0.46384764136746526,
+        0.46348648983985186,
+        0.4610062357969582
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.96000715277778,
+      "mem_increment_bytes_max": 153583616,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "sklearn-vanilla",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 5.716398450545967,
+      "seconds_stdev": 0.013828055692382872,
+      "seconds": [
+        5.715011700056493,
+        5.70331602031365,
+        5.730867631267756
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.928794375,
+      "mem_increment_bytes_max": 153673728,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "sklearn-vanilla",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 0.46724566879371804,
+      "seconds_stdev": 0.012166871309412292,
+      "seconds": [
+        0.4590783757157624,
+        0.46142960572615266,
+        0.481229024939239
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.96000451388888,
+      "mem_increment_bytes_max": 153718784,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "torch-cpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 1.8451445484533906,
+      "seconds_stdev": 0.0395913996209269,
+      "seconds": [
+        1.8157700360752642,
+        1.8294948232360184,
+        1.8901687860488892
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.91872583333333,
+      "mem_increment_bytes_max": 163799040,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "torch-cpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.1293918560259044,
+      "seconds_stdev": 0.004320892668691777,
+      "seconds": [
+        1.1246575661934912,
+        1.1303951870650053,
+        1.1331228148192167
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.95978388888888,
+      "mem_increment_bytes_max": 159707136,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "torch-cpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 2.316786149671922,
+      "seconds_stdev": 0.010355450801819835,
+      "seconds": [
+        2.328186464961618,
+        2.30796189699322,
+        2.3142100870609283
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.91860583333333,
+      "mem_increment_bytes_max": 163893248,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "torch-cpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.571491212894519,
+      "seconds_stdev": 0.05902443255279829,
+      "seconds": [
+        1.537633063737303,
+        1.6396462861448526,
+        1.5371942888014019
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.9602229861111,
+      "mem_increment_bytes_max": 159694848,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "torch-xpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 2.0541389786666664,
+      "seconds_stdev": 0.004923289644709173,
+      "seconds": [
+        2.055539044,
+        2.058210596,
+        2.048667296
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.919325,
+      "mem_increment_bytes_max": 155323392,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "torch-xpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.659848944,
+      "seconds_stdev": 0.003708125325784993,
+      "seconds": [
+        1.6564542279999999,
+        1.663806196,
+        1.659286408
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.96030965277778,
+      "mem_increment_bytes_max": 155192320,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "torch-xpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 1.8652570213333333,
+      "seconds_stdev": 0.01089714381961839,
+      "seconds": [
+        1.875267316,
+        1.866854392,
+        1.8536493559999998
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.91922743055557,
+      "mem_increment_bytes_max": 155323392,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k256-d128",
+      "impl": "torch-xpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.483067092,
+      "seconds_stdev": 0.005097413320015556,
+      "seconds": [
+        1.488703164,
+        1.4817186279999999,
+        1.478779484
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 118.96022326388889,
+      "mem_increment_bytes_max": 155192320,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "sklearn-optimized",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 9.006742900082221,
+      "seconds_stdev": 0.22045410168619,
+      "seconds": [
+        9.069406338967383,
+        8.761740918271244,
+        9.189081443008035
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8673452631579,
+      "mem_increment_bytes_max": 7599935488,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "sklearn-optimized",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 8.636621426946173,
+      "seconds_stdev": 0.22128480884410934,
+      "seconds": [
+        8.836894225794822,
+        8.67390799196437,
+        8.399062063079327
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8682189473684,
+      "mem_increment_bytes_max": 7599980544,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "sklearn-vanilla",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 33.12308818257103,
+      "seconds_stdev": 6.686295079823664,
+      "seconds": [
+        36.54144512396306,
+        25.418689218815416,
+        37.40913020493463
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.867071754386,
+      "mem_increment_bytes_max": 7600029696,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "sklearn-vanilla",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 8.526156388067951,
+      "seconds_stdev": 0.19091629807739385,
+      "seconds": [
+        8.743407958652824,
+        8.44993969378993,
+        8.385121511761099
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.86821877193,
+      "mem_increment_bytes_max": 7600046080,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "torch-cpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 4.985037301356594,
+      "seconds_stdev": 0.057305347060053434,
+      "seconds": [
+        4.924200169742107,
+        5.037995507009327,
+        4.9929162273183465
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.866901754386,
+      "mem_increment_bytes_max": 989872128,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "torch-cpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 4.551412540643166,
+      "seconds_stdev": 0.2651506433014487,
+      "seconds": [
+        4.334573636762798,
+        4.472640831023455,
+        4.847023154143244
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8682224561403,
+      "mem_increment_bytes_max": 979357696,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "torch-cpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 5.01298554521054,
+      "seconds_stdev": 0.18476127118098087,
+      "seconds": [
+        5.0749529069289565,
+        4.805206044577062,
+        5.158797684125602
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8669040350877,
+      "mem_increment_bytes_max": 989712384,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "torch-cpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 4.329521650603662,
+      "seconds_stdev": 0.15082217560177014,
+      "seconds": [
+        4.352892139926553,
+        4.168378405738622,
+        4.467294406145811
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8682250877192,
+      "mem_increment_bytes_max": 979410944,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "torch-xpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 4.449615698666666,
+      "seconds_stdev": 0.004295777110970485,
+      "seconds": [
+        4.448599948,
+        4.445918828,
+        4.454328319999999
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8669010526315,
+      "mem_increment_bytes_max": 984478720,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "torch-xpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 4.183292047999999,
+      "seconds_stdev": 0.004006762344692914,
+      "seconds": [
+        4.17981044,
+        4.182394112,
+        4.187671592
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8682114035088,
+      "mem_increment_bytes_max": 973083136,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "torch-xpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 3.223162748,
+      "seconds_stdev": 0.25315623768283746,
+      "seconds": [
+        3.511835496,
+        3.118690068,
+        3.0389626799999996
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8669066666666,
+      "mem_increment_bytes_max": 984478720,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k3-d1000",
+      "impl": "torch-xpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 3.1495363639999994,
+      "seconds_stdev": 0.46634183114137845,
+      "seconds": [
+        3.6688432559999997,
+        3.0132318839999996,
+        2.7665339519999996
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8682212280702,
+      "mem_increment_bytes_max": 973083136,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "sklearn-optimized",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 3.0056271528204284,
+      "seconds_stdev": 0.004587699961048561,
+      "seconds": [
+        3.009597725700587,
+        3.0066787898540497,
+        3.000604942906648
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.01810947253851243,
+      "mem_increment_bytes_max": 17088512,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "sklearn-optimized",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.6283255089074373,
+      "seconds_stdev": 0.005682454411075891,
+      "seconds": [
+        1.625311179086566,
+        1.6247853329405189,
+        1.6348800146952271
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.024833552037933724,
+      "mem_increment_bytes_max": 17367040,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "sklearn-vanilla",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 13.668308600628128,
+      "seconds_stdev": 0.6721726772410149,
+      "seconds": [
+        14.440258326008916,
+        13.212431490886956,
+        13.35223598498851
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.018103301375589253,
+      "mem_increment_bytes_max": 17104896,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "sklearn-vanilla",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.5852846703492105,
+      "seconds_stdev": 0.004001705162447805,
+      "seconds": [
+        1.582608676981181,
+        1.5898850187659264,
+        1.5833603153005242
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.02483190163977352,
+      "mem_increment_bytes_max": 17727488,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "torch-cpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 17.054536969711382,
+      "seconds_stdev": 0.1913562408822008,
+      "seconds": [
+        17.275470608845353,
+        16.941162187140435,
+        16.94697811314836
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.01813074064137023,
+      "mem_increment_bytes_max": 55095296,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "torch-cpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 10.61658691506212,
+      "seconds_stdev": 0.38322745229684135,
+      "seconds": [
+        10.993337095715106,
+        10.227195018902421,
+        10.629228630568832
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.024816121715969513,
+      "mem_increment_bytes_max": 27013120,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "torch-cpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 20.491571557708085,
+      "seconds_stdev": 0.2546026966674109,
+      "seconds": [
+        20.743978860322386,
+        20.234828838147223,
+        20.495906974654645
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.018130158593919542,
+      "mem_increment_bytes_max": 55148544,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "torch-cpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 13.225592443253845,
+      "seconds_stdev": 0.9547068161467913,
+      "seconds": [
+        12.359939341899008,
+        14.249560800846666,
+        13.067277187015861
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.02481610997046953,
+      "mem_increment_bytes_max": 28028928,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "torch-xpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 4.8799199453333335,
+      "seconds_stdev": 0.025758896494252614,
+      "seconds": [
+        4.851013024,
+        4.88830602,
+        4.9004407919999995
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.018122390217251247,
+      "mem_increment_bytes_max": 70968832,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "torch-xpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 3.0753799093333334,
+      "seconds_stdev": 0.007042405454513928,
+      "seconds": [
+        3.068676,
+        3.0747458039999995,
+        3.082717924
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.024817026585708432,
+      "mem_increment_bytes_max": 70944768,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "torch-xpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 4.9728289,
+      "seconds_stdev": 0.012627624286921851,
+      "seconds": [
+        4.964673272,
+        4.98737434,
+        4.9664390880000004
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.018124962514712486,
+      "mem_increment_bytes_max": 77760000,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k3000-d2",
+      "impl": "torch-xpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 3.2904812719999996,
+      "seconds_stdev": 0.012329345389037308,
+      "seconds": [
+        3.276270712,
+        3.298333376,
+        3.296839728
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.024815886815388998,
+      "mem_increment_bytes_max": 77735936,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "sklearn-optimized",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 2.178008237077544,
+      "seconds_stdev": 0.01139712965634324,
+      "seconds": [
+        2.1899105422198772,
+        2.1671943780966103,
+        2.176919790916145
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.025046851360987,
+      "mem_increment_bytes_max": 62070784,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "sklearn-optimized",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.1952199111692607,
+      "seconds_stdev": 0.006570557122780494,
+      "seconds": [
+        1.2005132557824254,
+        1.1972804246470332,
+        1.1878660530783236
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0272041295417906,
+      "mem_increment_bytes_max": 25088000,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "sklearn-vanilla",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 10.264458111487329,
+      "seconds_stdev": 0.03393571439903717,
+      "seconds": [
+        10.277320480905473,
+        10.29008238343522,
+        10.225971470121294
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.024031339828249,
+      "mem_increment_bytes_max": 61435904,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "sklearn-vanilla",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.1247253500235577,
+      "seconds_stdev": 0.0014102134979941995,
+      "seconds": [
+        1.126332812011242,
+        1.1236963379196823,
+        1.124146900139749
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0272062998356895,
+      "mem_increment_bytes_max": 25288704,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "torch-cpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 5.975575871610393,
+      "seconds_stdev": 0.16913932261922482,
+      "seconds": [
+        5.7803874858655035,
+        6.079020791687071,
+        6.0673193372786045
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0248620427207342,
+      "mem_increment_bytes_max": 164155392,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "torch-cpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 1.9198379873608549,
+      "seconds_stdev": 0.0020111741285069157,
+      "seconds": [
+        1.918116387911141,
+        1.922048562206328,
+        1.919349011965096
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0272070344277033,
+      "mem_increment_bytes_max": 35987456,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "torch-cpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 7.610693457381179,
+      "seconds_stdev": 0.10752196195705015,
+      "seconds": [
+        7.490284506231546,
+        7.697113113012165,
+        7.644682752899826
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0248573085239956,
+      "mem_increment_bytes_max": 155779072,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "torch-cpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 3.3670571952437363,
+      "seconds_stdev": 0.018587931939924134,
+      "seconds": [
+        3.388501675799489,
+        3.3555527119897306,
+        3.3571171979419887
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0272075598725818,
+      "mem_increment_bytes_max": 38248448,
+      "mem_meter": "vmhwm"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "torch-xpu",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 4.017429623999999,
+      "seconds_stdev": 0.008119778707612433,
+      "seconds": [
+        4.0081569319999995,
+        4.020864432,
+        4.023267508
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0253006192258807,
+      "mem_increment_bytes_max": 102904832,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "torch-xpu",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 2.676744685333334,
+      "seconds_stdev": 0.01197008967765743,
+      "seconds": [
+        2.665100464,
+        2.6761176,
+        2.6890159920000003
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.027206844966828,
+      "mem_increment_bytes_max": 77164544,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "torch-xpu-generic",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 4.069072834666667,
+      "seconds_stdev": 0.006051322264703597,
+      "seconds": [
+        4.075142292,
+        4.063039812,
+        4.0690364
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0252976088557169,
+      "mem_increment_bytes_max": 102904832,
+      "mem_meter": "xpu-pool"
+    },
+    {
+      "task": "k550-d6",
+      "impl": "torch-xpu-generic",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 2.7285300813333335,
+      "seconds_stdev": 0.002361064633861075,
+      "seconds": [
+        2.729485772,
+        2.730263484,
+        2.725840988
+      ],
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0272058352322049,
+      "mem_increment_bytes_max": 83946496,
+      "mem_meter": "xpu-pool"
+    }
+  ]
+}
