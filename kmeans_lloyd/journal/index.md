@@ -10,30 +10,26 @@ patches, Cython, and cuML.
 
 The journal progresses from kernel-fusion probes to bounded-memory tiled
 assignment, full fits, repeated-seed and shared-start comparisons, empty-center
-relocation, and greedy versus scalable initialization. The current five-task
-mix spans 3 to 3000 clusters, 2 to 1000 features, and 135000 to 2100000
-samples. Runs use float32, eager execution, TF32 disabled, three seeds, and a
-60-second worker limit.
+relocation, and greedy versus scalable initialization. The current six-task mix
+spans 3 to 3000 clusters, 2 to 1000 features, and 135000 to 2100000 samples,
+including a balanced 256-cluster, 128-feature case. Runs use float32, eager
+execution, TF32 disabled, three seeds, and a 60-second worker limit.
 
 ## Latest results
 
-[019](019-cpu-gpu-optimization-rerun/index.html) measures the 018
-optimizations on Torch CPU, Torch CUDA, and CuPy CUDA for all five tasks,
-with cakedev0's Cython build on the same host.
+[020](020-balanced-kd-device-resident-cuml/index.html) adds `k256-d128` and
+times cuML only after the training data is resident on the GPU. Stock
+scikit-learn finishes the new full fit in 6.60 s, below the worker deadline.
 
 Main conclusions:
 
-- Augmented GEMM speeds up Lloyd by 1.18–3.15x on every backend when the
-  number of centers is at least the number of features, and is neutral below
-  that.
-- Augmented k-means++ helps only at `k100-d32` and `k550-d6` (1.17–1.65x);
-  it is 22–29% slower at `k3-d1000`.
-- The augmented copy adds an input-sized array, raising `k3-d1000` full-fit
-  peak memory from about 0.95 to 4.5 GiB.
-- On CPU, the best eager method remains 2.0–7.0x slower than cakedev0. On GPU,
-  the best Torch CUDA full fit is 2.9–10x faster than cakedev0 on the host CPU.
-- CuPy copies column-sliced matrix operands before every product. Padding the
-  center coefficients with zeros fixed a 1.8x CuPy regression.
+- Native updates improve `k256-d128` shared-start Lloyd by 1.37x on Torch CPU,
+  1.07x on Torch CUDA, and 1.12x on CuPy.
+- The portable array-API CPU full fit (5.81 s) is 1.14x faster than stock
+  scikit-learn (6.61 s), but 3.50x slower than cakedev0 (1.66 s).
+- With device-resident data for all GPU methods, native CuPy narrowly beats
+  cuML greedy for the full fit (0.478 s versus 0.510 s); cuML scalable is
+  fastest (0.242 s) but ends 0.66% higher inertia.
 
 ## Journal
 
@@ -56,3 +52,4 @@ Main conclusions:
 - [017 — GEMM cancellation fallback](017-gemm-cancellation-fallback/index.html): translated-data failures, threshold sensitivity, and selective direct-distance repair.
 - [018 — backend-neutral CPU optimizations](018-cpu-array-api-optimization/index.html): labels-only assignment, tiling, interleaving, augmented GEMM, compilation, and sampling experiments.
 - [019 — CPU and GPU optimization rerun](019-cpu-gpu-optimization-rerun/index.html): the 018 optimizations on three backends and five tasks, beside cakedev0 on the same host.
+- [020 — balanced clusters and features](020-balanced-kd-device-resident-cuml/index.html): a `k256-d128` task, stock-scikit-learn calibration, and a device-resident cuML comparison.
