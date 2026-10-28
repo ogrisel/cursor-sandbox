@@ -1,0 +1,1265 @@
+{
+  "host": "ip-10-3-68-35",
+  "gpu": "NVIDIA L4",
+  "commit": "8c85d915f5fc2984cfdc7becb38d36beb98a524b",
+  "cuml": "26.10.00",
+  "protocol": "device-resident CuPy input and shared centers before timing; output_type=cupy; inertia transfer after timing",
+  "means": [
+    {
+      "task": "k3-d1000",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 3.848539979333509,
+      "seconds_stdev": 0.012808274886693833,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.8674749122807,
+      "mem_increment_bytes_max": 56623104,
+      "journal_015_seconds": 7.18,
+      "journal_015_minus_seconds": 3.3315
+    },
+    {
+      "task": "k3-d1000",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 3.69361597666663,
+      "seconds_stdev": 0.023434109845752858,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 998.868200877193,
+      "mem_increment_bytes_max": 31457280,
+      "journal_015_seconds": 6.88,
+      "journal_015_minus_seconds": 3.1864
+    },
+    {
+      "task": "k3-d1000",
+      "init": "scalable",
+      "n": 3,
+      "seconds_mean": 3.2376439270001356,
+      "seconds_stdev": 1.6727604089196322,
+      "n_iter": [
+        12,
+        2,
+        12
+      ],
+      "inertia_mean": 999.3875333333334,
+      "mem_increment_bytes_max": 54525952,
+      "journal_015_seconds": 6.38,
+      "journal_015_minus_seconds": 3.1424
+    },
+    {
+      "task": "k17-d180",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 0.9374068763333222,
+      "seconds_stdev": 0.0009169595930787391,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53435537698414,
+      "mem_increment_bytes_max": 142606336,
+      "journal_015_seconds": 2.5,
+      "journal_015_minus_seconds": 1.5626
+    },
+    {
+      "task": "k17-d180",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 0.5253502873330641,
+      "seconds_stdev": 0.0038991882084476533,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.53427458333334,
+      "mem_increment_bytes_max": 77594624,
+      "journal_015_seconds": 2.12,
+      "journal_015_minus_seconds": 1.5946
+    },
+    {
+      "task": "k17-d180",
+      "init": "scalable",
+      "n": 3,
+      "seconds_mean": 0.8309113970002121,
+      "seconds_stdev": 0.021368845486309792,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 176.728325734127,
+      "mem_increment_bytes_max": 132120576,
+      "journal_015_seconds": 2.39,
+      "journal_015_minus_seconds": 1.5591
+    },
+    {
+      "task": "k100-d32",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 0.6831263796664947,
+      "seconds_stdev": 0.002792181851065677,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.915873643663193,
+      "mem_increment_bytes_max": 102760448,
+      "journal_015_seconds": 0.98,
+      "journal_015_minus_seconds": 0.2969
+    },
+    {
+      "task": "k100-d32",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 0.2018623953331371,
+      "seconds_stdev": 0.0012239054456893645,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.916868649739584,
+      "mem_increment_bytes_max": 46137344,
+      "journal_015_seconds": 0.54,
+      "journal_015_minus_seconds": 0.3381
+    },
+    {
+      "task": "k100-d32",
+      "init": "scalable",
+      "n": 3,
+      "seconds_mean": 0.44039456333333266,
+      "seconds_stdev": 0.0010012424925708318,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 25.91567224609375,
+      "mem_increment_bytes_max": 79691776,
+      "journal_015_seconds": 0.73,
+      "journal_015_minus_seconds": 0.2896
+    },
+    {
+      "task": "k550-d6",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 0.8761042476667171,
+      "seconds_stdev": 0.0029600460503035556,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0250642426215277,
+      "mem_increment_bytes_max": 58720256,
+      "journal_015_seconds": 1.01,
+      "journal_015_minus_seconds": 0.1339
+    },
+    {
+      "task": "k550-d6",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 0.19806719133354514,
+      "seconds_stdev": 0.0006623023756962893,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.0272060515873016,
+      "mem_increment_bytes_max": 29360128,
+      "journal_015_seconds": 0.35,
+      "journal_015_minus_seconds": 0.1519
+    },
+    {
+      "task": "k550-d6",
+      "init": "scalable",
+      "n": 3,
+      "seconds_mean": 0.5147390336666527,
+      "seconds_stdev": 0.0014187129097270536,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 1.023761281312004,
+      "mem_increment_bytes_max": 48234496,
+      "journal_015_seconds": 0.64,
+      "journal_015_minus_seconds": 0.1253
+    },
+    {
+      "task": "k3000-d2",
+      "init": "plusplus",
+      "n": 3,
+      "seconds_mean": 1.0642784440001378,
+      "seconds_stdev": 0.0035738717835332046,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.018119119976184987,
+      "mem_increment_bytes_max": 14680064,
+      "journal_015_seconds": 1.2,
+      "journal_015_minus_seconds": 0.1357
+    },
+    {
+      "task": "k3000-d2",
+      "init": "random",
+      "n": 3,
+      "seconds_mean": 0.15956738733333017,
+      "seconds_stdev": 0.0014299020700341324,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.026554058465839903,
+      "mem_increment_bytes_max": 6291456,
+      "journal_015_seconds": 0.32,
+      "journal_015_minus_seconds": 0.1604
+    },
+    {
+      "task": "k3000-d2",
+      "init": "scalable",
+      "n": 3,
+      "seconds_mean": 1.0648095123334922,
+      "seconds_stdev": 0.006607164908152094,
+      "n_iter": [
+        12,
+        12,
+        12
+      ],
+      "inertia_mean": 0.019097601403130424,
+      "mem_increment_bytes_max": 18874368,
+      "journal_015_seconds": 1.16,
+      "journal_015_minus_seconds": 0.0952
+    }
+  ],
+  "confirmation_rerun": {
+    "note": "k3-d1000 scalable seed 1 stops after 2 iterations. A separate process reproduced n_iter=2.",
+    "row": {
+      "seconds": 1.2978327810001247,
+      "mem_increment_bytes": 54525952,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 2,
+      "inertia_per_point": 999.9741357894737,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 1,
+      "k": 3,
+      "task": {
+        "name": "k3-d1000",
+        "n": 950000,
+        "d": 1000,
+        "k": 3,
+        "seed": 101
+      },
+      "wall_seconds": 8.824446858000101
+    }
+  },
+  "runs": [
+    {
+      "seconds": 0.8763683110000784,
+      "mem_increment_bytes": 58720256,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 1.0254900083705356,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 0,
+      "k": 550,
+      "task": {
+        "name": "k550-d6",
+        "n": 525000,
+        "d": 6,
+        "k": 550,
+        "seed": 104
+      },
+      "wall_seconds": 3.665465515000051
+    },
+    {
+      "seconds": 0.19761942900004215,
+      "mem_increment_bytes": 29360128,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 1.027350994001116,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 0,
+      "k": 550,
+      "task": {
+        "name": "k550-d6",
+        "n": 525000,
+        "d": 6,
+        "k": 550,
+        "seed": 104
+      },
+      "wall_seconds": 2.949126448000243
+    },
+    {
+      "seconds": 0.5147545219997482,
+      "mem_increment_bytes": 48234496,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 1.0241058005487351,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 0,
+      "k": 550,
+      "task": {
+        "name": "k550-d6",
+        "n": 525000,
+        "d": 6,
+        "k": 550,
+        "seed": 104
+      },
+      "wall_seconds": 3.316557082000145
+    },
+    {
+      "seconds": 0.8730210170001556,
+      "mem_increment_bytes": 58720256,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 1.0246882200985863,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 1,
+      "k": 550,
+      "task": {
+        "name": "k550-d6",
+        "n": 525000,
+        "d": 6,
+        "k": 550,
+        "seed": 104
+      },
+      "wall_seconds": 3.598132543000247
+    },
+    {
+      "seconds": 0.1988279860001967,
+      "mem_increment_bytes": 29360128,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 1.0274129134114582,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 1,
+      "k": 550,
+      "task": {
+        "name": "k550-d6",
+        "n": 525000,
+        "d": 6,
+        "k": 550,
+        "seed": 104
+      },
+      "wall_seconds": 2.9259208130001753
+    },
+    {
+      "seconds": 0.5133126400000947,
+      "mem_increment_bytes": 48234496,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 1.0238031842912947,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 1,
+      "k": 550,
+      "task": {
+        "name": "k550-d6",
+        "n": 525000,
+        "d": 6,
+        "k": 550,
+        "seed": 104
+      },
+      "wall_seconds": 3.3057732279999072
+    },
+    {
+      "seconds": 0.8789234149999174,
+      "mem_increment_bytes": 58720256,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 1.0250144993954613,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 2,
+      "k": 550,
+      "task": {
+        "name": "k550-d6",
+        "n": 525000,
+        "d": 6,
+        "k": 550,
+        "seed": 104
+      },
+      "wall_seconds": 3.6805276210002376
+    },
+    {
+      "seconds": 0.1977541590003966,
+      "mem_increment_bytes": 29360128,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 1.0268542473493303,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 2,
+      "k": 550,
+      "task": {
+        "name": "k550-d6",
+        "n": 525000,
+        "d": 6,
+        "k": 550,
+        "seed": 104
+      },
+      "wall_seconds": 2.978191872000025
+    },
+    {
+      "seconds": 0.5161499390001154,
+      "mem_increment_bytes": 48234496,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 1.0233748590959821,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 2,
+      "k": 550,
+      "task": {
+        "name": "k550-d6",
+        "n": 525000,
+        "d": 6,
+        "k": 550,
+        "seed": 104
+      },
+      "wall_seconds": 3.27216588400006
+    },
+    {
+      "seconds": 1.063177608999922,
+      "mem_increment_bytes": 14680064,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 0.01810610088772244,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 0,
+      "k": 3000,
+      "task": {
+        "name": "k3000-d2",
+        "n": 135000,
+        "d": 2,
+        "k": 3000,
+        "seed": 105,
+        "kind": "blobs",
+        "true_k": 300,
+        "separation": 4,
+        "std": 1,
+        "quantize": 0.05
+      },
+      "wall_seconds": 3.9115845870001067
+    },
+    {
+      "seconds": 0.1612110810001468,
+      "mem_increment_bytes": 6291456,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 0.025732720664695456,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 0,
+      "k": 3000,
+      "task": {
+        "name": "k3000-d2",
+        "n": 135000,
+        "d": 2,
+        "k": 3000,
+        "seed": 105,
+        "kind": "blobs",
+        "true_k": 300,
+        "separation": 4,
+        "std": 1,
+        "quantize": 0.05
+      },
+      "wall_seconds": 3.010777876999782
+    },
+    {
+      "seconds": 1.06301746500003,
+      "mem_increment_bytes": 18874368,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 0.019035474318045156,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 0,
+      "k": 3000,
+      "task": {
+        "name": "k3000-d2",
+        "n": 135000,
+        "d": 2,
+        "k": 3000,
+        "seed": 105,
+        "kind": "blobs",
+        "true_k": 300,
+        "separation": 4,
+        "std": 1,
+        "quantize": 0.05
+      },
+      "wall_seconds": 3.9230501500001083
+    },
+    {
+      "seconds": 1.061384492000343,
+      "mem_increment_bytes": 14680064,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 0.018123551919725207,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 1,
+      "k": 3000,
+      "task": {
+        "name": "k3000-d2",
+        "n": 135000,
+        "d": 2,
+        "k": 3000,
+        "seed": 105,
+        "kind": "blobs",
+        "true_k": 300,
+        "separation": 4,
+        "std": 1,
+        "quantize": 0.05
+      },
+      "wall_seconds": 3.921551855999951
+    },
+    {
+      "seconds": 0.15861017699990043,
+      "mem_increment_bytes": 6291456,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 0.026501504050360787,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 1,
+      "k": 3000,
+      "task": {
+        "name": "k3000-d2",
+        "n": 135000,
+        "d": 2,
+        "k": 3000,
+        "seed": 105,
+        "kind": "blobs",
+        "true_k": 300,
+        "separation": 4,
+        "std": 1,
+        "quantize": 0.05
+      },
+      "wall_seconds": 3.0096230929998455
+    },
+    {
+      "seconds": 1.0721278450000682,
+      "mem_increment_bytes": 18874368,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 0.01908180345605921,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 1,
+      "k": 3000,
+      "task": {
+        "name": "k3000-d2",
+        "n": 135000,
+        "d": 2,
+        "k": 3000,
+        "seed": 105,
+        "kind": "blobs",
+        "true_k": 300,
+        "separation": 4,
+        "std": 1,
+        "quantize": 0.05
+      },
+      "wall_seconds": 3.9138899909999054
+    },
+    {
+      "seconds": 1.0682732310001484,
+      "mem_increment_bytes": 14680064,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 0.018127707121107315,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 2,
+      "k": 3000,
+      "task": {
+        "name": "k3000-d2",
+        "n": 135000,
+        "d": 2,
+        "k": 3000,
+        "seed": 105,
+        "kind": "blobs",
+        "true_k": 300,
+        "separation": 4,
+        "std": 1,
+        "quantize": 0.05
+      },
+      "wall_seconds": 3.9181297519999134
+    },
+    {
+      "seconds": 0.15888090399994326,
+      "mem_increment_bytes": 6291456,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 0.02742795068246347,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 2,
+      "k": 3000,
+      "task": {
+        "name": "k3000-d2",
+        "n": 135000,
+        "d": 2,
+        "k": 3000,
+        "seed": 105,
+        "kind": "blobs",
+        "true_k": 300,
+        "separation": 4,
+        "std": 1,
+        "quantize": 0.05
+      },
+      "wall_seconds": 3.001558378000027
+    },
+    {
+      "seconds": 1.0592832270003782,
+      "mem_increment_bytes": 14680064,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 0.01917552643528691,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 2,
+      "k": 3000,
+      "task": {
+        "name": "k3000-d2",
+        "n": 135000,
+        "d": 2,
+        "k": 3000,
+        "seed": 105,
+        "kind": "blobs",
+        "true_k": 300,
+        "separation": 4,
+        "std": 1,
+        "quantize": 0.05
+      },
+      "wall_seconds": 3.9338337519998277
+    },
+    {
+      "seconds": 0.6863068439997733,
+      "mem_increment_bytes": 102760448,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 25.916557518229165,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 0,
+      "k": 100,
+      "task": {
+        "name": "k100-d32",
+        "n": 1500000,
+        "d": 32,
+        "k": 100,
+        "seed": 103
+      },
+      "wall_seconds": 3.7566260720000173
+    },
+    {
+      "seconds": 0.20059057699972982,
+      "mem_increment_bytes": 46137344,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 25.912879428385416,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 0,
+      "k": 100,
+      "task": {
+        "name": "k100-d32",
+        "n": 1500000,
+        "d": 32,
+        "k": 100,
+        "seed": 103
+      },
+      "wall_seconds": 3.2826257410001745
+    },
+    {
+      "seconds": 0.44013900099980674,
+      "mem_increment_bytes": 79691776,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 25.910932591145833,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 0,
+      "k": 100,
+      "task": {
+        "name": "k100-d32",
+        "n": 1500000,
+        "d": 32,
+        "k": 100,
+        "seed": 103
+      },
+      "wall_seconds": 3.534721255000022
+    },
+    {
+      "seconds": 0.6819941479998306,
+      "mem_increment_bytes": 102760448,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 25.915614263020835,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 1,
+      "k": 100,
+      "task": {
+        "name": "k100-d32",
+        "n": 1500000,
+        "d": 32,
+        "k": 100,
+        "seed": 103
+      },
+      "wall_seconds": 3.7726686199998767
+    },
+    {
+      "seconds": 0.20303197399971395,
+      "mem_increment_bytes": 46137344,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 25.920511658854167,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 1,
+      "k": 100,
+      "task": {
+        "name": "k100-d32",
+        "n": 1500000,
+        "d": 32,
+        "k": 100,
+        "seed": 103
+      },
+      "wall_seconds": 3.280794906999745
+    },
+    {
+      "seconds": 0.4414988190001168,
+      "mem_increment_bytes": 79691776,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 25.921583134114584,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 1,
+      "k": 100,
+      "task": {
+        "name": "k100-d32",
+        "n": 1500000,
+        "d": 32,
+        "k": 100,
+        "seed": 103
+      },
+      "wall_seconds": 3.5324156960000437
+    },
+    {
+      "seconds": 0.6810781469998801,
+      "mem_increment_bytes": 102760448,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 25.915449149739583,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 2,
+      "k": 100,
+      "task": {
+        "name": "k100-d32",
+        "n": 1500000,
+        "d": 32,
+        "k": 100,
+        "seed": 103
+      },
+      "wall_seconds": 3.79576161399973
+    },
+    {
+      "seconds": 0.20196463499996753,
+      "mem_increment_bytes": 46137344,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 25.917214861979165,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 2,
+      "k": 100,
+      "task": {
+        "name": "k100-d32",
+        "n": 1500000,
+        "d": 32,
+        "k": 100,
+        "seed": 103
+      },
+      "wall_seconds": 3.2916524299998855
+    },
+    {
+      "seconds": 0.4395458700000745,
+      "mem_increment_bytes": 79691776,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 25.914501013020832,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 2,
+      "k": 100,
+      "task": {
+        "name": "k100-d32",
+        "n": 1500000,
+        "d": 32,
+        "k": 100,
+        "seed": 103
+      },
+      "wall_seconds": 3.5518404049998935
+    },
+    {
+      "seconds": 0.9378511909999361,
+      "mem_increment_bytes": 142606336,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 176.53393819940476,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 0,
+      "k": 17,
+      "task": {
+        "name": "k17-d180",
+        "n": 2100000,
+        "d": 180,
+        "k": 17,
+        "seed": 102
+      },
+      "wall_seconds": 5.751679153000168
+    },
+    {
+      "seconds": 0.5283579459996872,
+      "mem_increment_bytes": 77594624,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 176.5346716220238,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 0,
+      "k": 17,
+      "task": {
+        "name": "k17-d180",
+        "n": 2100000,
+        "d": 180,
+        "k": 17,
+        "seed": 102
+      },
+      "wall_seconds": 5.36329610499979
+    },
+    {
+      "seconds": 0.8428656430000956,
+      "mem_increment_bytes": 132120576,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 176.83114011904763,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 0,
+      "k": 17,
+      "task": {
+        "name": "k17-d180",
+        "n": 2100000,
+        "d": 180,
+        "k": 17,
+        "seed": 102
+      },
+      "wall_seconds": 5.675501594000252
+    },
+    {
+      "seconds": 0.9363524010000219,
+      "mem_increment_bytes": 142606336,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 176.53357788690477,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 1,
+      "k": 17,
+      "task": {
+        "name": "k17-d180",
+        "n": 2100000,
+        "d": 180,
+        "k": 17,
+        "seed": 102
+      },
+      "wall_seconds": 5.755037777000325
+    },
+    {
+      "seconds": 0.5209448789996713,
+      "mem_increment_bytes": 77594624,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 176.53382010416667,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 1,
+      "k": 17,
+      "task": {
+        "name": "k17-d180",
+        "n": 2100000,
+        "d": 180,
+        "k": 17,
+        "seed": 102
+      },
+      "wall_seconds": 5.333153519000007
+    },
+    {
+      "seconds": 0.8062407040001744,
+      "mem_increment_bytes": 113246208,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 176.6282825595238,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 1,
+      "k": 17,
+      "task": {
+        "name": "k17-d180",
+        "n": 2100000,
+        "d": 180,
+        "k": 17,
+        "seed": 102
+      },
+      "wall_seconds": 5.665211181000359
+    },
+    {
+      "seconds": 0.9380170370000087,
+      "mem_increment_bytes": 142606336,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 176.53555004464286,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 2,
+      "k": 17,
+      "task": {
+        "name": "k17-d180",
+        "n": 2100000,
+        "d": 180,
+        "k": 17,
+        "seed": 102
+      },
+      "wall_seconds": 5.770314424000389
+    },
+    {
+      "seconds": 0.5267480369998339,
+      "mem_increment_bytes": 77594624,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 176.53433202380953,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 2,
+      "k": 17,
+      "task": {
+        "name": "k17-d180",
+        "n": 2100000,
+        "d": 180,
+        "k": 17,
+        "seed": 102
+      },
+      "wall_seconds": 5.361318685999777
+    },
+    {
+      "seconds": 0.8436278440003662,
+      "mem_increment_bytes": 132120576,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 176.72555452380954,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 2,
+      "k": 17,
+      "task": {
+        "name": "k17-d180",
+        "n": 2100000,
+        "d": 180,
+        "k": 17,
+        "seed": 102
+      },
+      "wall_seconds": 5.679074790999948
+    },
+    {
+      "seconds": 3.8382385340000837,
+      "mem_increment_bytes": 56623104,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 998.8690573684211,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 0,
+      "k": 3,
+      "task": {
+        "name": "k3-d1000",
+        "n": 950000,
+        "d": 1000,
+        "k": 3,
+        "seed": 101
+      },
+      "wall_seconds": 11.382408913999825
+    },
+    {
+      "seconds": 3.716546414000277,
+      "mem_increment_bytes": 31457280,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 998.8681952631579,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 0,
+      "k": 3,
+      "task": {
+        "name": "k3-d1000",
+        "n": 950000,
+        "d": 1000,
+        "k": 3,
+        "seed": 101
+      },
+      "wall_seconds": 11.283189374000358
+    },
+    {
+      "seconds": 4.201204369000152,
+      "mem_increment_bytes": 54525952,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 999.3196721052632,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 0,
+      "k": 3,
+      "task": {
+        "name": "k3-d1000",
+        "n": 950000,
+        "d": 1000,
+        "k": 3,
+        "seed": 101
+      },
+      "wall_seconds": 11.746049179999773
+    },
+    {
+      "seconds": 3.8445003770002586,
+      "mem_increment_bytes": 56623104,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 998.8663068421052,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 1,
+      "k": 3,
+      "task": {
+        "name": "k3-d1000",
+        "n": 950000,
+        "d": 1000,
+        "k": 3,
+        "seed": 101
+      },
+      "wall_seconds": 11.387763445000019
+    },
+    {
+      "seconds": 3.669708740999795,
+      "mem_increment_bytes": 31457280,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 998.8698731578947,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 1,
+      "k": 3,
+      "task": {
+        "name": "k3-d1000",
+        "n": 950000,
+        "d": 1000,
+        "k": 3,
+        "seed": 101
+      },
+      "wall_seconds": 11.258139962999849
+    },
+    {
+      "seconds": 1.3061082640001587,
+      "mem_increment_bytes": 54525952,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 2,
+      "inertia_per_point": 999.9741357894737,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 1,
+      "k": 3,
+      "task": {
+        "name": "k3-d1000",
+        "n": 950000,
+        "d": 1000,
+        "k": 3,
+        "seed": 101
+      },
+      "wall_seconds": 8.87052238699971
+    },
+    {
+      "seconds": 3.862881027000185,
+      "mem_increment_bytes": 56623104,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 998.8670605263158,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "plusplus",
+      "phase": "fit",
+      "seed": 2,
+      "k": 3,
+      "task": {
+        "name": "k3-d1000",
+        "n": 950000,
+        "d": 1000,
+        "k": 3,
+        "seed": 101
+      },
+      "wall_seconds": 11.42498387600017
+    },
+    {
+      "seconds": 3.694592774999819,
+      "mem_increment_bytes": 31457280,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 998.8665342105263,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "random",
+      "phase": "fit",
+      "seed": 2,
+      "k": 3,
+      "task": {
+        "name": "k3-d1000",
+        "n": 950000,
+        "d": 1000,
+        "k": 3,
+        "seed": 101
+      },
+      "wall_seconds": 11.216194272999928
+    },
+    {
+      "seconds": 4.205619148000096,
+      "mem_increment_bytes": 54525952,
+      "mem_meter": "nvidia-smi",
+      "n_iter": 12,
+      "inertia_per_point": 998.8687921052632,
+      "cuml": "26.10.00",
+      "impl": "cuml",
+      "init": "scalable",
+      "phase": "fit",
+      "seed": 2,
+      "k": 3,
+      "task": {
+        "name": "k3-d1000",
+        "n": 950000,
+        "d": 1000,
+        "k": 3,
+        "seed": 101
+      },
+      "wall_seconds": 11.72063987699994
+    }
+  ]
+}

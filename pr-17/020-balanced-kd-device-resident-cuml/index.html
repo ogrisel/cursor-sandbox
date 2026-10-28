@@ -33,7 +33,7 @@
 <p>The input occupies about 73 MiB. Every array-API full fit peaks around 147 MiB above its allocator baseline; stock scikit-learn and cakedev0 peak around 146 MiB above <code>VmHWM</code>. The cuML <code>nvidia-smi</code> increments are 14 MiB for greedy and 12 MiB for scalable. These meters are not directly comparable across host and device allocators, but the cuML figures exclude the pre-existing device input by construction.</p>
 <h2 id="conclusion">Conclusion</h2>
 <p><code>k256-d128</code> fills the missing balanced region without threatening the time limit. It confirms that native accumulation helps on CPU and remains a small GPU win, while distinguishing the k-means++ advantage of cakedev0 from its Lloyd kernel. It also changes the cuML comparison to a device-to-device one: cuML is the fastest shared-start Lloyd kernel here, CuPy narrowly wins against cuML greedy for the complete greedy fit, and cuML scalable is fastest overall at a 0.66% objective cost.</p>
-<p>Previous: <a href="../019-cpu-gpu-optimization-rerun/index.html">CPU and GPU optimization rerun</a>. Index: <a href="../index.html">journal</a>.</p>
+<p>Previous: <a href="../019-cpu-gpu-optimization-rerun/index.html">CPU and GPU optimization rerun</a>. Next: <a href="../021-device-resident-cuml-five-tasks/index.html">device-resident cuML on the original five tasks</a>. Index: <a href="../index.html">journal</a>.</p>
 </main>
 </body>
 </html>
