@@ -116,4 +116,5 @@ against cuML greedy for the complete greedy fit, and cuML scalable is fastest
 overall at a 0.66% objective cost.
 
 Previous: [CPU and GPU optimization rerun](../019-cpu-gpu-optimization-rerun/report.md).
+Next: [device-resident cuML on the original five tasks](../021-device-resident-cuml-five-tasks/report.md).
 Index: [journal](../index.md).

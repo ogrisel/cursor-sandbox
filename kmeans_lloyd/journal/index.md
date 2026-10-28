@@ -17,19 +17,25 @@ execution, TF32 disabled, three seeds, and a 60-second worker limit.
 
 ## Latest results
 
-[020](020-balanced-kd-device-resident-cuml/index.html) adds `k256-d128` and
-times cuML only after the training data is resident on the GPU. Stock
-scikit-learn finishes the new full fit in 6.60 s, below the worker deadline.
+[021](021-device-resident-cuml-five-tasks/index.html) reruns cuML on the
+original five tasks with the training data already on the GPU.
+[020](020-balanced-kd-device-resident-cuml/index.html) had applied that
+placement only to `k256-d128`. The other implementations are unchanged.
 
 Main conclusions:
 
-- Native updates improve `k256-d128` shared-start Lloyd by 1.37x on Torch CPU,
-  1.07x on Torch CUDA, and 1.12x on CuPy.
-- The portable array-API CPU full fit (5.81 s) is 1.14x faster than stock
-  scikit-learn (6.61 s), but 3.50x slower than cakedev0 (1.66 s).
-- With device-resident data for all GPU methods, native CuPy narrowly beats
-  cuML greedy for the full fit (0.478 s versus 0.510 s); cuML scalable is
-  fastest (0.242 s) but ends 0.66% higher inertia.
+- Taking the host-to-device copy out of the cuML timer removes about 3.3 s
+  on `k3-d1000` and about 1.6 s on `k17-d180`. Smaller tasks drop by 0.10 s
+  to 0.34 s.
+- Shared-start Lloyd then favors cuML from 17 clusters up (0.53 s against
+  0.63 s at 17 clusters, 0.20 s against 0.39 s at 100). Torch CUDA remains
+  faster at 3 clusters (0.89 s against 3.69 s).
+- cuML scalable is the fastest GPU full fit from 17 clusters up. At 3
+  clusters Torch CUDA generic remains fastest (1.04 s against 3.85 s greedy
+  and 3.24 s scalable).
+- On `k256-d128`, native CuPy still narrowly beats cuML greedy (0.478 s
+  versus 0.510 s), and cuML scalable is fastest (0.242 s) at 0.66% higher
+  inertia.
 
 ## Journal
 
@@ -53,3 +59,4 @@ Main conclusions:
 - [018 — backend-neutral CPU optimizations](018-cpu-array-api-optimization/index.html): labels-only assignment, tiling, interleaving, augmented GEMM, compilation, and sampling experiments.
 - [019 — CPU and GPU optimization rerun](019-cpu-gpu-optimization-rerun/index.html): the 018 optimizations on three backends and five tasks, beside cakedev0 on the same host.
 - [020 — balanced clusters and features](020-balanced-kd-device-resident-cuml/index.html): a `k256-d128` task, stock-scikit-learn calibration, and a device-resident cuML comparison.
+- [021 — device-resident cuML on the original five tasks](021-device-resident-cuml-five-tasks/index.html): the same placement protocol as 020, applied to the cuML cells that 015 timed from host memory.
