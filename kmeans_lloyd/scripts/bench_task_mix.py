@@ -34,6 +34,10 @@ SEEDS = (0, 1, 2)
 TASKS = [
     dict(name="k3-d1000", n=950_000, d=1000, k=3, seed=101),
     dict(name="k17-d180", n=2_100_000, d=180, k=17, seed=102),
+    # Keep n * k * d near the existing bounded tasks while exercising a case
+    # where both the centroid count and feature width are substantial. The
+    # 150k rows are calibrated to leave stock scikit-learn below 60 seconds.
+    dict(name="k256-d128", n=150_000, d=128, k=256, seed=106),
     dict(name="k100-d32", n=1_500_000, d=32, k=100, seed=103),
     dict(name="k550-d6", n=525_000, d=6, k=550, seed=104),
     dict(
@@ -329,7 +333,7 @@ def _worker_cuml_init(args, samples):
         n_init=1,
         max_iter=0,
         random_state=0,
-        output_type="numpy",
+        output_type="cupy",
     ).fit(data[:warm_rows])
     cupy.cuda.Stream.null.synchronize()
 
@@ -348,27 +352,29 @@ def _worker_cuml_init(args, samples):
             tol=args.tol,
             random_state=args.seed,
             oversampling_factor=args.oversampling_factor,
-            output_type="numpy",
+            output_type="cupy",
         )
         model.fit(data)
+        cupy.cuda.Stream.null.synchronize()
         return model
 
     def assign(centers):
         model = KMeans(
             n_clusters=args.k,
-            init=np.ascontiguousarray(centers, dtype=np.float32),
+            init=centers,
             n_init=1,
             max_iter=0,
             tol=args.tol,
             random_state=args.seed,
-            output_type="numpy",
+            output_type="cupy",
         )
         model.fit(data)
+        cupy.cuda.Stream.null.synchronize()
         return model
 
     before = _nvidia_used()
     model, fit_seconds, peak = _sample_gpu(initialize)
-    centers = np.ascontiguousarray(model.cluster_centers_, dtype=np.float32)
+    centers = cupy.ascontiguousarray(model.cluster_centers_, dtype=cupy.float32)
     assign_before = _nvidia_used()
     _, assign_seconds, assign_peak = _sample_gpu(lambda: assign(centers))
     return {
@@ -379,29 +385,37 @@ def _worker_cuml_init(args, samples):
         "assign_mem_increment_bytes": max(0, assign_peak - assign_before),
         "mem_meter": "nvidia-smi",
         "n_iter": int(model.n_iter_),
-        "inertia_per_point": _mean_inertia(samples, centers),
+        "inertia_per_point": _mean_inertia(samples, cupy.asnumpy(centers)),
         "cuml": cuml.__version__,
     }
 
 
 def _worker_cuml(args, samples, centers0):
     import cuml
+    import cupy
     from cuml.cluster import KMeans
+
+    # Match the array-API contenders: transfer the data and shared
+    # random-row centers before starting the timed fit.
+    data = cupy.asarray(samples)
+    fixed = cupy.asarray(centers0)
+    cupy.cuda.Stream.null.synchronize()
 
     def call():
         model = KMeans(
             n_clusters=args.k,
             init={"plusplus": "k-means++", "scalable": "scalable-k-means++"}.get(
-                args.init, centers0
+                args.init, fixed
             ),
             n_init=1,
             max_iter=args.max_iter,
             tol=args.tol,
             random_state=args.seed,
             oversampling_factor=args.oversampling_factor,
-            output_type="numpy",
+            output_type="cupy",
         )
-        model.fit(samples)
+        model.fit(data)
+        cupy.cuda.Stream.null.synchronize()
         return model
 
     before = _nvidia_used()
@@ -411,7 +425,7 @@ def _worker_cuml(args, samples, centers0):
         "mem_increment_bytes": max(0, peak - before),
         "mem_meter": "nvidia-smi",
         "n_iter": int(model.n_iter_),
-        "inertia_per_point": _mean_inertia(samples, model.cluster_centers_),
+        "inertia_per_point": _mean_inertia(samples, cupy.asnumpy(model.cluster_centers_)),
         "cuml": cuml.__version__,
     }
 
