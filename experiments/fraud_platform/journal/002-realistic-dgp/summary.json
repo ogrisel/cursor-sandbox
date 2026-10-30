@@ -1,0 +1,20 @@
+{
+  "attempts": 201204,
+  "attempt_fraud_rate": 0.004309059462038528,
+  "fraud_by_type": {
+    "card_testing": 495,
+    "cash_out": 294,
+    "stealth": 78
+  },
+  "realized_fraud_rate_count": 0.0024150611998463144,
+  "realized_fraud_rate_value": 0.0036764958003715664,
+  "decision_counts": {
+    "approved": 197013,
+    "review_approved": 3396,
+    "declined": 591,
+    "review_blocked": 204
+  },
+  "legacy_fraud_stopped_share": 0.4417531718569781,
+  "simulate_and_features_seconds": 4.26,
+  "total_seconds": 6.36
+}

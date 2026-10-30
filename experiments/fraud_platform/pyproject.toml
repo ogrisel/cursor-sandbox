@@ -1,0 +1,34 @@
+[project]
+name = "fraud-sim"
+version = "0.2.0"
+description = "Educational payment-fraud simulator with delayed, policy-censored labels"
+requires-python = ">= 3.12"
+dependencies = [
+  "numpy>=2.2",
+  "pandas>=2.2",
+  "pyarrow>=18",
+  "scikit-learn>=1.6",
+  "skrub>=0.6",
+  "matplotlib>=3.9",
+]
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fraud_sim"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.dependencies]
+python = "3.13.*"
+
+[tool.pixi.pypi-dependencies]
+fraud-sim = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+run = "python run_experiment.py"
+test = "python -m unittest discover -s tests -v"

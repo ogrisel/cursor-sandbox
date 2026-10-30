@@ -4,3 +4,4 @@ __pycache__/
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+experiments/fraud_platform/.pixi/*
