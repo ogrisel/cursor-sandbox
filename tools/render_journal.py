@@ -1,12 +1,14 @@
 """Render a chronological experiment journal as a small static site.
 
+Markdown is converted with pandoc using GitHub-flavored Markdown and MathML.
+Relative links whose path ends in ``report.md`` or ``index.md`` are rewritten
+to ``index.html`` (query strings and fragments are kept).
+
 The journal layout is:
 
     journal/index.md
     journal/<iteration>/report.md
     journal/<iteration>/*.{svg,png,json,...}
-
-Links that end in ``report.md`` or ``index.md`` are rewritten to ``index.html``.
 """
 
 from __future__ import annotations
@@ -15,9 +17,13 @@ import argparse
 import html
 import re
 import shutil
+import subprocess
 from pathlib import Path
 
 ASSET_SUFFIXES = {".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".json", ".md"}
+
+# Bound a single page so a pathological document cannot hang the publisher.
+PANDOC_TIMEOUT_SECONDS = 60
 
 CSS = """
 :root { color-scheme: light; --ink: #1c1915; --muted: #5c564c; --line: #e4ddd0; --paper: #faf7f2; --accent: #8c3a2f; }
@@ -26,109 +32,134 @@ header, main { max-width: 920px; margin: 0 auto; padding: 1.25rem 1.25rem 2.5rem
 header { border-bottom: 1px solid var(--line); }
 a { color: var(--accent); }
 nav a { margin-right: 1rem; }
-h1, h2, h3 { line-height: 1.2; }
+h1, h2, h3, h4, h5, h6 { line-height: 1.2; }
+p, ul, ol, blockquote, pre, div.sourceCode, table, hr, .footnotes { margin: 1rem 0; }
+ul, ol { padding-left: 1.3rem; }
+li { margin: 0.15rem 0; }
+li > ul, li > ol { margin: 0.15rem 0; }
+ul.task-list { list-style: none; padding-left: 0.2rem; }
+ul.task-list input { margin-right: 0.4rem; }
+blockquote { padding: 0.2rem 1rem; border-left: 3px solid var(--accent); color: var(--muted); }
 table { border-collapse: collapse; width: 100%; font-size: 0.92rem; display: block; overflow-x: auto; }
 th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 0.35rem 0.5rem; vertical-align: top; }
+tbody tr.even { background: #f3eee4; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.86em; }
+:not(pre) > code { background: #fff; border: 1px solid var(--line); padding: 0.05em 0.3em; border-radius: 0.2rem; }
 pre { overflow-x: auto; padding: 0.8rem 1rem; background: #fff; border: 1px solid var(--line); }
+div.sourceCode { overflow-x: auto; background: #fff; border: 1px solid var(--line); }
+div.sourceCode pre { margin: 0; border: 0; background: transparent; }
+div.sourceCode a { color: inherit; text-decoration: none; }
+hr { border: 0; border-top: 1px solid var(--line); }
 img { max-width: 100%; height: auto; }
+figure { margin: 1rem 0; }
+figcaption { color: var(--muted); font-size: 0.9rem; }
+math[display="block"] { display: block; overflow-x: auto; margin: 1rem 0; }
+sup { line-height: 0; }
+.footnotes { color: var(--muted); font-size: 0.92rem; }
+.footnote-back { text-decoration: none; }
 .meta { color: var(--muted); }
+dt { font-weight: 600; }
+dd { margin: 0 0 0.6rem; }
+del { color: var(--muted); }
+code span.al { color: #ff0000; font-weight: bold; }
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; }
+code span.at { color: #7d9029; }
+code span.bn { color: #40a070; }
+code span.bu { color: #008000; }
+code span.cf { color: #007020; font-weight: bold; }
+code span.ch { color: #4070a0; }
+code span.cn { color: #880000; }
+code span.co { color: #60a0b0; font-style: italic; }
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; }
+code span.do { color: #ba2121; font-style: italic; }
+code span.dt { color: #902000; }
+code span.dv { color: #40a070; }
+code span.er { color: #ff0000; font-weight: bold; }
+code span.fl { color: #40a070; }
+code span.fu { color: #06287e; }
+code span.im { color: #008000; font-weight: bold; }
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; }
+code span.kw { color: #007020; font-weight: bold; }
+code span.op { color: #666666; }
+code span.ot { color: #007020; }
+code span.pp { color: #bc7a00; }
+code span.sc { color: #4070a0; }
+code span.ss { color: #bb6688; }
+code span.st { color: #4070a0; }
+code span.va { color: #19177c; }
+code span.vs { color: #4070a0; }
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; }
 """
 
-
-def _href(url):
-    url, hash_mark, fragment = url.partition("#")
-    if url.endswith("report.md"):
-        url = url[: -len("report.md")] + "index.html"
-    elif url.endswith("index.md"):
-        url = url[: -len("index.md")] + "index.html"
-    return url + hash_mark + fragment
+_HREF = re.compile(
+    r"""(?<![A-Za-z0-9_:-])(?P<attr>href)=(?P<quote>["'])(?P<url>.*?)(?P=quote)""",
+    re.IGNORECASE | re.DOTALL,
+)
+_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+_JOURNAL_PAGES = ("report.md", "index.md")
 
 
-def _inline(text):
-    escaped = html.escape(text)
-    escaped = re.sub(r"`([^`]+)`", lambda match: f"<code>{match.group(1)}</code>", escaped)
-
-    def link(match):
-        label = match.group(1)
-        href = _href(html.unescape(match.group(2)))
-        return f'<a href="{html.escape(href, quote=True)}">{label}</a>'
-
-    escaped = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", link, escaped)
-    return escaped
+class RenderError(RuntimeError):
+    """The journal could not be rendered."""
 
 
-def _slug(text):
-    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+def _rewrite_href(url: str) -> str:
+    """Rewrite a relative journal link to the generated HTML page."""
+    if _SCHEME.match(url) or url.startswith("//"):
+        return url
+    split_at = len(url)
+    for marker in ("?", "#"):
+        index = url.find(marker)
+        if index != -1:
+            split_at = min(split_at, index)
+    path, suffix = url[:split_at], url[split_at:]
+    for name in _JOURNAL_PAGES:
+        if path.endswith(name):
+            path = path[: -len(name)] + "index.html"
+            break
+    return path + suffix
 
 
-def markdown_to_html(source):
-    lines = source.splitlines()
-    out = []
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if line.startswith("```"):
-            block = []
-            i += 1
-            while i < len(lines) and not lines[i].startswith("```"):
-                block.append(html.escape(lines[i]))
-                i += 1
-            out.append("<pre><code>" + "\n".join(block) + "</code></pre>")
-            i += 1
-            continue
-        if line.startswith("|") and i + 1 < len(lines) and re.match(r"^\|\s*-+", lines[i + 1]):
-            headers = [cell.strip() for cell in line.strip("|").split("|")]
-            i += 2
-            rows = []
-            while i < len(lines) and lines[i].startswith("|"):
-                rows.append([cell.strip() for cell in lines[i].strip("|").split("|")])
-                i += 1
-            head = "".join(f"<th>{_inline(cell)}</th>" for cell in headers)
-            body = "".join(
-                "<tr>" + "".join(f"<td>{_inline(cell)}</td>" for cell in row) + "</tr>" for row in rows
-            )
-            out.append(f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>")
-            continue
-        if line.startswith("### "):
-            title = line[4:]
-            out.append(f'<h3 id="{_slug(title)}">{_inline(title)}</h3>')
-        elif line.startswith("## "):
-            title = line[3:]
-            out.append(f'<h2 id="{_slug(title)}">{_inline(title)}</h2>')
-        elif line.startswith("# "):
-            title = line[2:]
-            out.append(f'<h1 id="{_slug(title)}">{_inline(title)}</h1>')
-        elif line.startswith("- "):
-            items = []
-            while i < len(lines) and lines[i].startswith("- "):
-                item = [lines[i][2:]]
-                i += 1
-                while i < len(lines) and lines[i].startswith("  ") and lines[i].strip():
-                    item.append(lines[i].strip())
-                    i += 1
-                items.append(f"<li>{_inline(' '.join(item))}</li>")
-            out.append("<ul>" + "".join(items) + "</ul>")
-            continue
-        elif line.startswith("!["):
-            match = re.match(r"!\[([^\]]*)\]\(([^)]+)\)", line.strip())
-            if match:
-                alt, src = match.groups()
-                out.append(f'<img alt="{html.escape(alt)}" src="{html.escape(src, quote=True)}" />')
-            else:
-                out.append(f"<p>{_inline(line)}</p>")
-        elif not line.strip():
-            pass
-        else:
-            paragraph = [line]
-            i += 1
-            while i < len(lines) and lines[i].strip() and not lines[i].startswith(("#", "-", "|", "!", "```")):
-                paragraph.append(lines[i])
-                i += 1
-            out.append(f"<p>{_inline(' '.join(paragraph))}</p>")
-            continue
-        i += 1
-    return "\n".join(out)
+def _rewrite_markdown_hrefs(fragment: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        quote = match.group("quote")
+        url = _rewrite_href(match.group("url"))
+        return f"{match.group('attr')}={quote}{url}{quote}"
+
+    return _HREF.sub(replace, fragment)
+
+
+def markdown_to_html(source: str) -> str:
+    """Convert Markdown to an HTML fragment with pandoc."""
+    pandoc = shutil.which("pandoc")
+    if pandoc is None:
+        raise RenderError(
+            "pandoc was not found on PATH. Install pandoc to render the journal."
+        )
+    command = [
+        pandoc,
+        "--from=gfm+tex_math_dollars",
+        "--to=html",
+        "--mathml",
+        "--wrap=none",
+        "--highlight-style=pygments",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            input=source,
+            text=True,
+            encoding="utf-8",
+            capture_output=True,
+            check=False,
+            timeout=PANDOC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RenderError("pandoc timed out while rendering markdown") from exc
+    if result.returncode != 0:
+        detail = result.stderr.strip() or f"exit code {result.returncode}"
+        raise RenderError(f"pandoc failed: {detail}")
+    return _rewrite_markdown_hrefs(result.stdout)
 
 
 def _page(title, body, depth, cases):
@@ -190,7 +221,10 @@ def main():
     parser.add_argument("--site", type=Path, required=True)
     parser.add_argument("--title", default="Experiment journal")
     args = parser.parse_args()
-    render(args.journal, args.site, args.title)
+    try:
+        render(args.journal, args.site, args.title)
+    except RenderError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 if __name__ == "__main__":
