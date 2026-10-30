@@ -1,0 +1,267 @@
+{
+  "source": "https://probabl-ai.github.io/skore-example-electricity-load/model-comparison/cv_comparison/report.html",
+  "note": "Values are copied as published. '-' in the source is null. MAE and MAPE use the median (point) prediction; pinball D2, coverage, and width use the published quantiles. Rows are pooled across 8 walk-forward CV folds.",
+  "models": [
+    "chronos2_ctx4000",
+    "hgb_mean",
+    "hgb_quantile_q7",
+    "hgb_quantile_recal_q7",
+    "kumo",
+    "kumo_tabular",
+    "tabicl_n8_full"
+  ],
+  "metrics": {
+    "coverage_90__12h": {
+      "chronos2_ctx4000": 0.8519,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.7631,
+      "hgb_quantile_recal_q7": 0.9102,
+      "kumo": null,
+      "kumo_tabular": 0.9671,
+      "tabicl_n8_full": 0.8456
+    },
+    "coverage_90__1h": {
+      "chronos2_ctx4000": 0.9549,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.8146,
+      "hgb_quantile_recal_q7": 0.9047,
+      "kumo": null,
+      "kumo_tabular": 0.9015,
+      "tabicl_n8_full": 0.9283
+    },
+    "coverage_90__24h": {
+      "chronos2_ctx4000": 0.8804,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.7599,
+      "hgb_quantile_recal_q7": 0.9048,
+      "kumo": null,
+      "kumo_tabular": 0.9816,
+      "tabicl_n8_full": 0.904
+    },
+    "coverage_90__average": {
+      "chronos2_ctx4000": 0.8957,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.7792,
+      "hgb_quantile_recal_q7": 0.9066,
+      "kumo": null,
+      "kumo_tabular": 0.9501,
+      "tabicl_n8_full": 0.8927
+    },
+    "mae__12h": {
+      "chronos2_ctx4000": 911.9,
+      "hgb_mean": 938.0,
+      "hgb_quantile_q7": 952.7,
+      "hgb_quantile_recal_q7": 1011.0,
+      "kumo": 1973.0,
+      "kumo_tabular": 810.5,
+      "tabicl_n8_full": 1029.0
+    },
+    "mae__1h": {
+      "chronos2_ctx4000": 412.7,
+      "hgb_mean": 531.4,
+      "hgb_quantile_q7": 534.0,
+      "hgb_quantile_recal_q7": 540.9,
+      "kumo": 1161.0,
+      "kumo_tabular": 296.3,
+      "tabicl_n8_full": 384.0
+    },
+    "mae__24h": {
+      "chronos2_ctx4000": 1035.0,
+      "hgb_mean": 971.4,
+      "hgb_quantile_q7": 960.4,
+      "hgb_quantile_recal_q7": 1011.0,
+      "kumo": 2280.0,
+      "kumo_tabular": 885.0,
+      "tabicl_n8_full": 1036.0
+    },
+    "mae__average": {
+      "chronos2_ctx4000": 786.6,
+      "hgb_mean": 813.6,
+      "hgb_quantile_q7": 815.7,
+      "hgb_quantile_recal_q7": 854.2,
+      "kumo": 1805.0,
+      "kumo_tabular": 664.0,
+      "tabicl_n8_full": 816.2
+    },
+    "mape__12h": {
+      "chronos2_ctx4000": 0.01892,
+      "hgb_mean": 0.01917,
+      "hgb_quantile_q7": 0.01948,
+      "hgb_quantile_recal_q7": 0.02046,
+      "kumo": 0.04098,
+      "kumo_tabular": 0.01667,
+      "tabicl_n8_full": 0.02057
+    },
+    "mape__1h": {
+      "chronos2_ctx4000": 0.008655,
+      "hgb_mean": 0.01107,
+      "hgb_quantile_q7": 0.01108,
+      "hgb_quantile_recal_q7": 0.01119,
+      "kumo": 0.02506,
+      "kumo_tabular": 0.006284,
+      "tabicl_n8_full": 0.007879
+    },
+    "mape__24h": {
+      "chronos2_ctx4000": 0.02148,
+      "hgb_mean": 0.01993,
+      "hgb_quantile_q7": 0.01971,
+      "hgb_quantile_recal_q7": 0.0206,
+      "kumo": 0.04723,
+      "kumo_tabular": 0.0183,
+      "tabicl_n8_full": 0.02117
+    },
+    "mape__average": {
+      "chronos2_ctx4000": 0.01635,
+      "hgb_mean": 0.01672,
+      "hgb_quantile_q7": 0.01676,
+      "hgb_quantile_recal_q7": 0.01742,
+      "kumo": 0.03776,
+      "kumo_tabular": 0.01375,
+      "tabicl_n8_full": 0.01654
+    },
+    "width_90__12h": {
+      "chronos2_ctx4000": 3297.0,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 3325.0,
+      "hgb_quantile_recal_q7": 4780.0,
+      "kumo": null,
+      "kumo_tabular": 4747.0,
+      "tabicl_n8_full": 4059.0
+    },
+    "width_90__1h": {
+      "chronos2_ctx4000": 2194.0,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 2167.0,
+      "hgb_quantile_recal_q7": 2732.0,
+      "kumo": null,
+      "kumo_tabular": 1680.0,
+      "tabicl_n8_full": 1944.0
+    },
+    "width_90__24h": {
+      "chronos2_ctx4000": 4204.0,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 3288.0,
+      "hgb_quantile_recal_q7": 4789.0,
+      "kumo": null,
+      "kumo_tabular": 6256.0,
+      "tabicl_n8_full": 5519.0
+    },
+    "width_90__average": {
+      "chronos2_ctx4000": 3232.0,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 2926.0,
+      "hgb_quantile_recal_q7": 4100.0,
+      "kumo": null,
+      "kumo_tabular": 4228.0,
+      "tabicl_n8_full": 3841.0
+    },
+    "d2_pinball_score__12h__q_0.05": {
+      "chronos2_ctx4000": 0.7833,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.784,
+      "hgb_quantile_recal_q7": 0.6825,
+      "kumo": null,
+      "kumo_tabular": 0.6993,
+      "tabicl_n8_full": 0.6884
+    },
+    "d2_pinball_score__12h__q_0.5": {
+      "chronos2_ctx4000": 0.8866,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.8815,
+      "hgb_quantile_recal_q7": 0.8743,
+      "kumo": null,
+      "kumo_tabular": 0.8992,
+      "tabicl_n8_full": 0.8721
+    },
+    "d2_pinball_score__12h__q_0.95": {
+      "chronos2_ctx4000": 0.7807,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.7615,
+      "hgb_quantile_recal_q7": 0.7064,
+      "kumo": null,
+      "kumo_tabular": 0.7063,
+      "tabicl_n8_full": 0.7847
+    },
+    "d2_pinball_score__1h__q_0.05": {
+      "chronos2_ctx4000": 0.8582,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.8594,
+      "hgb_quantile_recal_q7": 0.8252,
+      "kumo": null,
+      "kumo_tabular": 0.8932,
+      "tabicl_n8_full": 0.8719
+    },
+    "d2_pinball_score__1h__q_0.5": {
+      "chronos2_ctx4000": 0.9487,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.9336,
+      "hgb_quantile_recal_q7": 0.9327,
+      "kumo": null,
+      "kumo_tabular": 0.9631,
+      "tabicl_n8_full": 0.9522
+    },
+    "d2_pinball_score__1h__q_0.95": {
+      "chronos2_ctx4000": 0.8652,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.8519,
+      "hgb_quantile_recal_q7": 0.8246,
+      "kumo": null,
+      "kumo_tabular": 0.8933,
+      "tabicl_n8_full": 0.882
+    },
+    "d2_pinball_score__24h__q_0.05": {
+      "chronos2_ctx4000": 0.7211,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.7789,
+      "hgb_quantile_recal_q7": 0.6747,
+      "kumo": null,
+      "kumo_tabular": 0.6036,
+      "tabicl_n8_full": 0.6285
+    },
+    "d2_pinball_score__24h__q_0.5": {
+      "chronos2_ctx4000": 0.8712,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.8805,
+      "hgb_quantile_recal_q7": 0.8742,
+      "kumo": null,
+      "kumo_tabular": 0.8899,
+      "tabicl_n8_full": 0.8711
+    },
+    "d2_pinball_score__24h__q_0.95": {
+      "chronos2_ctx4000": 0.7318,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.7696,
+      "hgb_quantile_recal_q7": 0.7125,
+      "kumo": null,
+      "kumo_tabular": 0.6158,
+      "tabicl_n8_full": 0.6718
+    },
+    "d2_pinball_score__average__q_0.05": {
+      "chronos2_ctx4000": 0.8523,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.8295,
+      "hgb_quantile_recal_q7": 0.8405,
+      "kumo": null,
+      "kumo_tabular": 0.8578,
+      "tabicl_n8_full": 0.8416
+    },
+    "d2_pinball_score__average__q_0.5": {
+      "chronos2_ctx4000": 0.9021,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.8985,
+      "hgb_quantile_recal_q7": 0.8937,
+      "kumo": null,
+      "kumo_tabular": 0.9174,
+      "tabicl_n8_full": 0.8985
+    },
+    "d2_pinball_score__average__q_0.95": {
+      "chronos2_ctx4000": 0.903,
+      "hgb_mean": null,
+      "hgb_quantile_q7": 0.8759,
+      "hgb_quantile_recal_q7": 0.8852,
+      "kumo": null,
+      "kumo_tabular": 0.9057,
+      "tabicl_n8_full": 0.9006
+    }
+  }
+}

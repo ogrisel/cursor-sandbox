@@ -1,0 +1,20 @@
+name: Publish CV metric plots
+
+on:
+  pull_request:
+    paths:
+      - "electricity_load_cv_plots/**"
+      - ".github/workflows/publish-cv-metric-plots.yml"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  report:
+    uses: ogrisel/cursor-sandbox/.github/workflows/publish-report.yml@main
+    with:
+      journal-path: electricity_load_cv_plots/journal
+      site-title: Electricity load CV metric plots
