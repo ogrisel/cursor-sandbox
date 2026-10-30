@@ -15,27 +15,121 @@
 </header>
 <main>
 <h1 id="shared-payment-platform-fraud-simulator">Shared payment-platform fraud simulator</h1>
-<p>An educational simulator of card-not-present payments on one platform. A legacy rule engine is already deployed. Labels arrive late, cover only some attempts, and are censored by the engine&#x27;s own declines. A <code>skrub</code> pipeline with point-in-time window features and <code>HistGradientBoostingClassifier</code> is backtested on calendar folds and scored in euros against the simulator&#x27;s private truth.</p>
+<p>An educational simulator of card-not-present payments on one platform. A legacy rule engine is already deployed. Labels arrive late, cover only some attempts, and are censored by the engine's own declines. A <code>skrub</code> pipeline with point-in-time window features and <code>HistGradientBoostingClassifier</code> is backtested on calendar folds and scored in euros against the simulator's private truth.</p>
 <p>The teaching book has 6,000 customers and runs in about 20 seconds. The production-scale book has 1,000,000 registered customers (123,000 active), 200 shops and about 7,400 attempts a day, and the same backtest runs in about 90 seconds.</p>
 <h2 id="highlight-plots">Highlight plots</h2>
-<p>Private labels add only a few points of the attainable uplift. Replacing the legacy rules matters more than training on the simulator&#x27;s hidden truth. On the million-customer book the censored model keeps 59% of the perfect uplift and the oracle model 66%.</p>
-<img alt="Share of the perfect uplift on both books" src="005-mature-book/scale_uplift.png" />
+<p>Private labels add only a few points of the attainable uplift. Replacing the legacy rules matters more than training on the simulator's hidden truth. On the million-customer book the censored model keeps 59% of the perfect uplift and the oracle model 66%.</p>
+<p><img src="005-mature-book/scale_uplift.png" alt="Share of the perfect uplift on both books" /></p>
 <p>Back-dating fraud labels to the payment time makes a feature look better in an offline backtest. Served with only the labels that have arrived, that feature loses 0.07 to 0.23 average precision.</p>
-<img alt="Backtest versus served average precision" src="003-skrub-dataops/leakage_ap.png" />
+<p><img src="003-skrub-dataops/leakage_ap.png" alt="Backtest versus served average precision" /></p>
 <p>On the 6,000-customer book the euro gap between censored and oracle training is invisible. Fold-level gains are the dots.</p>
-<img alt="Uplift over the legacy rules on the small book" src="004-business-evaluation/policy_uplift.png" />
+<p><img src="004-business-evaluation/policy_uplift.png" alt="Uplift over the legacy rules on the small book" /></p>
 <h2 id="code-entry-points">Code entry points</h2>
 <p>Links open the experiment sources on the <code>cursor/fraud-platform-simulator-06f6</code> branch.</p>
-<table><thead><tr><th>Piece</th><th>Where to start</th></tr></thead><tbody><tr><td>Customer book, fraud campaigns, legacy rules, delayed feedback</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/simulator.py#L103-L122"><code>mature_config</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/simulator.py#L359-L383"><code>simulate</code></a></td></tr><tr><td>Window aggregates that cannot see the current attempt</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/features.py#L72-L91"><code>add_window_features</code></a></td></tr><tr><td>Label aggregates, and the back-dated twin used to measure leakage</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/features.py#L47-L69"><code>arrived_label_count</code></a></td></tr><tr><td>Which labels exist at a retraining cutoff</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/backtest.py#L26-L43"><code>label_as_known_at</code></a></td></tr><tr><td>skrub feature store and the cutoff-aware learner</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/pipeline.py#L67-L69"><code>feature_store_dataop</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/pipeline.py#L85-L105"><code>learner_dataop</code></a></td></tr><tr><td>Calendar backtest via <code>skrub.cross_validate</code></td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/pipeline.py#L113-L145"><code>backtest</code></a></td></tr><tr><td>Approve / decline / review gain and the decision rule</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/business.py#L45-L62"><code>decide</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/business.py#L81-L91"><code>realised_gain</code></a></td></tr><tr><td>Runs that produce the plots above</td><td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/003-skrub-dataops/run.py"><code>003</code></a>, <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/004-business-evaluation/run.py"><code>004</code></a>, <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/005-mature-book/run.py"><code>005</code></a></td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>Piece</th>
+<th>Where to start</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Customer book, fraud campaigns, legacy rules, delayed feedback</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/simulator.py#L103-L122"><code>mature_config</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/simulator.py#L359-L383"><code>simulate</code></a></td>
+</tr>
+<tr class="even">
+<td>Window aggregates that cannot see the current attempt</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/features.py#L72-L91"><code>add_window_features</code></a></td>
+</tr>
+<tr class="odd">
+<td>Label aggregates, and the back-dated twin used to measure leakage</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/features.py#L47-L69"><code>arrived_label_count</code></a></td>
+</tr>
+<tr class="even">
+<td>Which labels exist at a retraining cutoff</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/backtest.py#L26-L43"><code>label_as_known_at</code></a></td>
+</tr>
+<tr class="odd">
+<td>skrub feature store and the cutoff-aware learner</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/pipeline.py#L67-L69"><code>feature_store_dataop</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/pipeline.py#L85-L105"><code>learner_dataop</code></a></td>
+</tr>
+<tr class="even">
+<td>Calendar backtest via <code>skrub.cross_validate</code></td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/pipeline.py#L113-L145"><code>backtest</code></a></td>
+</tr>
+<tr class="odd">
+<td>Approve / decline / review gain and the decision rule</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/business.py#L45-L62"><code>decide</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/src/fraud_sim/business.py#L81-L91"><code>realised_gain</code></a></td>
+</tr>
+<tr class="even">
+<td>Runs that produce the plots above</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/003-skrub-dataops/run.py"><code>003</code></a>, <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/004-business-evaluation/run.py"><code>004</code></a>, <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/005-mature-book/run.py"><code>005</code></a></td>
+</tr>
+</tbody>
+</table>
 <h2 id="findings">Findings</h2>
-<table><thead><tr><th>Question</th><th>Answer</th><th>Iteration</th></tr></thead><tbody><tr><td>Do window aggregates matter?</td><td>Yes. On the small book, AP 0.43 → 0.72 (legacy rule score alone: 0.11).</td><td><a href="003-skrub-dataops/index.html">003</a></td></tr><tr><td>Do label features help despite the delay?</td><td>Not when they respect arrival time. They cost 0.015–0.044 AP in every fold.</td><td><a href="003-skrub-dataops/index.html">003</a></td></tr><tr><td>What does back-dating labels do?</td><td>It can win offline, then loses 0.07–0.23 AP once served.</td><td><a href="003-skrub-dataops/index.html">003</a></td></tr><tr><td>How much ranking quality does censoring cost?</td><td>0.06–0.11 AP on the small book; about 0.08 AP on the million-customer book, with a wide fold spread.</td><td><a href="003-skrub-dataops/index.html">003</a>, <a href="005-mature-book/index.html">005</a></td></tr><tr><td>How much money does censoring cost?</td><td>Nothing measurable on the small book (€32.0k vs €31.8k). On the large book, €7.9k of a €66k uplift, mostly one fold (59% vs 66% of the perfect uplift).</td><td><a href="004-business-evaluation/index.html">004</a>, <a href="005-mature-book/index.html">005</a></td></tr><tr><td>How wrong is evaluation on observable labels?</td><td>It underestimates the uplift by 26% on the small book and 31% on the large one.</td><td><a href="004-business-evaluation/index.html">004</a>, <a href="005-mature-book/index.html">005</a></td></tr><tr><td>Replace the rules or layer the model on top?</td><td>Replacing wins on both books (€11.7k and about €32k), and only the simulation can show that approving some legacy declines is safe.</td><td><a href="004-business-evaluation/index.html">004</a>, <a href="005-mature-book/index.html">005</a></td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>Question</th>
+<th>Answer</th>
+<th>Iteration</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Do window aggregates matter?</td>
+<td>Yes. On the small book, AP 0.43 → 0.72 (legacy rule score alone: 0.11).</td>
+<td><a href="003-skrub-dataops/index.html">003</a></td>
+</tr>
+<tr class="even">
+<td>Do label features help despite the delay?</td>
+<td>Not when they respect arrival time. They cost 0.015–0.044 AP in every fold.</td>
+<td><a href="003-skrub-dataops/index.html">003</a></td>
+</tr>
+<tr class="odd">
+<td>What does back-dating labels do?</td>
+<td>It can win offline, then loses 0.07–0.23 AP once served.</td>
+<td><a href="003-skrub-dataops/index.html">003</a></td>
+</tr>
+<tr class="even">
+<td>How much ranking quality does censoring cost?</td>
+<td>0.06–0.11 AP on the small book; about 0.08 AP on the million-customer book, with a wide fold spread.</td>
+<td><a href="003-skrub-dataops/index.html">003</a>, <a href="005-mature-book/index.html">005</a></td>
+</tr>
+<tr class="odd">
+<td>How much money does censoring cost?</td>
+<td>Nothing measurable on the small book (€32.0k vs €31.8k). On the large book, €7.9k of a €66k uplift, mostly one fold (59% vs 66% of the perfect uplift).</td>
+<td><a href="004-business-evaluation/index.html">004</a>, <a href="005-mature-book/index.html">005</a></td>
+</tr>
+<tr class="even">
+<td>How wrong is evaluation on observable labels?</td>
+<td>It underestimates the uplift by 26% on the small book and 31% on the large one.</td>
+<td><a href="004-business-evaluation/index.html">004</a>, <a href="005-mature-book/index.html">005</a></td>
+</tr>
+<tr class="odd">
+<td>Replace the rules or layer the model on top?</td>
+<td>Replacing wins on both books (€11.7k and about €32k), and only the simulation can show that approving some legacy declines is safe.</td>
+<td><a href="004-business-evaluation/index.html">004</a>, <a href="005-mature-book/index.html">005</a></td>
+</tr>
+</tbody>
+</table>
 <h2 id="iterations">Iterations</h2>
-<ul><li><a href="001-simulator/index.html">001 — first simulator</a> (superseded: fraud was trivially separable)</li><li><a href="002-realistic-dgp/index.html">002 — critical review and the mechanistic simulator</a></li><li><a href="003-skrub-dataops/index.html">003 — skrub DataOps, lag-aware label features and leakage</a></li><li><a href="004-business-evaluation/index.html">004 — business evaluation on the 6,000-customer book</a></li><li><a href="005-mature-book/index.html">005 — the same comparison on a 1,000,000-customer book</a></li></ul>
+<ul>
+<li><a href="001-simulator/index.html">001 — first simulator</a> (superseded: fraud was trivially separable)</li>
+<li><a href="002-realistic-dgp/index.html">002 — critical review and the mechanistic simulator</a></li>
+<li><a href="003-skrub-dataops/index.html">003 — skrub DataOps, lag-aware label features and leakage</a></li>
+<li><a href="004-business-evaluation/index.html">004 — business evaluation on the 6,000-customer book</a></li>
+<li><a href="005-mature-book/index.html">005 — the same comparison on a 1,000,000-customer book</a></li>
+</ul>
 <h2 id="reproduce">Reproduce</h2>
-<pre><code>cd experiments/fraud_platform
-pixi run test       # point-in-time, censoring, gain matrix, dormant book
-pixi run iter004    # small book, about 20 s
-pixi run iter005    # million-customer book, about 90 s</code></pre>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> experiments/fraud_platform</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run test       <span class="co"># point-in-time, censoring, gain matrix, dormant book</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run iter004    <span class="co"># small book, about 20 s</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run iter005    <span class="co"># million-customer book, about 90 s</span></span></code></pre></div>
+<p>Event logs (<code>transactions.csv.gz</code>, <code>transactions.parquet</code>) are produced by those runs and gitignored. The publisher checks out markdown, plots, and the small summary tables only.</p>
+
 </main>
 </body>
 </html>

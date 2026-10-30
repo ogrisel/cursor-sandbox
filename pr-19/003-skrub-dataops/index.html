@@ -14,20 +14,116 @@
 </nav>
 </header>
 <main>
-<h1 id="003-skrub-dataops-lag-aware-label-features-and-leakage">003 — skrub DataOps, lag-aware label features and leakage</h1>
+<h1 id="003--skrub-dataops-lag-aware-label-features-and-leakage">003 — skrub DataOps, lag-aware label features and leakage</h1>
 <h2 id="what-changed">What changed</h2>
-<ul><li>**Feature engineering as a skrub DataOp** (<code>fraud_sim.pipeline.feature_store_dataop</code>). The raw public event log is a <code>skrub.var(&quot;log&quot;)</code>. Window aggregates (<code>groupby().rolling(window, closed=&quot;left&quot;)</code>) and label aggregates (<code>merge_asof</code> on label *arrival* time) are applied with <code>.skb.apply_func</code>. The <code>AggJoiner</code> documentation itself recommends DataOps with a dataframe library for this, because <code>AggJoiner</code> has no time window.</li><li>The feature DataOp runs **once on the whole log**, like a streaming feature store. This is correct because every feature is point-in-time, and it is *necessary*: computing windows inside each split would erase the history that precedes the first test rows.</li><li>**Learner DataOp** (<code>learner_dataop</code>). <code>X</code> is a subset of the feature store. <code>y</code> is derived *inside the DataOp* from a second variable, <code>skrub.var(&quot;cutoff&quot;)</code>, through <code>label_as_known_at</code>. A <code>TableVectorizer</code> maps shop identifiers and categories to native categoricals (<code>ToCategorical</code>, then HGB with <code>categorical_features=&quot;from_dtype&quot;</code>), and <code>DatetimeEncoder</code> provides circular hour and weekday features. Year, month and day-of-month are dropped with a skrub selector: with six months of history they would only let the trees memorise the period.</li><li>**Backtest with <code>skrub.cross_validate</code>.** There is one call per retraining cutoff, because the label known at a cutoff depends on the cutoff (chargebacks keep arriving). Within a fold, train rows are those with a known label; test rows are the 21 days after the cutoff.</li><li>**Target frame trick.** The DataOp&#x27;s <code>y</code> is a dataframe. The model fits on its <code>y_train</code> column; the scorers read the private <code>is_fraud</code> of the test rows (possible only in simulation) and, for the leakage study, the lag-aware feature values.</li><li>New features: <code>legacy_score</code> (available at decision time) and shop identity. Lag-aware label aggregates (<code>known_*</code>): fraud rate of the shop over 30 days, fraud labels on the card over 7 days and on the device over 90 days. Each has a <code>leaky_*</code> twin with labels back-dated to the payment time.</li></ul>
+<ul>
+<li><strong>Feature engineering as a skrub DataOp</strong> (<code>fraud_sim.pipeline.feature_store_dataop</code>). The raw public event log is a <code>skrub.var("log")</code>. Window aggregates (<code>groupby().rolling(window, closed="left")</code>) and label aggregates (<code>merge_asof</code> on label <em>arrival</em> time) are applied with <code>.skb.apply_func</code>. The <code>AggJoiner</code> documentation itself recommends DataOps with a dataframe library for this, because <code>AggJoiner</code> has no time window.</li>
+<li>The feature DataOp runs <strong>once on the whole log</strong>, like a streaming feature store. This is correct because every feature is point-in-time, and it is <em>necessary</em>: computing windows inside each split would erase the history that precedes the first test rows.</li>
+<li><strong>Learner DataOp</strong> (<code>learner_dataop</code>). <code>X</code> is a subset of the feature store. <code>y</code> is derived <em>inside the DataOp</em> from a second variable, <code>skrub.var("cutoff")</code>, through <code>label_as_known_at</code>. A <code>TableVectorizer</code> maps shop identifiers and categories to native categoricals (<code>ToCategorical</code>, then HGB with <code>categorical_features="from_dtype"</code>), and <code>DatetimeEncoder</code> provides circular hour and weekday features. Year, month and day-of-month are dropped with a skrub selector: with six months of history they would only let the trees memorise the period.</li>
+<li><strong>Backtest with <code>skrub.cross_validate</code>.</strong> There is one call per retraining cutoff, because the label known at a cutoff depends on the cutoff (chargebacks keep arriving). Within a fold, train rows are those with a known label; test rows are the 21 days after the cutoff.</li>
+<li><strong>Target frame trick.</strong> The DataOp's <code>y</code> is a dataframe. The model fits on its <code>y_train</code> column; the scorers read the private <code>is_fraud</code> of the test rows (possible only in simulation) and, for the leakage study, the lag-aware feature values.</li>
+<li>New features: <code>legacy_score</code> (available at decision time) and shop identity. Lag-aware label aggregates (<code>known_*</code>): fraud rate of the shop over 30 days, fraud labels on the card over 7 days and on the device over 90 days. Each has a <code>leaky_*</code> twin with labels back-dated to the payment time.</li>
+</ul>
 <h2 id="results">Results</h2>
-<p>Mean (std) over 4 folds. Every model is scored on the full private truth of the test window. &quot;Served&quot; replaces <code>leaky_*</code> inputs by the values that exist at decision time; for the other models it is identical to the backtest.</p>
-<table><thead><tr><th>Training labels</th><th>Features</th><th>AP (backtest)</th><th>AP (served)</th><th>ROC AUC</th><th>Predicted / actual frauds</th></tr></thead><tbody><tr><td>censored</td><td>row</td><td>0.427 (0.031)</td><td>0.427</td><td>0.909</td><td>1.23</td></tr><tr><td>censored</td><td>row + window</td><td>**0.715** (0.066)</td><td>**0.715**</td><td>0.950</td><td>1.17</td></tr><tr><td>censored</td><td>row + window + lag-aware labels</td><td>0.691 (0.073)</td><td>0.691</td><td>0.934</td><td>1.34</td></tr><tr><td>censored</td><td>row + window + back-dated labels</td><td>0.746 (0.051)</td><td>0.560 (0.028)</td><td>0.965 → 0.931</td><td>1.27</td></tr><tr><td>oracle</td><td>row + window + lag-aware labels</td><td>0.768 (0.061)</td><td>0.768</td><td>0.976</td><td>0.79</td></tr></tbody></table>
+<p>Mean (std) over 4 folds. Every model is scored on the full private truth of the test window. "Served" replaces <code>leaky_*</code> inputs by the values that exist at decision time; for the other models it is identical to the backtest.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Training labels</th>
+<th>Features</th>
+<th style="text-align: right;">AP (backtest)</th>
+<th style="text-align: right;">AP (served)</th>
+<th style="text-align: right;">ROC AUC</th>
+<th style="text-align: right;">Predicted / actual frauds</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>censored</td>
+<td>row</td>
+<td style="text-align: right;">0.427 (0.031)</td>
+<td style="text-align: right;">0.427</td>
+<td style="text-align: right;">0.909</td>
+<td style="text-align: right;">1.23</td>
+</tr>
+<tr class="even">
+<td>censored</td>
+<td>row + window</td>
+<td style="text-align: right;"><strong>0.715</strong> (0.066)</td>
+<td style="text-align: right;"><strong>0.715</strong></td>
+<td style="text-align: right;">0.950</td>
+<td style="text-align: right;">1.17</td>
+</tr>
+<tr class="odd">
+<td>censored</td>
+<td>row + window + lag-aware labels</td>
+<td style="text-align: right;">0.691 (0.073)</td>
+<td style="text-align: right;">0.691</td>
+<td style="text-align: right;">0.934</td>
+<td style="text-align: right;">1.34</td>
+</tr>
+<tr class="even">
+<td>censored</td>
+<td>row + window + back-dated labels</td>
+<td style="text-align: right;">0.746 (0.051)</td>
+<td style="text-align: right;">0.560 (0.028)</td>
+<td style="text-align: right;">0.965 → 0.931</td>
+<td style="text-align: right;">1.27</td>
+</tr>
+<tr class="odd">
+<td>oracle</td>
+<td>row + window + lag-aware labels</td>
+<td style="text-align: right;">0.768 (0.061)</td>
+<td style="text-align: right;">0.768</td>
+<td style="text-align: right;">0.976</td>
+<td style="text-align: right;">0.79</td>
+</tr>
+</tbody>
+</table>
 <p>Paired per-fold AP differences (min to max over the 4 folds):</p>
-<table><thead><tr><th>Comparison</th><th>Mean</th><th>Range</th></tr></thead><tbody><tr><td>+ lag-aware label features vs row + window</td><td>−0.025</td><td>−0.044 to −0.015</td></tr><tr><td>+ back-dated label features, backtest vs row + window</td><td>+0.030</td><td>−0.047 to +0.129</td></tr><tr><td>+ back-dated label features, served vs row + window</td><td>**−0.155**</td><td>−0.226 to −0.067</td></tr><tr><td>oracle labels vs censored labels (same features)</td><td>**+0.077**</td><td>+0.057 to +0.114</td></tr></tbody></table>
-<img alt="AP in backtest vs serving" src="leakage_ap.svg" />
+<table>
+<thead>
+<tr class="header">
+<th>Comparison</th>
+<th style="text-align: right;">Mean</th>
+<th>Range</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>+ lag-aware label features vs row + window</td>
+<td style="text-align: right;">−0.025</td>
+<td>−0.044 to −0.015</td>
+</tr>
+<tr class="even">
+<td>+ back-dated label features, backtest vs row + window</td>
+<td style="text-align: right;">+0.030</td>
+<td>−0.047 to +0.129</td>
+</tr>
+<tr class="odd">
+<td>+ back-dated label features, served vs row + window</td>
+<td style="text-align: right;"><strong>−0.155</strong></td>
+<td>−0.226 to −0.067</td>
+</tr>
+<tr class="even">
+<td>oracle labels vs censored labels (same features)</td>
+<td style="text-align: right;"><strong>+0.077</strong></td>
+<td>+0.057 to +0.114</td>
+</tr>
+</tbody>
+</table>
+<p><img src="leakage_ap.svg" alt="AP in backtest vs serving" /></p>
 <p>Raw values: <a href="https://github.com/ogrisel/cursor-sandbox/tree/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/003-skrub-dataops/fold_metrics.csv"><code>fold_metrics.csv</code></a>. Runtime: 27 s in total (feature store 4.6 s, then 4–6 s per configuration for 4 folds).</p>
 <h2 id="analysis-in-light-of-the-educational-goal">Analysis in light of the educational goal</h2>
-<p>1. **System lag makes label features weak, and back-dating them is actively harmful.** Fraud campaigns last hours, while chargebacks take weeks. At decision time almost no label of the ongoing campaign exists, so lag-aware aggregates carry little signal and consistently cost a little AP (noise from friendly-fraud disputes on real devices). The back-dated version &quot;knows&quot; that the card-testing micro-payments made minutes earlier will be charged back. It wins in the offline backtest in two folds out of four, then loses 0.07–0.23 AP once deployed. This is the most transferable lesson of this iteration: **a backtest only measures the deployed model if every feature is computed as it will be served.** 2. **Censoring costs about 0.08 AP**, even with identical features. The oracle sees declined attempts and fresh labels; the censored model sees neither the declined region nor the last 45 days of approved traffic. 3. **The censored model is not calibrated.** Its training set is enriched in fraud (0.56% versus 0.43–0.46% in reality), because analyst reviews over-sample risky attempts and the declined attempts (which are mostly legitimate in volume, but carry 21% of fraud) disappear. It over-predicts the number of frauds by 17–34%. This matters for a cost-based decision threshold, which is what iteration 004 evaluates. 4. Fold-to-fold standard deviations (0.03–0.07 AP) are larger than several effects. Paired differences across folds are consistent in sign and are the right way to read this table.</p>
-<p>Decision for iteration 004: keep **row + window** as the candidate feature set, with censored training labels, and use the oracle with the same features as the upper bound. The label features stay available in the code for teaching purposes.</p>
+<ol type="1">
+<li><strong>System lag makes label features weak, and back-dating them is actively harmful.</strong> Fraud campaigns last hours, while chargebacks take weeks. At decision time almost no label of the ongoing campaign exists, so lag-aware aggregates carry little signal and consistently cost a little AP (noise from friendly-fraud disputes on real devices). The back-dated version "knows" that the card-testing micro-payments made minutes earlier will be charged back. It wins in the offline backtest in two folds out of four, then loses 0.07–0.23 AP once deployed. This is the most transferable lesson of this iteration: <strong>a backtest only measures the deployed model if every feature is computed as it will be served.</strong></li>
+<li><strong>Censoring costs about 0.08 AP</strong>, even with identical features. The oracle sees declined attempts and fresh labels; the censored model sees neither the declined region nor the last 45 days of approved traffic.</li>
+<li><strong>The censored model is not calibrated.</strong> Its training set is enriched in fraud (0.56% versus 0.43–0.46% in reality), because analyst reviews over-sample risky attempts and the declined attempts (which are mostly legitimate in volume, but carry 21% of fraud) disappear. It over-predicts the number of frauds by 17–34%. This matters for a cost-based decision threshold, which is what iteration 004 evaluates.</li>
+<li>Fold-to-fold standard deviations (0.03–0.07 AP) are larger than several effects. Paired differences across folds are consistent in sign and are the right way to read this table.</li>
+</ol>
+<p>Decision for iteration 004: keep <strong>row + window</strong> as the candidate feature set, with censored training labels, and use the oracle with the same features as the upper bound. The label features stay available in the code for teaching purposes.</p>
 <p>Previous: <a href="../002-realistic-dgp/index.html">002</a>. Next: <a href="../004-business-evaluation/index.html">004</a>.</p>
+
 </main>
 </body>
 </html>
