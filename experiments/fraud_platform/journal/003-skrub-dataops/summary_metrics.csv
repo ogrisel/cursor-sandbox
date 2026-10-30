@@ -1,0 +1,8 @@
+,,ap,ap,ap_served,ap_served,roc_auc,roc_auc,roc_auc_served,roc_auc_served,brier,brier,calibration_ratio,calibration_ratio
+,,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std
+labels,feature_set,,,,,,,,,,,,
+censored,row,0.427,0.031,0.427,0.031,0.909,0.037,0.909,0.037,0.003,0.001,1.225,0.455
+censored,row+window,0.715,0.066,0.715,0.066,0.95,0.031,0.95,0.031,0.002,0.001,1.169,0.349
+censored,row+window+labels,0.691,0.073,0.691,0.073,0.934,0.038,0.934,0.038,0.002,0.001,1.342,0.278
+censored,row+window+leaky_labels,0.746,0.051,0.56,0.028,0.965,0.017,0.931,0.039,0.002,0.001,1.27,0.268
+oracle,row+window+labels,0.768,0.061,0.768,0.061,0.976,0.02,0.976,0.02,0.001,0.001,0.794,0.137

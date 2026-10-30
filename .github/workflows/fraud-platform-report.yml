@@ -1,0 +1,19 @@
+name: Publish fraud-platform experiment report
+
+on:
+  pull_request:
+    paths:
+      - "experiments/fraud_platform/**"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  report:
+    uses: ogrisel/cursor-sandbox/.github/workflows/publish-report.yml@main
+    with:
+      journal-path: experiments/fraud_platform/journal
+      site-title: Shared payment-platform fraud simulator

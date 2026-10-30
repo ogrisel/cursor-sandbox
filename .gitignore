@@ -1,3 +1,11 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+experiments/fraud_platform/.pixi/*
+experiments/fraud_platform/_site/
+# Regenerated event logs. The report publisher checks out the repo and does not use them.
+experiments/fraud_platform/journal/**/transactions.parquet
+experiments/fraud_platform/journal/**/transactions.csv.gz

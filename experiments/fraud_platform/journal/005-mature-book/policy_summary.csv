@@ -1,0 +1,6 @@
+policy,gain_eur,gain_vs_legacy,gain_vs_legacy_min,gain_vs_legacy_max,naive_vs_legacy,volume_eur,share_of_perfect_uplift,uplift_per_million_eur
+legacy rules,940492.9448,0.0,0.0,0.0,0.0,52721836.02,0.0,0.0
+censored model on top of legacy,974478.8538,33985.909,4278.7912,13418.256,24761.2864,52721836.02,0.3031,644.6268
+censored model replaces legacy,1006629.195,66136.2502,12869.8346,21067.4182,45396.301,52721836.02,0.5899,1254.4375
+oracle-label model replaces legacy,1014506.7964,74013.8516,13718.9552,21044.6528,50054.4436,52721836.02,0.6602,1403.8557
+perfect clairvoyant,1052602.5788,112109.634,26460.8778,31447.997,78085.1526,52721836.02,1.0,2126.4365

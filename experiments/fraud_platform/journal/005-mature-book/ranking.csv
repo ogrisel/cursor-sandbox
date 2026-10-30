@@ -1,0 +1,5 @@
+,ap,ap,roc_auc,roc_auc,calibration_ratio,calibration_ratio
+,mean,std,mean,std,mean,std
+labels,,,,,,
+censored,0.5769,0.1482,0.8804,0.0382,1.9687,0.2114
+oracle,0.6549,0.1121,0.9491,0.0255,0.7133,0.0816
