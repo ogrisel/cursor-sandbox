@@ -15,9 +15,15 @@
 </header>
 <main>
 <h1 id="shared-payment-platform-fraud-simulator">Shared payment-platform fraud simulator</h1>
-<p>This compact experiment simulates timestamped online-shop payment attempts, then contrasts a model trained on delayed/censored historical labels with a private simulator oracle.</p>
+<p>An educational, fast-running simulator of card-not-present payments on a payment platform shared by 40 online shops. A legacy rule engine is already deployed, and labels are delayed, incomplete, noisy and censored by that engine&#x27;s own decisions. On top of the simulator, a <code>skrub</code> + <code>HistGradientBoostingClassifier</code> pipeline with point-in-time window features is backtested on calendar folds, and evaluated in euros against the private ground truth that only a simulation provides.</p>
+<h2 id="main-findings-seed-0-4-21-day-test-windows">Main findings (seed 0, 4 × 21-day test windows)</h2>
+<table><thead><tr><th>Question</th><th>Answer</th><th>Iteration</th></tr></thead><tbody><tr><td>Do window aggregates matter?</td><td>Yes. AP 0.43 → 0.72 for the censored model (legacy rule score alone: 0.11).</td><td><a href="003-skrub-dataops/index.html">003</a></td></tr><tr><td>Do label-based features help despite label delay?</td><td>No. Lag-aware versions cost 0.015–0.044 AP in every fold.</td><td><a href="003-skrub-dataops/index.html">003</a></td></tr><tr><td>What does back-dating labels in features do?</td><td>It wins offline in 2 of 4 folds and loses 0.07–0.23 AP once served.</td><td><a href="003-skrub-dataops/index.html">003</a></td></tr><tr><td>How much ranking quality does censoring cost?</td><td>0.06–0.11 AP versus a model trained on the private labels.</td><td><a href="003-skrub-dataops/index.html">003</a></td></tr><tr><td>How much money does censoring cost?</td><td>Nothing measurable: +€32.0k vs +€31.8k uplift over the legacy rules (67% of the clairvoyant uplift for both).</td><td><a href="004-business-evaluation/index.html">004</a></td></tr><tr><td>How wrong is evaluation on observable labels?</td><td>It underestimates the uplift by 26%.</td><td><a href="004-business-evaluation/index.html">004</a></td></tr><tr><td>Replace the rules or layer the model on top?</td><td>Replacing earns €11.7k more over 84 days, but this is only verifiable in simulation.</td><td><a href="004-business-evaluation/index.html">004</a></td></tr></tbody></table>
 <h2 id="iterations">Iterations</h2>
-<ul><li><a href="001-simulator/index.html">001 — simulator, causal features, and backtest</a></li></ul>
+<ul><li><a href="001-simulator/index.html">001 — first simulator, causal features and backtest</a> (superseded: the problem was trivially separable)</li><li><a href="002-realistic-dgp/index.html">002 — critical review, mechanistic v2 simulator, difficulty check</a></li><li><a href="003-skrub-dataops/index.html">003 — skrub DataOps, lag-aware label features and leakage</a></li><li><a href="004-business-evaluation/index.html">004 — business evaluation, evaluation bias and calibration</a></li></ul>
+<h2 id="reproduce">Reproduce</h2>
+<pre><code>cd experiments/fraud_platform
+pixi run test       # point-in-time and simulator tests
+pixi run iter004    # about 20 s: simulate, feature store, backtests, policies, plots</code></pre>
 </main>
 </body>
 </html>

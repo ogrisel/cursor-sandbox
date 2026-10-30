@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>002-realistic-dgp</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="002-critical-review-of-001-and-a-harder-more-mechanistic-simulator">002 — Critical review of 001 and a harder, more mechanistic simulator</h1>
+<h2 id="critical-review-of-iteration-001">Critical review of iteration 001</h2>
+<p>Iteration 001 ran end to end, but did not serve the educational goal well:</p>
+<table><thead><tr><th>Problem in 001</th><th>Why it matters</th><th>Priority</th></tr></thead><tbody><tr><td>ROC AUC ≈ 1.000 for every model. A new device (&lt; 3 days) and a foreign IP almost perfectly separated fraud from legitimate traffic.</td><td>When everything is perfect there is nothing to learn about delayed labels, censoring or features. The €277 &quot;oracle gap&quot; was noise.</td><td>1</td></tr><tr><td>Window aggregates were computed in a hand-written Python loop. The backtest was a row-count <code>TimeSeriesSplit</code> with an arbitrary 2,000-row gap.</td><td>The task asks for <code>skrub</code>-based time feature engineering and backtesting. A row gap is not a calendar quantity, and label availability (system lag) was handled outside the split.</td><td>2</td></tr><tr><td>No baselines (approve all, legacy rules, perfect clairvoyant), no calibration check, no comparison of &quot;what a practitioner would measure&quot; against the truth.</td><td>Business impact cannot be read without reference points. The cost-optimal threshold assumes calibrated probabilities, and censored training sets are not calibrated.</td><td>3</td></tr><tr><td>No feature uses past *labels*, so label delay never mattered for features.</td><td>Known-fraud aggregates (for example a merchant&#x27;s chargeback rate) are standard and are exactly where system lag causes leakage bugs.</td><td>2 (folded in)</td></tr><tr><td>No exploration (random reviews or approvals), so no unbiased off-policy evaluation.</td><td>This is the principled fix for selection bias, but it needs a closed-loop simulation.</td><td>4 (next steps)</td></tr><tr><td>Single seed, few positives per fold, no uncertainty.</td><td>Small differences are not interpretable.</td><td>4</td></tr><tr><td>Repository layout: Pixi project at the repository root.</td><td>Experiments should be self-contained.</td><td>Housekeeping (done)</td></tr></tbody></table>
+<p>Iterations 002–004 address priorities 1–3.</p>
+<h2 id="what-changed-in-the-simulator">What changed in the simulator</h2>
+<p>The new simulator (<code>src/fraud_sim/simulator.py</code>) is still vectorised and runs in about 1.5 s for 200k attempts.</p>
+<ul><li>**Entities.** 6,000 customers with heavy-tailed activity, a personal spending scale, four favourite shops, a long-lived primary device, and some accounts opened during the period. There are 40 shops in 8 categories, each with an amount multiplier and a *fraud appeal* (weak checkout security).</li><li>**Legitimate noise that overlaps fraud signals.** 5% of legitimate payments come from a brand-new device, and 5% from abroad (travel).</li><li>**Three fraud modus operandi**, organised in campaigns that hit 1–3 stolen cards each:</li></ul>
+<p>  - *card testing*: 2–5 micro-payments (€0.5–5) on a digital shop within 30 minutes, followed by cash-out attempts;   - *cash-out*: 1–4 larger payments over up to 48 hours;   - *stealth account takeover*: the fraudster uses the victim&#x27;s own device and country and spends about 2× the victim&#x27;s usual amount over a week.</p>
+<ul><li>**Adaptive fraudsters (concept drift).** The share of campaigns using a foreign IP falls linearly from 70% to 25% over the 180 days, eroding the main legacy rule. 25% of fraud attempts spoof an old device fingerprint.</li><li>**Legacy policy.** A rule score with noise. It declines above a threshold, sends the riskiest remaining attempts to an analyst queue with a *daily capacity* of 20 reviews, and approves the rest.</li><li>**Feedback.** Review verdicts arrive 2–3 days later. Chargebacks arrive with a log-normal delay (median ≈ 18 days, long tail) for 80% of approved fraud. 0.1% of legitimate approved payments are disputed as fraud (friendly fraud, i.e. label noise). Declined attempts are never labelled.</li></ul>
+<p>Generated history (seed 0):</p>
+<table><thead><tr><th>Quantity</th><th>Value</th><th>Real-world anchor</th></tr></thead><tbody><tr><td>Attempts over 180 days</td><td>201,204</td><td>—</td></tr><tr><td>Daily volume</td><td>≈ €93k</td><td>Small platform</td></tr><tr><td>Attempted-fraud rate (count)</td><td>0.43%</td><td>—</td></tr><tr><td>Realized fraud rate after legacy (count / value)</td><td>0.24% / 0.37%</td><td>EU card fraud is 0.015% / 0.033% overall (<a href="https://www.ecb.europa.eu/press/intro/publications/pdf/ecb.ebaecb202512.en.pdf">EBA–ECB 2025</a>), with card-not-present payments far above average. We are about 10× higher on purpose, to have about 100 test frauds per 3-week fold.</td></tr><tr><td>Fraud stopped by legacy rules</td><td>44%</td><td>—</td></tr><tr><td>Fraud mix (card testing / cash-out / stealth)</td><td>495 / 294 / 78</td><td>—</td></tr></tbody></table>
+<h2 id="difficulty-check">Difficulty check</h2>
+<p>Four calendar folds (cutoffs on days 96, 117, 138 and 159, each followed by a 21-day test window). There is no tuning, and the model is a default <code>HistGradientBoostingClassifier</code>. &quot;Censored&quot; trains on the labels that are *known at the cutoff* (<code>fraud_sim.backtest.label_as_known_at</code>). &quot;Oracle&quot; trains on the private ground truth of all past attempts, including declined ones. All rows are scored on the full ground truth of the test window.</p>
+<p>Mean (std) over the 4 folds:</p>
+<table><thead><tr><th>Model</th><th>Features</th><th>ROC AUC</th><th>Average precision</th></tr></thead><tbody><tr><td>Legacy rule score</td><td>—</td><td>0.838 (0.045)</td><td>0.111 (0.045)</td></tr><tr><td>HGB, censored labels</td><td>row-level</td><td>0.885 (0.026)</td><td>0.367 (0.008)</td></tr><tr><td>HGB, censored labels</td><td>row + windows</td><td>0.821 (0.014)</td><td>0.586 (0.068)</td></tr><tr><td>HGB, oracle labels</td><td>row-level</td><td>0.831 (0.099)</td><td>0.286 (0.073)</td></tr><tr><td>HGB, oracle labels</td><td>row + windows</td><td>0.928 (0.029)</td><td>0.660 (0.055)</td></tr></tbody></table>
+<p>Raw values: <a href="https://github.com/ogrisel/cursor-sandbox/tree/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/002-realistic-dgp/fold_metrics.csv"><code>fold_metrics.csv</code></a>, <a href="summary.json"><code>summary.json</code></a>.</p>
+<h2 id="analysis">Analysis</h2>
+<ul><li>The problem is no longer trivial. The legacy score ranks well globally (ROC AUC 0.84) but is very imprecise at the top (AP 0.11). That is typical of rule engines, and it is what makes the analyst queue expensive.</li><li>Window features carry most of the signal (AP +0.2 to +0.4): velocity of card testing, device reuse across victims, and spending relative to the customer&#x27;s own 30-day mean.</li><li>With window features, the censored model loses about 0.1 ROC AUC and 0.07 AP relative to the oracle. The ROC AUC loss comes from the region the legacy policy *declined*: those attempts are absent from the censored training set, so the model has to extrapolate there.</li><li>With only about 100 test frauds per fold, the fold-to-fold standard deviation is 0.03–0.10. Differences smaller than that should not be read as findings. Iteration 004 reports per-fold paired differences.</li></ul>
+<p>Runtime: 8 s end to end (simulation + features 4.3 s, 16 model fits).</p>
+<p>Next: <a href="../003-skrub-dataops/index.html">iteration 003</a> moves feature engineering and backtesting into <code>skrub</code> and adds lag-aware label features.</p>
+</main>
+</body>
+</html>
