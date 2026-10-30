@@ -1,0 +1,986 @@
+{
+  "meta": {
+    "host": "ip-10-3-84-61",
+    "python": "3.12.15",
+    "torch": "2.14.1+cu130",
+    "gpu": "NVIDIA L4",
+    "tf32": false
+  },
+  "case": {
+    "name": "feature-heavy",
+    "n_samples": 65536,
+    "n_clusters": 4096,
+    "n_features": 16384
+  },
+  "runs": [
+    {
+      "status": "ok",
+      "median_seconds": 1.0782587280273437,
+      "median_peak_extra_bytes": 268976128,
+      "profiles": [
+        {
+          "seconds": 1.0584852294921876,
+          "peak_extra_bytes": 268976128,
+          "warmup": true
+        },
+        {
+          "seconds": 1.0775091552734375,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        },
+        {
+          "seconds": 1.07900830078125,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-eager-256x4096",
+      "tile_n": 256,
+      "tile_k": 4096,
+      "mode": "eager",
+      "compile": null
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.9184384155273437,
+      "median_peak_extra_bytes": 268976128,
+      "profiles": [
+        {
+          "seconds": 0.892506103515625,
+          "peak_extra_bytes": 268976128,
+          "warmup": true
+        },
+        {
+          "seconds": 0.9169827880859375,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        },
+        {
+          "seconds": 0.91989404296875,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-eager-1024x4096",
+      "tile_n": 1024,
+      "tile_k": 4096,
+      "mode": "eager",
+      "compile": null
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.9398139038085938,
+      "median_peak_extra_bytes": 268976128,
+      "profiles": [
+        {
+          "seconds": 0.9196830444335937,
+          "peak_extra_bytes": 268976128,
+          "warmup": true
+        },
+        {
+          "seconds": 0.9364818115234375,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        },
+        {
+          "seconds": 0.94314599609375,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-eager-4096x4096",
+      "tile_n": 4096,
+      "tile_k": 4096,
+      "mode": "eager",
+      "compile": null
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.9669606323242188,
+      "median_peak_extra_bytes": 2148810752,
+      "profiles": [
+        {
+          "seconds": 0.9279672241210938,
+          "peak_extra_bytes": 2148810752,
+          "warmup": true
+        },
+        {
+          "seconds": 0.9674721069335938,
+          "peak_extra_bytes": 2148810752,
+          "warmup": false
+        },
+        {
+          "seconds": 0.9664491577148437,
+          "peak_extra_bytes": 2148810752,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-eager-65536x4096",
+      "tile_n": 65536,
+      "tile_k": 4096,
+      "mode": "eager",
+      "compile": null
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.9463285522460938,
+      "median_peak_extra_bytes": 67649536,
+      "profiles": [
+        {
+          "seconds": 0.907905029296875,
+          "peak_extra_bytes": 67649536,
+          "warmup": true
+        },
+        {
+          "seconds": 0.9454325561523438,
+          "peak_extra_bytes": 67649536,
+          "warmup": false
+        },
+        {
+          "seconds": 0.9472245483398437,
+          "peak_extra_bytes": 67649536,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-eager-4096x1024",
+      "tile_n": 4096,
+      "tile_k": 1024,
+      "mode": "eager",
+      "compile": null
+    },
+    {
+      "status": "ok",
+      "median_seconds": 1.0981278686523437,
+      "median_peak_extra_bytes": 17317888,
+      "profiles": [
+        {
+          "seconds": 1.07156689453125,
+          "peak_extra_bytes": 17317888,
+          "warmup": true
+        },
+        {
+          "seconds": 1.1001917724609376,
+          "peak_extra_bytes": 17317888,
+          "warmup": false
+        },
+        {
+          "seconds": 1.09606396484375,
+          "peak_extra_bytes": 17317888,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-eager-4096x256",
+      "tile_n": 4096,
+      "tile_k": 256,
+      "mode": "eager",
+      "compile": null
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.96325732421875,
+      "median_peak_extra_bytes": 67649536,
+      "profiles": [
+        {
+          "seconds": 0.9305211181640625,
+          "peak_extra_bytes": 67649536,
+          "warmup": true
+        },
+        {
+          "seconds": 0.9624114990234375,
+          "peak_extra_bytes": 67649536,
+          "warmup": false
+        },
+        {
+          "seconds": 0.9641031494140625,
+          "peak_extra_bytes": 67649536,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-eager-1024x1024",
+      "tile_n": 1024,
+      "tile_k": 1024,
+      "mode": "eager",
+      "compile": null
+    },
+    {
+      "status": "ok",
+      "median_seconds": 1.3015439453125,
+      "median_peak_extra_bytes": 17317888,
+      "profiles": [
+        {
+          "seconds": 1.2694989013671876,
+          "peak_extra_bytes": 17317888,
+          "warmup": true
+        },
+        {
+          "seconds": 1.29790771484375,
+          "peak_extra_bytes": 17317888,
+          "warmup": false
+        },
+        {
+          "seconds": 1.30518017578125,
+          "peak_extra_bytes": 17317888,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-eager-1024x256",
+      "tile_n": 1024,
+      "tile_k": 256,
+      "mode": "eager",
+      "compile": null
+    },
+    {
+      "status": "ok",
+      "median_seconds": 1.0910182495117189,
+      "median_peak_extra_bytes": 268976128,
+      "profiles": [
+        {
+          "seconds": 1.0600233154296874,
+          "peak_extra_bytes": 268976128,
+          "warmup": true
+        },
+        {
+          "seconds": 1.091345458984375,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        },
+        {
+          "seconds": 1.0906910400390626,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-compiled-256x4096",
+      "tile_n": 256,
+      "tile_k": 4096,
+      "mode": "compiled",
+      "compile": {
+        "compile_seconds": 9.045020611999917,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.9395875854492187,
+      "median_peak_extra_bytes": 268976128,
+      "profiles": [
+        {
+          "seconds": 0.8966441040039063,
+          "peak_extra_bytes": 268976128,
+          "warmup": true
+        },
+        {
+          "seconds": 0.9383413696289062,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        },
+        {
+          "seconds": 0.9408338012695312,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-compiled-1024x4096",
+      "tile_n": 1024,
+      "tile_k": 4096,
+      "mode": "compiled",
+      "compile": {
+        "compile_seconds": 0.45825824899998224,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.9391375427246094,
+      "median_peak_extra_bytes": 268976128,
+      "profiles": [
+        {
+          "seconds": 0.9287301025390625,
+          "peak_extra_bytes": 268976128,
+          "warmup": true
+        },
+        {
+          "seconds": 0.93715966796875,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        },
+        {
+          "seconds": 0.9411154174804688,
+          "peak_extra_bytes": 268976128,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-compiled-4096x4096",
+      "tile_n": 4096,
+      "tile_k": 4096,
+      "mode": "compiled",
+      "compile": {
+        "compile_seconds": 0.47672077699985493,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.9499622497558593,
+      "median_peak_extra_bytes": 1075855360,
+      "profiles": [
+        {
+          "seconds": 0.948485107421875,
+          "peak_extra_bytes": 1075855360,
+          "warmup": true
+        },
+        {
+          "seconds": 0.9491978149414062,
+          "peak_extra_bytes": 1075855360,
+          "warmup": false
+        },
+        {
+          "seconds": 0.9507266845703125,
+          "peak_extra_bytes": 1075855360,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-compiled-65536x4096",
+      "tile_n": 65536,
+      "tile_k": 4096,
+      "mode": "compiled",
+      "compile": {
+        "compile_seconds": 1.3501782579999144,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.9279426574707031,
+      "median_peak_extra_bytes": 67649536,
+      "profiles": [
+        {
+          "seconds": 0.8981799926757813,
+          "peak_extra_bytes": 67649536,
+          "warmup": true
+        },
+        {
+          "seconds": 0.9254686889648438,
+          "peak_extra_bytes": 67649536,
+          "warmup": false
+        },
+        {
+          "seconds": 0.9304166259765625,
+          "peak_extra_bytes": 67649536,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-compiled-4096x1024",
+      "tile_n": 4096,
+      "tile_k": 1024,
+      "mode": "compiled",
+      "compile": {
+        "compile_seconds": 0.39475072200002614,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 1.1072009887695313,
+      "median_peak_extra_bytes": 17317888,
+      "profiles": [
+        {
+          "seconds": 1.076810791015625,
+          "peak_extra_bytes": 17317888,
+          "warmup": true
+        },
+        {
+          "seconds": 1.108053955078125,
+          "peak_extra_bytes": 17317888,
+          "warmup": false
+        },
+        {
+          "seconds": 1.1063480224609374,
+          "peak_extra_bytes": 17317888,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-compiled-4096x256",
+      "tile_n": 4096,
+      "tile_k": 256,
+      "mode": "compiled",
+      "compile": {
+        "compile_seconds": 0.4356265959997927,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.9672535095214844,
+      "median_peak_extra_bytes": 67649536,
+      "profiles": [
+        {
+          "seconds": 0.9392904663085937,
+          "peak_extra_bytes": 67649536,
+          "warmup": true
+        },
+        {
+          "seconds": 0.9667625122070312,
+          "peak_extra_bytes": 67649536,
+          "warmup": false
+        },
+        {
+          "seconds": 0.9677445068359375,
+          "peak_extra_bytes": 67649536,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-compiled-1024x1024",
+      "tile_n": 1024,
+      "tile_k": 1024,
+      "mode": "compiled",
+      "compile": {
+        "compile_seconds": 0.3971536940000533,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 1.33276416015625,
+      "median_peak_extra_bytes": 17317888,
+      "profiles": [
+        {
+          "seconds": 1.28521630859375,
+          "peak_extra_bytes": 17317888,
+          "warmup": true
+        },
+        {
+          "seconds": 1.3171834716796875,
+          "peak_extra_bytes": 17317888,
+          "warmup": false
+        },
+        {
+          "seconds": 1.3483448486328125,
+          "peak_extra_bytes": 17317888,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-compiled-1024x256",
+      "tile_n": 1024,
+      "tile_k": 256,
+      "mode": "compiled",
+      "compile": {
+        "compile_seconds": 0.44321086000013565,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 1.0424130859375,
+      "median_peak_extra_bytes": 4295245824,
+      "profiles": [
+        {
+          "seconds": 1.02068017578125,
+          "peak_extra_bytes": 4295245824,
+          "warmup": true
+        },
+        {
+          "seconds": 1.0505400390625,
+          "peak_extra_bytes": 4295245824,
+          "warmup": false
+        },
+        {
+          "seconds": 1.0342861328125,
+          "peak_extra_bytes": 4295245824,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-eager-full",
+      "mode": "eager"
+    }
+  ],
+  "running": [
+    {
+      "status": "ok",
+      "median_seconds": 6.84079736328125,
+      "median_peak_extra_bytes": 2686976,
+      "profiles": [
+        {
+          "seconds": 6.79889599609375,
+          "peak_extra_bytes": 2686976,
+          "warmup": true
+        },
+        {
+          "seconds": 6.84079736328125,
+          "peak_extra_bytes": 2686976,
+          "warmup": false
+        }
+      ],
+      "name": "running-tiled-k16",
+      "tile_k": 16,
+      "kind": "tiled",
+      "compile": {
+        "compile_seconds": 4.0275635870000315,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 6.8304853515625,
+      "median_peak_extra_bytes": 1573376,
+      "profiles": [
+        {
+          "seconds": 6.78411669921875,
+          "peak_extra_bytes": 1573376,
+          "warmup": true
+        },
+        {
+          "seconds": 6.8304853515625,
+          "peak_extra_bytes": 1573376,
+          "warmup": false
+        }
+      ],
+      "name": "running-stateful-k16",
+      "tile_k": 16,
+      "kind": "stateful",
+      "compile": {
+        "compile_seconds": 2.9346561929999098,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 5.98447705078125,
+      "median_peak_extra_bytes": 2686976,
+      "profiles": [
+        {
+          "seconds": 5.95344482421875,
+          "peak_extra_bytes": 2686976,
+          "warmup": true
+        },
+        {
+          "seconds": 5.98447705078125,
+          "peak_extra_bytes": 2686976,
+          "warmup": false
+        }
+      ],
+      "name": "running-tiled-k32",
+      "tile_k": 32,
+      "kind": "tiled",
+      "compile": {
+        "compile_seconds": 6.063690677000068,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 6.60387548828125,
+      "median_peak_extra_bytes": 1573376,
+      "profiles": [
+        {
+          "seconds": 6.62918017578125,
+          "peak_extra_bytes": 1573376,
+          "warmup": true
+        },
+        {
+          "seconds": 6.60387548828125,
+          "peak_extra_bytes": 1573376,
+          "warmup": false
+        }
+      ],
+      "name": "running-stateful-k32",
+      "tile_k": 32,
+      "kind": "stateful",
+      "compile": {
+        "compile_seconds": 6.014820923000116,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 10.104646484375,
+      "median_peak_extra_bytes": 19202048,
+      "profiles": [
+        {
+          "seconds": 10.033439453125,
+          "peak_extra_bytes": 19202048,
+          "warmup": true
+        },
+        {
+          "seconds": 10.104646484375,
+          "peak_extra_bytes": 19202048,
+          "warmup": false
+        }
+      ],
+      "name": "running-tiled-k64",
+      "tile_k": 64,
+      "kind": "tiled",
+      "compile": {
+        "compile_seconds": 13.027621861999933,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 10.15725,
+      "median_peak_extra_bytes": 18350592,
+      "profiles": [
+        {
+          "seconds": 10.088330078125,
+          "peak_extra_bytes": 18350592,
+          "warmup": true
+        },
+        {
+          "seconds": 10.15725,
+          "peak_extra_bytes": 18350592,
+          "warmup": false
+        }
+      ],
+      "name": "running-stateful-k64",
+      "tile_k": 64,
+      "kind": "stateful",
+      "compile": {
+        "compile_seconds": 9.62482779700008,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 10.1913115234375,
+      "median_peak_extra_bytes": 35717120,
+      "profiles": [
+        {
+          "seconds": 10.11248828125,
+          "peak_extra_bytes": 35717120,
+          "warmup": true
+        },
+        {
+          "seconds": 10.1913115234375,
+          "peak_extra_bytes": 35717120,
+          "warmup": false
+        }
+      ],
+      "name": "running-tiled-k128",
+      "tile_k": 128,
+      "kind": "tiled",
+      "compile": {
+        "compile_seconds": 27.711695971999916,
+        "error": null
+      }
+    },
+    {
+      "status": "ok",
+      "median_seconds": 10.1843623046875,
+      "median_peak_extra_bytes": 34865664,
+      "profiles": [
+        {
+          "seconds": 10.131779296875,
+          "peak_extra_bytes": 34865664,
+          "warmup": true
+        },
+        {
+          "seconds": 10.1843623046875,
+          "peak_extra_bytes": 34865664,
+          "warmup": false
+        }
+      ],
+      "name": "running-stateful-k128",
+      "tile_k": 128,
+      "kind": "stateful",
+      "compile": {
+        "compile_seconds": 21.693368631999874,
+        "error": null
+      }
+    }
+  ],
+  "profiles": [
+    {
+      "name": "compiled-gemm-tile-4096x1024",
+      "compile": {
+        "compile_seconds": 0.905613830999755,
+        "error": null
+      },
+      "kernels": [
+        {
+          "name": "ampere_sgemm_128x128_tn",
+          "count": 1,
+          "device_time_us": 10250.516
+        },
+        {
+          "name": "triton_per_fused_amin_argmin_mul_sub_unsqueeze_0",
+          "count": 1,
+          "device_time_us": 13.855999999999767
+        },
+        {
+          "name": "Memset (Device)",
+          "count": 1,
+          "device_time_us": 0.5119999999997162
+        }
+      ]
+    },
+    {
+      "name": "compiled-running-stateful-k32",
+      "compile": {
+        "compile_seconds": 1.046922171999995,
+        "error": null
+      },
+      "kernels": [
+        {
+          "name": "triton_red_fused_add_full_lift_fresh_lt_mul_select_sub_sum_where_zeros_0",
+          "count": 1,
+          "device_time_us": 49473.279
+        }
+      ]
+    }
+  ],
+  "lloyd": [
+    {
+      "status": "ok",
+      "median_seconds": 1.72010595703125,
+      "median_peak_extra_bytes": 1879642112,
+      "profiles": [
+        {
+          "seconds": 1.8546483154296876,
+          "peak_extra_bytes": 1888161792,
+          "warmup": true
+        },
+        {
+          "seconds": 1.72010595703125,
+          "peak_extra_bytes": 1879642112,
+          "warmup": false
+        }
+      ],
+      "name": "gemm-one-hot",
+      "phases": [
+        {
+          "backend": "torch",
+          "seconds": 1.1028961181640624,
+          "peak_extra_bytes": 4303765504,
+          "retained_extra_bytes": 9043968,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.7509227294921875,
+          "peak_extra_bytes": 1879117824,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        },
+        {
+          "backend": "torch",
+          "seconds": 1.0415574951171875,
+          "peak_extra_bytes": 4295245824,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.6776483764648438,
+          "peak_extra_bytes": 1879117824,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 1.7035048828125,
+      "median_peak_extra_bytes": 453513728,
+      "profiles": [
+        {
+          "seconds": 1.6514693603515624,
+          "peak_extra_bytes": 453513728,
+          "warmup": true
+        },
+        {
+          "seconds": 1.7035048828125,
+          "peak_extra_bytes": 453513728,
+          "warmup": false
+        }
+      ],
+      "name": "tiled-4096x1024",
+      "phases": [
+        {
+          "backend": "torch",
+          "seconds": 0.9472296752929688,
+          "peak_extra_bytes": 67649536,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.7032545166015625,
+          "peak_extra_bytes": 452989440,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.9816770629882813,
+          "peak_extra_bytes": 67649536,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.7209891967773437,
+          "peak_extra_bytes": 452989440,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 1.8870118408203125,
+      "median_peak_extra_bytes": 453513728,
+      "profiles": [
+        {
+          "seconds": 1.837877197265625,
+          "peak_extra_bytes": 453513728,
+          "warmup": true
+        },
+        {
+          "seconds": 1.8870118408203125,
+          "peak_extra_bytes": 453513728,
+          "warmup": false
+        }
+      ],
+      "name": "tiled-256x4096",
+      "phases": [
+        {
+          "backend": "torch",
+          "seconds": 1.119193115234375,
+          "peak_extra_bytes": 268976128,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.7177769165039063,
+          "peak_extra_bytes": 452989440,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        },
+        {
+          "backend": "torch",
+          "seconds": 1.168689208984375,
+          "peak_extra_bytes": 268976128,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.7174348754882812,
+          "peak_extra_bytes": 452989440,
+          "retained_extra_bytes": 268435456,
+          "phase": "update"
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "median_seconds": 0.07126623916625976,
+      "median_peak_extra_bytes": 164106752,
+      "profiles": [
+        {
+          "seconds": 0.06982844543457031,
+          "peak_extra_bytes": 164106752,
+          "warmup": true
+        },
+        {
+          "seconds": 0.07101631927490235,
+          "peak_extra_bytes": 164106752,
+          "warmup": false
+        },
+        {
+          "seconds": 0.07151615905761718,
+          "peak_extra_bytes": 164106752,
+          "warmup": false
+        }
+      ],
+      "name": "compare-lloyd-step",
+      "case": {
+        "name": "cython-compare",
+        "n_samples": 65536,
+        "n_clusters": 1024,
+        "n_features": 2048
+      },
+      "phases": [
+        {
+          "backend": "torch",
+          "seconds": 0.05092784118652344,
+          "peak_extra_bytes": 8916992,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.01821900749206543,
+          "peak_extra_bytes": 163582464,
+          "retained_extra_bytes": 8388608,
+          "phase": "update"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.050508800506591796,
+          "peak_extra_bytes": 8916992,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.019911680221557617,
+          "peak_extra_bytes": 163582464,
+          "retained_extra_bytes": 8388608,
+          "phase": "update"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.05034188842773438,
+          "peak_extra_bytes": 8916992,
+          "retained_extra_bytes": 524288,
+          "phase": "assign"
+        },
+        {
+          "backend": "torch",
+          "seconds": 0.020617216110229493,
+          "peak_extra_bytes": 163582464,
+          "retained_extra_bytes": 8388608,
+          "phase": "update"
+        }
+      ],
+      "labels": "compare-labels-torch.npy"
+    }
+  ],
+  "compare_case": {
+    "name": "cython-compare",
+    "n_samples": 65536,
+    "n_clusters": 1024,
+    "n_features": 2048
+  },
+  "plusplus": {
+    "status": "ok",
+    "median_seconds": 10.3426845703125,
+    "median_peak_extra_bytes": 2147745792,
+    "profiles": [
+      {
+        "seconds": 10.5412451171875,
+        "peak_extra_bytes": 2147745792,
+        "warmup": true
+      },
+      {
+        "seconds": 10.3426845703125,
+        "peak_extra_bytes": 2147745792,
+        "warmup": false
+      }
+    ],
+    "name": "kmeans-plusplus",
+    "case": {
+      "name": "kmeans-plusplus",
+      "n_samples": 65536,
+      "n_clusters": 1024,
+      "n_features": 8192
+    }
+  },
+  "plusplus_before_norm_hoist": {
+    "median_seconds": 37.52251953125,
+    "median_peak_extra_bytes": 4295229440,
+    "note": "Recomputed X*X and copied candidate indices to the host for every center."
+  }
+}

@@ -1,0 +1,588 @@
+"""Correctness checks for one Lloyd iteration. GPU backends are optional."""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+from array_api_compat import array_namespace
+
+from kmeans_lloyd.iteration import (
+    assign_gemm,
+    assign_gemm_tiled,
+    assign_homogeneous_tiled,
+    assign_naive,
+    assign_running,
+    assign_running_stateful,
+    assign_running_tiled,
+    assign_tiled,
+    augment_for_gemm_scores,
+    broadcast_distances_to_candidates_tiled,
+    broadcast_scores_argmin,
+    fit_kmeans,
+    fit_lloyd,
+    hierarchical_weighted_draw,
+    inertia,
+    kmeans_plusplus,
+    lloyd_iteration,
+    lloyd_step,
+    lloyd_step_interleaved,
+    scalable_kmeans_plusplus,
+    stable_distances_to_candidates,
+    stable_gemm_scores_argmin,
+    update_centroids,
+    update_centroids_tiled,
+)
+
+
+def _blobs(n_per=12, d=6, k=3, dtype=np.float64, seed=0):
+    rng = np.random.default_rng(seed)
+    centers = np.array(
+        [[-4.0, 0.0, 1.0, 0.5, -1.0, 2.0], [3.0, 3.0, -2.0, 0.0, 1.0, -1.0], [0.5, -3.0, 2.5, 4.0, 0.0, 0.5]],
+        dtype=dtype,
+    )[:k, :d]
+    pieces = []
+    for center in centers:
+        pieces.append(center + 0.05 * rng.standard_normal((n_per, d)))
+    x = np.concatenate(pieces, axis=0).astype(dtype)
+    initial = x[:k].copy()
+    return x, initial
+
+
+def _to_numpy(array):
+    module = type(array).__module__
+    if module.startswith("torch"):
+        return array.detach().cpu().numpy()
+    if module.startswith("cupy"):
+        return array.get()
+    return np.asarray(array)
+
+
+def _as_numpy_namespace(array):
+    import array_api_compat.numpy as xp
+
+    return xp.asarray(array)
+
+
+def test_naive_matches_explicit_loop():
+    x_np, c_np = _blobs()
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    labels = _to_numpy(assign_naive(x, c))
+    expected = np.empty(x_np.shape[0], dtype=np.int64)
+    for i, row in enumerate(x_np):
+        dist = np.sum((c_np - row) ** 2, axis=1)
+        expected[i] = np.argmin(dist)
+    np.testing.assert_array_equal(labels, expected)
+
+
+def test_tiled_and_running_match_naive():
+    x_np, c_np = _blobs(n_per=10, d=5, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    reference = _to_numpy(assign_naive(x, c))
+    tiled = _to_numpy(assign_tiled(x, c, tile_n=7, tile_k=2, distance="broadcast"))
+    running = _to_numpy(assign_running(x, c))
+    retiled = _to_numpy(assign_running_tiled(x, c, tile_k=2))
+    np.testing.assert_array_equal(tiled, reference)
+    np.testing.assert_array_equal(running, reference)
+    np.testing.assert_array_equal(retiled, reference)
+
+
+def test_gemm_matches_naive_in_float64():
+    x_np, c_np = _blobs()
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    np.testing.assert_array_equal(_to_numpy(assign_gemm(x, c)), _to_numpy(assign_naive(x, c)))
+
+
+def test_empty_cluster_keeps_previous_centroid():
+    x_np = np.array([[0.0, 0.0], [0.1, -0.1], [5.0, 5.0]], dtype=np.float64)
+    c_np = np.array([[0.0, 0.0], [1.0, 1.0], [100.0, -100.0]], dtype=np.float64)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    updated, labels = lloyd_iteration(x, c)
+    updated = _to_numpy(updated)
+    labels = _to_numpy(labels)
+    assert set(labels.tolist()) == {0, 1}
+    np.testing.assert_allclose(updated[2], c_np[2])
+    members = x_np[labels == 0]
+    np.testing.assert_allclose(updated[0], members.mean(axis=0))
+
+
+def test_update_centroids_mean():
+    x_np = np.array([[0.0, 0.0], [2.0, 4.0], [10.0, 0.0]], dtype=np.float64)
+    labels_np = np.array([0, 0, 1], dtype=np.int64)
+    c_np = np.zeros((2, 2), dtype=np.float64)
+    xp = array_namespace(_as_numpy_namespace(x_np))
+    updated = update_centroids(
+        _as_numpy_namespace(x_np),
+        xp.asarray(labels_np),
+        _as_numpy_namespace(c_np),
+    )
+    np.testing.assert_allclose(_to_numpy(updated)[0], [1.0, 2.0])
+    np.testing.assert_allclose(_to_numpy(updated)[1], [10.0, 0.0])
+
+
+def test_gemm_tiled_matches_naive_when_tiles_do_not_divide():
+    x_np, c_np = _blobs(n_per=9, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    reference = _to_numpy(assign_naive(x, c))
+    tiled = _to_numpy(assign_gemm_tiled(x, c, tile_n=5, tile_k=2))
+    stateful = _to_numpy(assign_running_stateful(x, c, tile_k=2))
+    np.testing.assert_array_equal(tiled, reference)
+    np.testing.assert_array_equal(stateful, reference)
+
+
+def test_homogeneous_gemm_matches_tiled_assignment():
+    x_np, c_np = _blobs(n_per=9, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    xp = array_namespace(x)
+    expected = assign_gemm_tiled(x, c, tile_n=5, tile_k=2)
+    actual = assign_homogeneous_tiled(
+        augment_for_gemm_scores(xp, x),
+        c,
+        tile_n=5,
+        tile_k=2,
+    )
+    np.testing.assert_array_equal(_to_numpy(actual), _to_numpy(expected))
+    with_norms = xp.concat(
+        (augment_for_gemm_scores(xp, x), xp.sum(x * x, axis=1)[:, None]),
+        axis=1,
+    )
+    np.testing.assert_array_equal(
+        _to_numpy(assign_homogeneous_tiled(with_norms, c, tile_n=5, tile_k=2)),
+        _to_numpy(expected),
+    )
+    augmented = augment_for_gemm_scores(xp, x)
+    expected_centers, expected_labels = lloyd_step(
+        x, c, tile_n=5, tile_k=2, update_tile_k=2
+    )
+    actual_centers, actual_labels = lloyd_step(
+        x,
+        c,
+        tile_n=5,
+        tile_k=2,
+        update_tile_k=2,
+        assigner=lambda centers, tile_n, tile_k: assign_homogeneous_tiled(
+            augmented, centers, tile_n, tile_k
+        ),
+    )
+    np.testing.assert_array_equal(
+        _to_numpy(actual_labels), _to_numpy(expected_labels)
+    )
+    np.testing.assert_allclose(
+        _to_numpy(actual_centers), _to_numpy(expected_centers)
+    )
+
+
+def test_broadcast_hooks_match_direct_distances():
+    x_np, c_np = _blobs(n_per=9, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    xp = array_namespace(x)
+    labels = assign_gemm_tiled(
+        x,
+        c,
+        tile_n=5,
+        tile_k=2,
+        step=lambda x_tile, c_tile, c_norm: broadcast_scores_argmin(
+            xp, x_tile, c_tile, c_norm
+        ),
+    )
+    np.testing.assert_array_equal(_to_numpy(labels), _to_numpy(assign_naive(x, c)))
+
+    candidates = c[:2, :]
+    expected = np.sum((x_np[:, None, :] - c_np[None, :2, :]) ** 2, axis=2)
+    actual = broadcast_distances_to_candidates_tiled(
+        xp, x, xp.sum(x * x, axis=1), candidates, tile_n=5
+    )
+    np.testing.assert_allclose(_to_numpy(actual), expected)
+
+
+def test_stable_gemm_recomputes_far_origin_distances():
+    rng = np.random.default_rng(0)
+    unique = (rng.uniform(size=(10, 2)) + 1e3).astype(np.float32)
+    x = _as_numpy_namespace(np.repeat(unique, 50, axis=0))
+    xp = array_namespace(x)
+    stats = {}
+    labels, distances = stable_gemm_scores_argmin(
+        xp,
+        x,
+        x[:3, :],
+        xp.sum(x[:3, :] * x[:3, :], axis=1),
+        stats=stats,
+    )
+    expected = np.sum(
+        (np.asarray(x)[:, None, :] - np.asarray(x)[:3][None, :, :]) ** 2,
+        axis=2,
+    )
+    np.testing.assert_array_equal(_to_numpy(labels), np.argmin(expected, axis=1))
+    np.testing.assert_allclose(
+        _to_numpy(distances), np.min(expected, axis=1), rtol=1e-6
+    )
+    assert stats["recomputed_pairs"] > 0
+
+    centers, _ = kmeans_plusplus(
+        x,
+        10,
+        np.random.default_rng(0),
+        distance=lambda xp, X, x_norm, candidates: stable_distances_to_candidates(
+            xp, X, x_norm, candidates
+        ),
+    )
+    assert np.unique(_to_numpy(centers), axis=0).shape[0] == 10
+
+
+def test_tiled_update_matches_one_hot_update():
+    x_np = np.array([[0.0, 0.0], [2.0, 4.0], [10.0, 0.0], [11.0, 1.0]], dtype=np.float64)
+    labels_np = np.array([0, 0, 1, 2], dtype=np.int64)
+    c_np = np.array([[9.0, 9.0], [8.0, 8.0], [7.0, 7.0], [6.0, 6.0]], dtype=np.float64)
+    x = _as_numpy_namespace(x_np)
+    labels = array_namespace(x).asarray(labels_np)
+    c = _as_numpy_namespace(c_np)
+    full = _to_numpy(update_centroids(x, labels, c))
+    tiled = _to_numpy(update_centroids_tiled(x, labels, c, tile_k=3))
+    chunked = _to_numpy(update_centroids_tiled(x, labels, c, tile_k=3, tile_n=3))
+    np.testing.assert_allclose(tiled, full)
+    np.testing.assert_allclose(chunked, full)
+    np.testing.assert_allclose(tiled[3], c_np[3])
+
+
+def test_tiled_update_reassigns_farthest_point_and_adjusts_donor():
+    x_np = np.array([[0.0], [2.0], [4.0], [10.0]], dtype=np.float64)
+    labels_np = np.array([0, 0, 0, 1], dtype=np.int64)
+    c_np = np.array([[0.0], [10.0], [100.0]], dtype=np.float64)
+    x = _as_numpy_namespace(x_np)
+    labels = array_namespace(x).asarray(labels_np)
+    c = _as_numpy_namespace(c_np)
+    stats = {}
+    updated = update_centroids_tiled(
+        x,
+        labels,
+        c,
+        tile_k=2,
+        tile_n=2,
+        reassign_empty=True,
+        stats=stats,
+    )
+    # X[2] is farthest from its assigned old center. As in scikit-learn's
+    # relocation bookkeeping, it leaves donor 0 and becomes the singleton
+    # center for previously empty cluster 2.
+    np.testing.assert_allclose(_to_numpy(updated), [[1.0], [10.0], [4.0]])
+    assert stats == {"empty_events": 1, "reassignments": 1}
+
+
+def test_tiled_update_skips_pointless_zero_distance_reassignment():
+    x_np = np.array([[0.0], [0.0]], dtype=np.float64)
+    labels_np = np.array([0, 0], dtype=np.int64)
+    c_np = np.array([[0.0], [1.0]], dtype=np.float64)
+    x = _as_numpy_namespace(x_np)
+    labels = array_namespace(x).asarray(labels_np)
+    updated = update_centroids_tiled(
+        x, labels, _as_numpy_namespace(c_np), tile_k=2, reassign_empty=True
+    )
+    np.testing.assert_allclose(_to_numpy(updated), [[0.0], [1.0]])
+
+
+def test_lloyd_step_matches_naive_iteration():
+    x_np, c_np = _blobs(n_per=8, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    reference, reference_labels = lloyd_iteration(x, c, assign="naive")
+    updated, labels = lloyd_step(x, c, tile_n=5, tile_k=2, update_tile_k=2)
+    np.testing.assert_array_equal(_to_numpy(labels), _to_numpy(reference_labels))
+    np.testing.assert_allclose(_to_numpy(updated), _to_numpy(reference))
+
+
+def test_interleaved_lloyd_step_matches_separate_phases():
+    x_np, c_np = _blobs(n_per=8, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    c = _as_numpy_namespace(c_np)
+    expected, expected_labels = lloyd_step(
+        x, c, tile_n=5, tile_k=2, update_tile_k=2
+    )
+    actual, actual_labels = lloyd_step_interleaved(
+        x, c, tile_n=5, tile_k=2, update_tile_k=2
+    )
+    np.testing.assert_array_equal(
+        _to_numpy(actual_labels), _to_numpy(expected_labels)
+    )
+    np.testing.assert_allclose(_to_numpy(actual), _to_numpy(expected))
+
+
+def test_hierarchical_weighted_draw_uses_positive_support():
+    weights = _as_numpy_namespace(
+        np.array([0.0, 0.0, 1.0, 0.0, 3.0, 0.0, 0.0], dtype=np.float64)
+    )
+    xp = array_namespace(weights)
+    selected = hierarchical_weighted_draw(
+        xp,
+        weights,
+        np.random.default_rng(0),
+        100,
+        chunk_size=3,
+    )
+    assert set(_to_numpy(selected).tolist()) <= {2, 4}
+
+
+def test_hierarchical_weighted_draw_handles_zero_total():
+    weights = _as_numpy_namespace(np.zeros(7, dtype=np.float64))
+    xp = array_namespace(weights)
+    selected = hierarchical_weighted_draw(
+        xp,
+        weights,
+        np.random.default_rng(0),
+        100,
+        chunk_size=3,
+    )
+    assert np.all((_to_numpy(selected) >= 0) & (_to_numpy(selected) < 7))
+
+
+def test_kmeans_plusplus_second_center_is_far_from_the_first():
+    x_np = np.array([[0.0, 0.0], [0.1, 0.0], [10.0, 10.0], [10.2, 9.8]], dtype=np.float64)
+    x = _as_numpy_namespace(x_np)
+
+    class _Rng:
+        def integers(self, n, size=None):
+            if size is None:
+                return 0
+            return np.zeros(size, dtype=np.int64)
+
+        def random(self, size):
+            return np.full(size, 0.99)
+
+    centers, indices = kmeans_plusplus(x, 2, _Rng(), n_local_trials=1)
+    indices = _to_numpy(indices)
+    assert indices[0] == 0
+    assert indices[1] in (2, 3)
+    np.testing.assert_allclose(_to_numpy(centers), x_np[indices])
+
+
+def test_kmeans_plusplus_is_deterministic_for_a_generator():
+    x_np, _ = _blobs(n_per=6, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    first = _to_numpy(kmeans_plusplus(x, 3, np.random.default_rng(4))[1])
+    second = _to_numpy(kmeans_plusplus(x, 3, np.random.default_rng(4))[1])
+    np.testing.assert_array_equal(first, second)
+    assert len(set(first.tolist())) == 3
+
+    xp = array_namespace(x)
+    precomputed = _to_numpy(
+        kmeans_plusplus(
+            x,
+            3,
+            np.random.default_rng(4),
+            x_norm=xp.sum(x * x, axis=1),
+        )[1]
+    )
+    np.testing.assert_array_equal(first, precomputed)
+
+
+def test_scalable_kmeans_plusplus_is_deterministic_and_selects_rows():
+    x_np, _ = _blobs(n_per=12, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    first_centers, first_indices = scalable_kmeans_plusplus(
+        x,
+        3,
+        np.random.default_rng(4),
+        oversampling_factor=2,
+        n_rounds=3,
+        tile_n=7,
+        tile_k=4,
+    )
+    second_centers, second_indices = scalable_kmeans_plusplus(
+        x,
+        3,
+        np.random.default_rng(4),
+        oversampling_factor=2,
+        n_rounds=3,
+        tile_n=7,
+        tile_k=4,
+    )
+    np.testing.assert_array_equal(_to_numpy(first_indices), _to_numpy(second_indices))
+    np.testing.assert_allclose(_to_numpy(first_centers), x_np[_to_numpy(first_indices)])
+    np.testing.assert_allclose(_to_numpy(second_centers), _to_numpy(first_centers))
+    assert len(set(_to_numpy(first_indices).tolist())) == 3
+
+
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"oversampling_factor": 0}, "oversampling_factor"),
+        ({"n_rounds": 0}, "n_rounds"),
+    ],
+)
+def test_scalable_kmeans_plusplus_validates_options(kwargs, message):
+    x_np, _ = _blobs(n_per=3, d=4, k=3)
+    with pytest.raises(ValueError, match=message):
+        scalable_kmeans_plusplus(
+            _as_numpy_namespace(x_np),
+            3,
+            np.random.default_rng(0),
+            **kwargs,
+        )
+
+
+def test_mean_feature_variance_matches_library_var():
+    from kmeans_lloyd.iteration import _mean_feature_variance
+
+    rng = np.random.default_rng(0)
+    x_np = rng.standard_normal((40, 17)).astype(np.float64)
+    x = _as_numpy_namespace(x_np)
+    xp = array_namespace(x)
+    got = float(_to_numpy(_mean_feature_variance(xp, x, tile_d=5)))
+    expected = float(np.var(x_np, axis=0).mean())
+    np.testing.assert_allclose(got, expected, rtol=1e-10, atol=1e-12)
+
+
+def test_fit_kmeans_converges_on_separated_blobs():
+    rng = np.random.default_rng(0)
+    centers = np.array([[0.0, 0.0, 0.0, 0.0], [8.0, 0.0, 0.0, 0.0], [0.0, 8.0, 0.0, 0.0]])
+    pieces = [center + 0.05 * rng.standard_normal((25, 4)) for center in centers]
+    x_np = np.concatenate(pieces).astype(np.float64)
+    x = _as_numpy_namespace(x_np)
+    fitted = fit_kmeans(
+        x,
+        3,
+        np.random.default_rng(1),
+        max_iter=30,
+        tile_n=9,
+        tile_k=2,
+        update_tile_k=2,
+    )
+    assert fitted["n_iter"] < 30
+    assert fitted["shift"] <= fitted["threshold"]
+    labels = _to_numpy(fitted["labels"])
+    assert len(set(labels.tolist())) == 3
+    manual = 0.0
+    centers_np = _to_numpy(fitted["centers"])
+    for row, label in zip(x_np, labels):
+        manual += np.sum((row - centers_np[label]) ** 2)
+    np.testing.assert_allclose(fitted["inertia"], manual)
+    np.testing.assert_allclose(fitted["inertia"], float(_to_numpy(inertia(x, fitted["labels"], fitted["centers"]))))
+    np.testing.assert_allclose(
+        fitted["inertia"],
+        float(_to_numpy(inertia(x, fitted["labels"], fitted["centers"], tile_n=7))),
+    )
+
+
+def test_fit_lloyd_matches_fit_kmeans_from_its_initial_centers():
+    x_np, _ = _blobs(n_per=10, d=4, k=3)
+    x = _as_numpy_namespace(x_np)
+    seed = 4
+    initial, indices = kmeans_plusplus(x, 3, np.random.default_rng(seed))
+    fixed = fit_lloyd(
+        x,
+        initial,
+        max_iter=20,
+        tile_n=7,
+        tile_k=2,
+        update_tile_k=2,
+        update_tile_n=5,
+    )
+    complete = fit_kmeans(
+        x,
+        3,
+        np.random.default_rng(seed),
+        max_iter=20,
+        tile_n=7,
+        tile_k=2,
+        update_tile_k=2,
+        update_tile_n=5,
+    )
+    np.testing.assert_array_equal(_to_numpy(complete["indices"]), _to_numpy(indices))
+    np.testing.assert_array_equal(_to_numpy(complete["labels"]), _to_numpy(fixed["labels"]))
+    np.testing.assert_allclose(_to_numpy(complete["centers"]), _to_numpy(fixed["centers"]))
+    assert complete["inertia"] == fixed["inertia"]
+    assert complete["n_iter"] == fixed["n_iter"]
+
+
+def test_fit_lloyd_rejects_zero_iterations():
+    x_np, c_np = _blobs(n_per=3, d=4, k=3)
+    with pytest.raises(ValueError, match="max_iter"):
+        fit_lloyd(_as_numpy_namespace(x_np), _as_numpy_namespace(c_np), max_iter=0)
+
+
+def _gpu_pairs():
+    pairs = []
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            pairs.append(("torch", torch))
+    except ImportError:
+        pass
+    try:
+        import cupy
+
+        if cupy.cuda.runtime.getDeviceCount() > 0:
+            pairs.append(("cupy", cupy))
+    except Exception:
+        pass
+    return pairs
+
+
+@pytest.mark.parametrize("backend", [name for name, _ in _gpu_pairs()] or [pytest.param("none", marks=pytest.mark.skip)])
+def test_gpu_assignment_matches_numpy(backend):
+    modules = dict(_gpu_pairs())
+    xp_mod = modules[backend]
+    x_np, c_np = _blobs(dtype=np.float32, seed=1)
+    if backend == "torch":
+        x = xp_mod.as_tensor(x_np, device="cuda")
+        c = xp_mod.as_tensor(c_np, device="cuda")
+    else:
+        x = xp_mod.asarray(x_np)
+        c = xp_mod.asarray(c_np)
+    reference = _to_numpy(assign_naive(_as_numpy_namespace(x_np.astype(np.float64)), _as_numpy_namespace(c_np.astype(np.float64))))
+    labels = _to_numpy(assign_naive(x, c))
+    tiled = _to_numpy(assign_tiled(x, c, tile_n=8, tile_k=2, distance="broadcast"))
+    running = _to_numpy(assign_running(x, c))
+    gemm_tiled = _to_numpy(assign_gemm_tiled(x, c, tile_n=8, tile_k=2))
+    stateful = _to_numpy(assign_running_stateful(x, c, tile_k=2))
+    np.testing.assert_array_equal(labels, reference)
+    np.testing.assert_array_equal(tiled, reference)
+    np.testing.assert_array_equal(running, reference)
+    np.testing.assert_array_equal(gemm_tiled, reference)
+    np.testing.assert_array_equal(stateful, reference)
+    centers, plus_index = kmeans_plusplus(x, c_np.shape[0], np.random.default_rng(2))
+    assert _to_numpy(centers).shape == c_np.shape
+    assert _to_numpy(plus_index).shape == (c_np.shape[0],)
+    scalable, scalable_index = scalable_kmeans_plusplus(
+        x,
+        c_np.shape[0],
+        np.random.default_rng(2),
+        n_rounds=2,
+        tile_n=8,
+        tile_k=2,
+    )
+    np.testing.assert_allclose(_to_numpy(scalable), x_np[_to_numpy(scalable_index)])
+    updated, _ = lloyd_iteration(x, c, assign="gemm")
+    assert _to_numpy(updated).shape == c_np.shape
+
+
+@pytest.mark.parametrize("backend", [name for name, _ in _gpu_pairs()] or [pytest.param("none", marks=pytest.mark.skip)])
+def test_gpu_reassigns_farthest_point_to_empty_centroid(backend):
+    modules = dict(_gpu_pairs())
+    module = modules[backend]
+    x_np = np.array([[0.0], [2.0], [10.0]], dtype=np.float32)
+    labels_np = np.array([0, 0, 1], dtype=np.int64)
+    c_np = np.array([[0.0], [10.0], [100.0]], dtype=np.float32)
+    if backend == "torch":
+        x = module.as_tensor(x_np, device="cuda")
+        labels = module.as_tensor(labels_np, device="cuda")
+        centers = module.as_tensor(c_np, device="cuda")
+    else:
+        x = module.asarray(x_np)
+        labels = module.asarray(labels_np)
+        centers = module.asarray(c_np)
+    updated = update_centroids_tiled(
+        x,
+        labels,
+        centers,
+        tile_k=2,
+        tile_n=2,
+        reassign_empty=True,
+    )
+    np.testing.assert_allclose(_to_numpy(updated), [[0.0], [10.0], [2.0]])

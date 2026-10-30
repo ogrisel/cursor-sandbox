@@ -11,6 +11,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import check_source_links
 import pages_tree
 import render_journal
 
@@ -124,6 +125,33 @@ class RenderJournalTest(unittest.TestCase):
             with self.assertRaises(render_journal.RenderError) as caught:
                 render_journal.markdown_to_html("# Hi")
         self.assertIn("unknown extension", str(caught.exception))
+
+
+class CheckSourceLinksTest(unittest.TestCase):
+    def test_pinned_ranges_must_match_their_symbol(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "mod.py").write_text("x = 1\n\n\ndef f():\n    return 1\n")
+            for command in (
+                ["init", "-q"],
+                ["add", "mod.py"],
+                ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "m"],
+            ):
+                subprocess.run(["git", "-C", tmp, *command], check=True)
+            sha = subprocess.check_output(["git", "-C", tmp, "rev-parse", "HEAD"], text=True).strip()
+            base = "https://github.com/o/r/blob"
+            (root / "report.md").write_text(
+                f"[`f`]({base}/{sha}/mod.py#L4-L5) [`f`]({base}/{sha}/mod.py#L1-L5) "
+                f"[step]({base}/{sha}/mod.py#L1-L1) [`f`]({base}/main/mod.py#L4-L5) "
+                f"[file]({base}/{sha}/gone.py)\n"
+            )
+            checked, problems = check_source_links.check([root / "report.md"], "o/r", git_dir=tmp)
+            self.assertEqual(checked, 5)
+            self.assertEqual(len(problems), 4)
+            self.assertIn("does not match f at (4, 5)", problems[0])
+            self.assertIn("not the start of a definition", problems[1])
+            self.assertIn("not a commit SHA", problems[2])
+            self.assertIn("gone.py does not exist", problems[3])
 
 
 class PagesTreeTest(unittest.TestCase):

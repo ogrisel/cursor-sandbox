@@ -1,0 +1,43 @@
+"""Lloyd k-means iteration in the Python array API."""
+
+from kmeans_lloyd.iteration import (
+    assign_gemm,
+    assign_gemm_tiled,
+    assign_naive,
+    assign_running,
+    assign_running_stateful,
+    assign_running_tiled,
+    assign_tiled,
+    fit_kmeans,
+    fit_lloyd,
+    inertia,
+    kmeans_plusplus,
+    lloyd_iteration,
+    lloyd_step,
+    squared_distances_broadcast,
+    squared_distances_gemm,
+    update_centroids,
+    update_centroids_tiled,
+)
+from kmeans_lloyd.kmeans import KMeans
+
+__all__ = [
+    "KMeans",
+    "assign_gemm",
+    "assign_gemm_tiled",
+    "assign_naive",
+    "assign_running",
+    "assign_running_stateful",
+    "assign_running_tiled",
+    "assign_tiled",
+    "fit_kmeans",
+    "fit_lloyd",
+    "inertia",
+    "kmeans_plusplus",
+    "lloyd_iteration",
+    "lloyd_step",
+    "squared_distances_broadcast",
+    "squared_distances_gemm",
+    "update_centroids",
+    "update_centroids_tiled",
+]

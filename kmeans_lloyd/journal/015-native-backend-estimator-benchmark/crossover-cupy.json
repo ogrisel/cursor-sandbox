@@ -1,0 +1,442 @@
+[
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 2,
+    "native_seconds": 0.02042864500253927,
+    "portable_seconds": 0.01694757400036906,
+    "native_speedup": 0.8295985366754616
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 3,
+    "native_seconds": 0.022221523002372123,
+    "portable_seconds": 0.0173787430030643,
+    "native_speedup": 0.7820680428253788
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 5,
+    "native_seconds": 0.02217989200289594,
+    "portable_seconds": 0.018107584000972565,
+    "native_speedup": 0.8163964007853749
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 8,
+    "native_seconds": 0.0225457969972922,
+    "portable_seconds": 0.01945347299988498,
+    "native_speedup": 0.8628425511957455
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 12,
+    "native_seconds": 0.023875745002442272,
+    "portable_seconds": 0.01983522900263779,
+    "native_speedup": 0.8307690084899476
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 17,
+    "native_seconds": 0.023647764999623178,
+    "portable_seconds": 0.022352129002683796,
+    "native_speedup": 0.9452110591863533
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 24,
+    "native_seconds": 0.023370492999674752,
+    "portable_seconds": 0.022739984997315332,
+    "native_speedup": 0.973021193760517
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 32,
+    "native_seconds": 0.02244137299931026,
+    "portable_seconds": 0.026852312999835704,
+    "native_speedup": 1.1965539274562664
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 48,
+    "native_seconds": 0.02228034600193496,
+    "portable_seconds": 0.029055339997285046,
+    "native_speedup": 1.3040793888372157
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 64,
+    "native_seconds": 0.022468204002507264,
+    "portable_seconds": 0.030011871000169776,
+    "native_speedup": 1.3357485536814915
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k3-d1000",
+    "n_samples": 950000,
+    "n_features": 1000,
+    "k": 100,
+    "native_seconds": 0.02256205800222233,
+    "portable_seconds": 0.03571146800095448,
+    "native_speedup": 1.5828107523452406
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 2,
+    "native_seconds": 0.016360708999854978,
+    "portable_seconds": 0.020461545998841757,
+    "native_speedup": 1.2506515456648688
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 3,
+    "native_seconds": 0.011846434001199668,
+    "portable_seconds": 0.020273278998502064,
+    "native_speedup": 1.7113402224204368
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 5,
+    "native_seconds": 0.008114952001051279,
+    "portable_seconds": 0.020410013999935472,
+    "native_speedup": 2.5151121038413273
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 8,
+    "native_seconds": 0.007425962001434527,
+    "portable_seconds": 0.020304749999922933,
+    "native_speedup": 2.7342922029496672
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 12,
+    "native_seconds": 0.007116208002116764,
+    "portable_seconds": 0.02036507200318738,
+    "native_speedup": 2.861787063718437
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 17,
+    "native_seconds": 0.00712677900082781,
+    "portable_seconds": 0.02042787599930307,
+    "native_speedup": 2.866354631865289
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 24,
+    "native_seconds": 0.007507335001719184,
+    "portable_seconds": 0.020242897000571247,
+    "native_speedup": 2.6964158381017516
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 32,
+    "native_seconds": 0.007577518001198769,
+    "portable_seconds": 0.028010293997795088,
+    "native_speedup": 3.696499829279698
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 48,
+    "native_seconds": 0.007146219999413006,
+    "portable_seconds": 0.028769067001121584,
+    "native_speedup": 4.025774046066968
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 64,
+    "native_seconds": 0.007394740998279303,
+    "portable_seconds": 0.029481607998604886,
+    "native_speedup": 3.986834428070573
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k17-d180",
+    "n_samples": 2100000,
+    "n_features": 180,
+    "k": 100,
+    "native_seconds": 0.0075456070007930975,
+    "portable_seconds": 0.03265171500243014,
+    "native_speedup": 4.327248291489102
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 2,
+    "native_seconds": 0.004582449000736233,
+    "portable_seconds": 0.01489073600168922,
+    "native_speedup": 3.2495148335086372
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 3,
+    "native_seconds": 0.003153687001031358,
+    "portable_seconds": 0.014913806000549812,
+    "native_speedup": 4.729006396536027
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 5,
+    "native_seconds": 0.0020137270003033336,
+    "portable_seconds": 0.0147930909988645,
+    "native_speedup": 7.3461253668626245
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 8,
+    "native_seconds": 0.0024043039993557613,
+    "portable_seconds": 0.014617822998843621,
+    "native_speedup": 6.079856375383687
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 12,
+    "native_seconds": 0.001695973001915263,
+    "portable_seconds": 0.014627413998823613,
+    "native_speedup": 8.624791775756377
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 17,
+    "native_seconds": 0.001262634999875445,
+    "portable_seconds": 0.014923537000868237,
+    "native_speedup": 11.819359515885745
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 24,
+    "native_seconds": 0.001070115999027621,
+    "portable_seconds": 0.014930278000974795,
+    "native_speedup": 13.952018299456736
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 32,
+    "native_seconds": 0.0010638660023687407,
+    "portable_seconds": 0.016717814000003273,
+    "native_speedup": 15.7142102132979
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 48,
+    "native_seconds": 0.0010541660012677312,
+    "portable_seconds": 0.017133012999693165,
+    "native_speedup": 16.252670811892195
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 64,
+    "native_seconds": 0.0010626660005073063,
+    "portable_seconds": 0.017332791001535952,
+    "native_speedup": 16.310666750664318
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k100-d32",
+    "n_samples": 1500000,
+    "n_features": 32,
+    "k": 100,
+    "native_seconds": 0.0010520960022404324,
+    "portable_seconds": 0.019138749998091953,
+    "native_speedup": 18.1910680749058
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 2,
+    "native_seconds": 0.00085113699969952,
+    "portable_seconds": 0.005649293998430949,
+    "native_speedup": 6.637349804350346
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 3,
+    "native_seconds": 0.0007819239981472492,
+    "portable_seconds": 0.005489338000188582,
+    "native_speedup": 7.020296107032705
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 5,
+    "native_seconds": 0.0006878099993627984,
+    "portable_seconds": 0.005501668998476816,
+    "native_speedup": 7.998820900501124
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 8,
+    "native_seconds": 0.00075566299710772,
+    "portable_seconds": 0.005473976998473518,
+    "native_speedup": 7.243939453731384
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 12,
+    "native_seconds": 0.0007067610022204462,
+    "portable_seconds": 0.005449866002891213,
+    "native_speedup": 7.711045156381367
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 17,
+    "native_seconds": 0.0005734449987357948,
+    "portable_seconds": 0.005462527002237039,
+    "native_speedup": 9.525808079727986
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 24,
+    "native_seconds": 0.0004805810021935031,
+    "portable_seconds": 0.00550601800205186,
+    "native_speedup": 11.457003037824817
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 32,
+    "native_seconds": 0.0006509080012619961,
+    "portable_seconds": 0.005808581998280715,
+    "native_speedup": 8.92381409818115
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 48,
+    "native_seconds": 0.00043465799899422564,
+    "portable_seconds": 0.005983269002172165,
+    "native_speedup": 13.765463918798494
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 64,
+    "native_seconds": 0.0004471600004762877,
+    "portable_seconds": 0.006057032001990592,
+    "native_speedup": 13.545558626753309
+  },
+  {
+    "backend": "cupy",
+    "dataset": "k550-d6",
+    "n_samples": 525000,
+    "n_features": 6,
+    "k": 100,
+    "native_seconds": 0.00034682600016822107,
+    "portable_seconds": 0.006672029001492774,
+    "native_speedup": 19.237395691951118
+  }
+]

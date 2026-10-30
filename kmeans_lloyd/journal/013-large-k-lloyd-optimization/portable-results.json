@@ -1,0 +1,362 @@
+[
+ {
+  "task": "k100-d32",
+  "backend": "cupy",
+  "variant": "current",
+  "repeat": 0,
+  "seconds": 1.0078204956054688,
+  "peak_extra_bytes": 384009728,
+  "inertia": 38872328.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "cupy",
+  "variant": "current",
+  "repeat": 1,
+  "seconds": 0.9879447631835937,
+  "peak_extra_bytes": 384009728,
+  "inertia": 38872328.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "cupy",
+  "variant": "current",
+  "repeat": 2,
+  "seconds": 0.9920069580078125,
+  "peak_extra_bytes": 384009728,
+  "inertia": 38872328.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "cupy",
+  "variant": "portable-tuned",
+  "repeat": 0,
+  "seconds": 0.45910775756835936,
+  "peak_extra_bytes": 384009728,
+  "inertia": 38872324.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "cupy",
+  "variant": "portable-tuned",
+  "repeat": 1,
+  "seconds": 0.46242840576171873,
+  "peak_extra_bytes": 384009728,
+  "inertia": 38872324.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "cupy",
+  "variant": "portable-tuned",
+  "repeat": 2,
+  "seconds": 0.46115798950195314,
+  "peak_extra_bytes": 384009728,
+  "inertia": 38872324.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "torch",
+  "variant": "current",
+  "repeat": 0,
+  "seconds": 0.6255889892578125,
+  "peak_extra_bytes": 385880064,
+  "inertia": 38872336.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "torch",
+  "variant": "current",
+  "repeat": 1,
+  "seconds": 0.6210409545898438,
+  "peak_extra_bytes": 385880064,
+  "inertia": 38872336.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "torch",
+  "variant": "current",
+  "repeat": 2,
+  "seconds": 0.632558349609375,
+  "peak_extra_bytes": 385880064,
+  "inertia": 38872336.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "torch",
+  "variant": "portable-tuned",
+  "repeat": 0,
+  "seconds": 0.24998527526855469,
+  "peak_extra_bytes": 385880064,
+  "inertia": 38872332.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "torch",
+  "variant": "portable-tuned",
+  "repeat": 1,
+  "seconds": 0.25072909545898436,
+  "peak_extra_bytes": 385880064,
+  "inertia": 38872332.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k100-d32",
+  "backend": "torch",
+  "variant": "portable-tuned",
+  "repeat": 2,
+  "seconds": 0.2509982757568359,
+  "peak_extra_bytes": 385880064,
+  "inertia": 38872332.0,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "cupy",
+  "variant": "current",
+  "repeat": 0,
+  "seconds": 1.23117529296875,
+  "peak_extra_bytes": 138053632,
+  "inertia": 3472.646240234375,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "cupy",
+  "variant": "current",
+  "repeat": 1,
+  "seconds": 1.2277945556640626,
+  "peak_extra_bytes": 138053632,
+  "inertia": 3472.646240234375,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "cupy",
+  "variant": "current",
+  "repeat": 2,
+  "seconds": 1.2213096923828124,
+  "peak_extra_bytes": 138053632,
+  "inertia": 3472.646240234375,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "cupy",
+  "variant": "portable-tuned",
+  "repeat": 0,
+  "seconds": 0.610259765625,
+  "peak_extra_bytes": 77735936,
+  "inertia": 3472.76318359375,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "cupy",
+  "variant": "portable-tuned",
+  "repeat": 1,
+  "seconds": 0.6098770141601563,
+  "peak_extra_bytes": 77735936,
+  "inertia": 3472.76318359375,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "cupy",
+  "variant": "portable-tuned",
+  "repeat": 2,
+  "seconds": 0.6102011108398437,
+  "peak_extra_bytes": 77735936,
+  "inertia": 3472.76318359375,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "torch",
+  "variant": "current",
+  "repeat": 0,
+  "seconds": 1.000641357421875,
+  "peak_extra_bytes": 138053632,
+  "inertia": 3472.646728515625,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "torch",
+  "variant": "current",
+  "repeat": 1,
+  "seconds": 0.9981982421875,
+  "peak_extra_bytes": 138053632,
+  "inertia": 3472.646728515625,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "torch",
+  "variant": "current",
+  "repeat": 2,
+  "seconds": 1.000924072265625,
+  "peak_extra_bytes": 138053632,
+  "inertia": 3472.646728515625,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "torch",
+  "variant": "portable-tuned",
+  "repeat": 0,
+  "seconds": 0.5080796813964844,
+  "peak_extra_bytes": 81408512,
+  "inertia": 3472.7626953125,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "torch",
+  "variant": "portable-tuned",
+  "repeat": 1,
+  "seconds": 0.5060939025878907,
+  "peak_extra_bytes": 81408512,
+  "inertia": 3472.7626953125,
+  "n_iter": 12
+ },
+ {
+  "task": "k3000-d2",
+  "backend": "torch",
+  "variant": "portable-tuned",
+  "repeat": 2,
+  "seconds": 0.508218017578125,
+  "peak_extra_bytes": 81408512,
+  "inertia": 3472.7626953125,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "cupy",
+  "variant": "current",
+  "repeat": 0,
+  "seconds": 0.9934016723632813,
+  "peak_extra_bytes": 144273408,
+  "inertia": 539643.125,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "cupy",
+  "variant": "current",
+  "repeat": 1,
+  "seconds": 0.9966785888671875,
+  "peak_extra_bytes": 144273408,
+  "inertia": 539643.125,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "cupy",
+  "variant": "current",
+  "repeat": 2,
+  "seconds": 0.9973834838867187,
+  "peak_extra_bytes": 144273408,
+  "inertia": 539643.125,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "cupy",
+  "variant": "portable-tuned",
+  "repeat": 0,
+  "seconds": 0.4835511169433594,
+  "peak_extra_bytes": 83946496,
+  "inertia": 539645.875,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "cupy",
+  "variant": "portable-tuned",
+  "repeat": 1,
+  "seconds": 0.48210040283203126,
+  "peak_extra_bytes": 83946496,
+  "inertia": 539645.875,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "cupy",
+  "variant": "portable-tuned",
+  "repeat": 2,
+  "seconds": 0.48635202026367186,
+  "peak_extra_bytes": 83946496,
+  "inertia": 539645.875,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "torch",
+  "variant": "current",
+  "repeat": 0,
+  "seconds": 0.7938511352539063,
+  "peak_extra_bytes": 144273408,
+  "inertia": 539646.75,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "torch",
+  "variant": "current",
+  "repeat": 1,
+  "seconds": 0.7888212280273438,
+  "peak_extra_bytes": 144273408,
+  "inertia": 539646.75,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "torch",
+  "variant": "current",
+  "repeat": 2,
+  "seconds": 0.7925147094726562,
+  "peak_extra_bytes": 144273408,
+  "inertia": 539646.75,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "torch",
+  "variant": "portable-tuned",
+  "repeat": 0,
+  "seconds": 0.3717938842773437,
+  "peak_extra_bytes": 87619072,
+  "inertia": 539644.0625,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "torch",
+  "variant": "portable-tuned",
+  "repeat": 1,
+  "seconds": 0.3793594970703125,
+  "peak_extra_bytes": 87619072,
+  "inertia": 539644.0625,
+  "n_iter": 12
+ },
+ {
+  "task": "k550-d6",
+  "backend": "torch",
+  "variant": "portable-tuned",
+  "repeat": 2,
+  "seconds": 0.3771761169433594,
+  "peak_extra_bytes": 87619072,
+  "inertia": 539644.0625,
+  "n_iter": 12
+ }
+]
