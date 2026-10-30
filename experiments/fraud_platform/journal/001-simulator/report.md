@@ -40,10 +40,10 @@ but it is unavailable in a real production history.
   history before appending the current payment, so it does not include the
   current row or future rows.
 
-The generated timestamped history is in
-[`data/transactions.csv.gz`](data/transactions.csv.gz). It retains `is_fraud`
-solely as a private simulator truth column; a production-style modelling input
-must remove it.
+The generated timestamped history retains `is_fraud` solely as a private
+simulator truth column; a production-style modelling input must remove it.
+The compressed dump is not in this branch, so the report job does not check
+it out. Commit `2934bf3` still has the generator.
 
 ## Modelling and backtesting
 

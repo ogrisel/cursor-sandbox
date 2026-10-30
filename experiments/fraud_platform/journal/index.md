@@ -61,3 +61,5 @@ pixi run test       # point-in-time, censoring, gain matrix, dormant book
 pixi run iter004    # small book, about 20 s
 pixi run iter005    # million-customer book, about 90 s
 ```
+
+Event logs (`transactions.csv.gz`, `transactions.parquet`) are produced by those runs and gitignored. The publisher checks out markdown, plots, and the small summary tables only.

@@ -25,7 +25,7 @@ FEATURES = "row+window"
 
 t0 = time.perf_counter()
 log = simulate(SimulationConfig())
-# Collected history: public, feedback and (simulation-only) private columns.
+# Local inspection copy. Gitignored so the report publisher does not check it out.
 log.to_parquet(HERE / "transactions.parquet", index=False, compression="zstd")
 store = feature_store_dataop().skb.eval({"log": log})
 metrics, preds = {}, {}
