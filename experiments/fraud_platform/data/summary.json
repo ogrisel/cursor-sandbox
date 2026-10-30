@@ -1,0 +1,75 @@
+{
+  "attempts": 180379,
+  "attempt_fraud_rate": 0.0035536287483576246,
+  "declined_fraction": 0.009419056542058666,
+  "labelled_fraction": 0.026050704350284677,
+  "reported_label_fraction": 0.001085146695757019,
+  "backtest": [
+    {
+      "fold": 1,
+      "model": "censored_history",
+      "train_rows": 7916,
+      "train_fraud_rate": 0.007832238504295099,
+      "test_fraud_rate": 0.003681199272630505,
+      "average_precision": 0.9991428615903257,
+      "roc_auc": 0.9999966479164522,
+      "cost_sensitive_gain_eur": 120151.4378,
+      "median_cost_threshold": 0.10284711609214921
+    },
+    {
+      "fold": 1,
+      "model": "private_oracle",
+      "train_rows": 43097,
+      "train_fraud_rate": 0.004431863006705803,
+      "test_fraud_rate": 0.003681199272630505,
+      "average_precision": 0.9883218456474541,
+      "roc_auc": 0.999935639995881,
+      "cost_sensitive_gain_eur": 119627.1726,
+      "median_cost_threshold": 0.10284711609214921
+    },
+    {
+      "fold": 2,
+      "model": "censored_history",
+      "train_rows": 53196,
+      "train_fraud_rate": 0.0028949545078577337,
+      "test_fraud_rate": 0.003858606466492216,
+      "average_precision": 0.9657679043450427,
+      "roc_auc": 0.9998838292340918,
+      "cost_sensitive_gain_eur": 118804.90580000001,
+      "median_cost_threshold": 0.1030126439592926
+    },
+    {
+      "fold": 2,
+      "model": "private_oracle",
+      "train_rows": 88191,
+      "train_fraud_rate": 0.0038779467292580877,
+      "test_fraud_rate": 0.003858606466492216,
+      "average_precision": 0.9998394657419895,
+      "roc_auc": 0.9999993602931393,
+      "cost_sensitive_gain_eur": 119358.8598,
+      "median_cost_threshold": 0.1030126439592926
+    },
+    {
+      "fold": 3,
+      "model": "censored_history",
+      "train_rows": 97555,
+      "train_fraud_rate": 0.0026754138690994822,
+      "test_fraud_rate": 0.002306293520202244,
+      "average_precision": 0.9714911428121937,
+      "roc_auc": 0.9999301126746114,
+      "cost_sensitive_gain_eur": 120119.9184,
+      "median_cost_threshold": 0.1026261868827967
+    },
+    {
+      "fold": 3,
+      "model": "private_oracle",
+      "train_rows": 133285,
+      "train_fraud_rate": 0.00402896049818059,
+      "test_fraud_rate": 0.002306293520202244,
+      "average_precision": 0.9983282214769881,
+      "roc_auc": 0.9999957255458478,
+      "cost_sensitive_gain_eur": 120366.7936,
+      "median_cost_threshold": 0.1026261868827967
+    }
+  ]
+}
