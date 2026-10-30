@@ -1,0 +1,17 @@
+name: Publish bfloat16 report
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  publish:
+    uses: ./.github/workflows/publish-report.yml
+    with:
+      journal-path: journal
+      site-title: bfloat16 Array API
