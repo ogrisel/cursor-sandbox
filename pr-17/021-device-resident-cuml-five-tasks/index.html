@@ -14,28 +14,119 @@
 </nav>
 </header>
 <main>
-<h1 id="021-device-resident-cuml-on-the-original-five-tasks">021 — device-resident cuML on the original five tasks</h1>
+<h1 id="021--device-resident-cuml-on-the-original-five-tasks">021 — device-resident cuML on the original five tasks</h1>
 <p><a href="../015-native-backend-estimator-benchmark/index.html">015</a> timed cuML on a NumPy array, so those cells include the host-to-device copy. <a href="../020-balanced-kd-device-resident-cuml/index.html">020</a> changed <a href="https://github.com/ogrisel/cursor-sandbox/blob/8c85d915f5fc2984cfdc7becb38d36beb98a524b/kmeans_lloyd/scripts/bench_task_mix.py#L393-L430"><code>_worker_cuml</code></a> so the timer starts only after the samples and the shared random-row centers are CuPy arrays, and it measured that protocol on <code>k256-d128</code> only. This iteration reruns the other five tasks under the same contract. Array-API, stock scikit-learn, and cakedev0 cells are unchanged and stay in 015 and 020.</p>
-<p>The full result set is <a href="results.json">results.json</a>. Each task&#x27;s <code>.npy</code> was deleted after its three seeds so the host kept its free-disk headroom.</p>
+<p>The full result set is <a href="results.json">results.json</a>. Each task's <code>.npy</code> was deleted after its three seeds so the host kept its free-disk headroom.</p>
 <h2 id="setup">Setup</h2>
-<ul><li>Same host and limits as 015 and 020: four CPU threads, one NVIDIA L4, float32, TF32 disabled, seeds 0 to 2, <code>max_iter=12</code>, <code>tol=1e-8</code>, a fresh process per run, and a 60-second worker limit. cuML 26.10.00. Commit <a href="https://github.com/ogrisel/cursor-sandbox/commit/8c85d915f5fc2984cfdc7becb38d36beb98a524b"><code>8c85d91</code></a>.</li><li>Tasks: <code>k3-d1000</code> (950,000 × 1000, about 3.54 GiB), <code>k17-d180</code> (2,100,000 × 180, about 1.41 GiB), <code>k100-d32</code> (1,500,000 × 32), <code>k550-d6</code> (525,000 × 6), and <code>k3000-d2</code> (135,000 × 2).</li><li><code>output_type=&quot;cupy&quot;</code>. The inertia conversion copies centers back to the host after the timed region. The nvidia-smi increment excludes the preallocated device input.</li></ul>
+<ul>
+<li>Same host and limits as 015 and 020: four CPU threads, one NVIDIA L4, float32, TF32 disabled, seeds 0 to 2, <code>max_iter=12</code>, <code>tol=1e-8</code>, a fresh process per run, and a 60-second worker limit. cuML 26.10.00. Commit <a href="https://github.com/ogrisel/cursor-sandbox/commit/8c85d915f5fc2984cfdc7becb38d36beb98a524b"><code>8c85d91</code></a>.</li>
+<li>Tasks: <code>k3-d1000</code> (950,000 × 1000, about 3.54 GiB), <code>k17-d180</code> (2,100,000 × 180, about 1.41 GiB), <code>k100-d32</code> (1,500,000 × 32), <code>k550-d6</code> (525,000 × 6), and <code>k3000-d2</code> (135,000 × 2).</li>
+<li><code>output_type="cupy"</code>. The inertia conversion copies centers back to the host after the timed region. The nvidia-smi increment excludes the preallocated device input.</li>
+</ul>
 <h2 id="full-fit">Full fit</h2>
 <p>Time in seconds, mean ± sample standard deviation. The 015 column is the published seed mean with the copy inside the timer.</p>
-<table><thead><tr><th>init</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>greedy, 015</td><td>7.18</td><td>2.50</td><td>0.98</td><td>1.01</td><td>1.20</td></tr><tr><td>greedy, device-resident</td><td>3.849 ± 0.013</td><td>0.937 ± 0.001</td><td>0.683 ± 0.003</td><td>0.876 ± 0.003</td><td>1.064 ± 0.004</td></tr><tr><td>scalable, 015</td><td>6.38 ± 1.67</td><td>2.39</td><td>0.73</td><td>0.64</td><td>1.16</td></tr><tr><td>scalable, device-resident</td><td>3.238 ± 1.673</td><td>0.831 ± 0.021</td><td>0.440 ± 0.001</td><td>0.515 ± 0.001</td><td>1.065 ± 0.007</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>init</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>greedy, 015</td>
+<td style="text-align: right;">7.18</td>
+<td style="text-align: right;">2.50</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">1.01</td>
+<td style="text-align: right;">1.20</td>
+</tr>
+<tr class="even">
+<td>greedy, device-resident</td>
+<td style="text-align: right;">3.849 ± 0.013</td>
+<td style="text-align: right;">0.937 ± 0.001</td>
+<td style="text-align: right;">0.683 ± 0.003</td>
+<td style="text-align: right;">0.876 ± 0.003</td>
+<td style="text-align: right;">1.064 ± 0.004</td>
+</tr>
+<tr class="odd">
+<td>scalable, 015</td>
+<td style="text-align: right;">6.38 ± 1.67</td>
+<td style="text-align: right;">2.39</td>
+<td style="text-align: right;">0.73</td>
+<td style="text-align: right;">0.64</td>
+<td style="text-align: right;">1.16</td>
+</tr>
+<tr class="even">
+<td>scalable, device-resident</td>
+<td style="text-align: right;">3.238 ± 1.673</td>
+<td style="text-align: right;">0.831 ± 0.021</td>
+<td style="text-align: right;">0.440 ± 0.001</td>
+<td style="text-align: right;">0.515 ± 0.001</td>
+<td style="text-align: right;">1.065 ± 0.007</td>
+</tr>
+</tbody>
+</table>
 <p>The 015 means are slower by 3.33 / 1.56 / 0.30 / 0.13 / 0.14 s on the greedy fits and by 3.14 / 1.56 / 0.29 / 0.13 / 0.10 s on the scalable fits. The gaps follow the input size.</p>
 <p><code>k3-d1000</code> scalable seed 1 stops after 2 iterations (1.306 s, inertia 999.974). Seeds 0 and 2 run all 12 iterations (4.201 s and 4.206 s, inertia 999.320 and 998.869). A separate process of seed 1 stops after 2 iterations again, at 1.298 s. The mean includes that early stop, as the 015 mean of 6.38 ± 1.67 s did. The two 12-iteration seeds average 4.20 s.</p>
 <p>Against the 015 array-API GPU rows, which were already device-resident:</p>
-<ul><li>At 3 clusters, Torch CUDA generic remains fastest (1.04 s). cuML greedy is 3.85 s and cuML scalable is 3.24 s.</li><li>At 17 clusters, cuML scalable (0.83 s) passes Torch CUDA generic (0.86 s). cuML greedy (0.94 s) is still behind it.</li><li>At 100, 550, and 3000 clusters, cuML scalable stays fastest (0.44 s, 0.51 s, and 1.06 s). Greedy cuML now also beats native Torch CUDA at 100 clusters (0.68 s against 0.79 s). At 3000 clusters greedy and scalable tie at 1.06 s, against 2.00 s for native Torch CUDA.</li></ul>
+<ul>
+<li>At 3 clusters, Torch CUDA generic remains fastest (1.04 s). cuML greedy is 3.85 s and cuML scalable is 3.24 s.</li>
+<li>At 17 clusters, cuML scalable (0.83 s) passes Torch CUDA generic (0.86 s). cuML greedy (0.94 s) is still behind it.</li>
+<li>At 100, 550, and 3000 clusters, cuML scalable stays fastest (0.44 s, 0.51 s, and 1.06 s). Greedy cuML now also beats native Torch CUDA at 100 clusters (0.68 s against 0.79 s). At 3000 clusters greedy and scalable tie at 1.06 s, against 2.00 s for native Torch CUDA.</li>
+</ul>
 <h2 id="lloyd-from-the-same-random-rows">Lloyd from the same random rows</h2>
-<table><thead><tr><th>init</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>cuML, 015</td><td>6.88</td><td>2.12</td><td>0.54</td><td>0.35</td><td>0.32</td></tr><tr><td>cuML, device-resident</td><td>3.694 ± 0.023</td><td>0.525 ± 0.004</td><td>0.202 ± 0.001</td><td>0.198 ± 0.001</td><td>0.160 ± 0.001</td></tr><tr><td>fastest array API in 015</td><td>0.89</td><td>0.63</td><td>0.39</td><td>0.42</td><td>0.58</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>init</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>cuML, 015</td>
+<td style="text-align: right;">6.88</td>
+<td style="text-align: right;">2.12</td>
+<td style="text-align: right;">0.54</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0.32</td>
+</tr>
+<tr class="even">
+<td>cuML, device-resident</td>
+<td style="text-align: right;">3.694 ± 0.023</td>
+<td style="text-align: right;">0.525 ± 0.004</td>
+<td style="text-align: right;">0.202 ± 0.001</td>
+<td style="text-align: right;">0.198 ± 0.001</td>
+<td style="text-align: right;">0.160 ± 0.001</td>
+</tr>
+<tr class="odd">
+<td>fastest array API in 015</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">0.63</td>
+<td style="text-align: right;">0.39</td>
+<td style="text-align: right;">0.42</td>
+<td style="text-align: right;">0.58</td>
+</tr>
+</tbody>
+</table>
 <p>The 015 Lloyd means are slower by 3.19 / 1.59 / 0.34 / 0.15 / 0.16 s. Removing the copy reverses the ranking at 17 and 100 clusters: cuML is now 0.53 s against 0.63 s, and 0.20 s against 0.39 s. It was already ahead at 550 and 3000 clusters and is now 0.20 s and 0.16 s. At 3 clusters Torch CUDA remains faster (0.89 s against 3.69 s). The copy was about half of the old 6.88 s cell; the remaining gap is the Lloyd kernel.</p>
 <h2 id="quality-and-memory">Quality and memory</h2>
 <p>Greedy and shared-start inertias on <code>k3-d1000</code>, <code>k17-d180</code>, and <code>k100-d32</code> agree within 0.11%. On <code>k550-d6</code>, scalable is 0.13% below greedy and the shared start is 0.21% above it. On <code>k3000-d2</code>, scalable is 5.4% above greedy, and the shared start is 47% above greedy because cuML keeps empty centers. That shared-start gap against the other implementations was 7% in 015 and is a quality result, not a placement result.</p>
 <p>nvidia-smi growth above the preallocated input, greedy fits: 54 MiB, 136 MiB, 98 MiB, 56 MiB, and 14 MiB. The 3.8 GiB cuML figure in 015 for <code>k3-d1000</code> included allocating the device copy of the 3.54 GiB input.</p>
 <h2 id="conclusion">Conclusion</h2>
 <p>The five cuML columns in 015 were the cells affected by the placement change, and they are replaced by this run. <code>k256-d128</code> was already device-resident in 020. Initialization-only cuML timings in 015 already copied to the device before the timer and are left as published.</p>
-<p>With every GPU contender starting from device-resident data, cuML&#x27;s shared-start Lloyd is faster from 17 clusters up, and cuML scalable is the fastest full fit from 17 clusters up. The array API remains faster at 3 clusters on both Lloyd and the greedy full fit. The wide-task gap is smaller than 015 reported, and it is still a kernel gap.</p>
+<p>With every GPU contender starting from device-resident data, cuML's shared-start Lloyd is faster from 17 clusters up, and cuML scalable is the fastest full fit from 17 clusters up. The array API remains faster at 3 clusters on both Lloyd and the greedy full fit. The wide-task gap is smaller than 015 reported, and it is still a kernel gap.</p>
 <p>Previous: <a href="../020-balanced-kd-device-resident-cuml/index.html">balanced clusters and features</a>. Index: <a href="../index.html">journal</a>.</p>
+
 </main>
 </body>
 </html>

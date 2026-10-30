@@ -14,57 +14,825 @@
 </nav>
 </header>
 <main>
-<h1 id="015-native-pytorch-and-cupy-updates-in-the-kmeans-estimator">015 — native PyTorch and CuPy updates in the KMeans estimator</h1>
+<h1 id="015--native-pytorch-and-cupy-updates-in-the-kmeans-estimator">015 — native PyTorch and CuPy updates in the KMeans estimator</h1>
 <p>This entry adds backend-specific centroid updates to the portable <code>KMeans</code> estimator from <a href="../014-portable-array-api-kmeans/index.html">014</a> and reruns the full five-task benchmark through the public estimator. PyTorch uses <code>index_add_</code> plus <code>bincount</code>; CuPy uses <code>cupy.add.at</code> plus <code>bincount</code>. Every other array API namespace keeps the portable one-hot update, and <code>use_native_backends(False)</code> forces the portable path everywhere so that each backend can be measured both ways on the same arrays.</p>
 <p>The measured implementation is commit <a href="https://github.com/ogrisel/cursor-sandbox/tree/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd">04848dd</a>:</p>
-<ul><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/backends.py#L37-L57"><code>native_accumulate</code></a> picks the backend callable, or <code>None</code> for the portable fallback;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/backends.py#L60-L66"><code>_torch_accumulate</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/backends.py#L69-L81"><code>_cupy_accumulate</code></a> return per-cluster sums and counts;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L292-L364"><code>update_centroids_tiled</code></a> calls the callable when one is given, and shares the empty-cluster relocation with the portable path through <a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L367-L384"><code>_relocate_empty</code></a>.</li></ul>
-<pre><code>def _torch_accumulate(X, labels, n_clusters):
-    sums = torch.zeros((n_clusters, X.shape[1]), dtype=X.dtype, device=X.device)
-    sums.index_add_(0, labels, X)
-    counts = torch.bincount(labels, minlength=n_clusters).to(X.dtype)
-    return sums, counts</code></pre>
+<ul>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/backends.py#L37-L57"><code>native_accumulate</code></a> picks the backend callable, or <code>None</code> for the portable fallback;</li>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/backends.py#L60-L66"><code>_torch_accumulate</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/backends.py#L69-L81"><code>_cupy_accumulate</code></a> return per-cluster sums and counts;</li>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L292-L364"><code>update_centroids_tiled</code></a> calls the callable when one is given, and shares the empty-cluster relocation with the portable path through <a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L367-L384"><code>_relocate_empty</code></a>.</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> _torch_accumulate(X, labels, n_clusters):</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    sums <span class="op">=</span> torch.zeros((n_clusters, X.shape[<span class="dv">1</span>]), dtype<span class="op">=</span>X.dtype, device<span class="op">=</span>X.device)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    sums.index_add_(<span class="dv">0</span>, labels, X)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    counts <span class="op">=</span> torch.bincount(labels, minlength<span class="op">=</span>n_clusters).to(X.dtype)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> sums, counts</span></code></pre></div>
 <p>Results: <a href="fit-results.json">fit-results.json</a> (300 full-fit rows), <a href="init-results.json">init-results.json</a> (135 initializer rows), <a href="fit-first-run-array-api.json">fit-first-run-array-api.json</a> (the 180 array-API rows of the first run, superseded below), and the update crossover probes <a href="crossover-torch-cuda.json">crossover-torch-cuda.json</a> and <a href="crossover-cupy.json">crossover-cupy.json</a>. The driver is <a href="https://github.com/ogrisel/cursor-sandbox/blob/7f1120258bb5dcc1144007f90a55a5f73cabcfb5/kmeans_lloyd/scripts/bench_task_mix.py">bench_task_mix.py</a>, the figures come from <a href="https://github.com/ogrisel/cursor-sandbox/blob/606a1591562223de1ec857624e5b90095354ea10/kmeans_lloyd/scripts/plot_estimator_benchmark.py">plot_estimator_benchmark.py</a>, and the crossover from <a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/scripts/probe_update_crossover.py">probe_update_crossover.py</a>.</p>
 <h2 id="setup">Setup</h2>
-<ul><li>Same five tasks, seeds, and limits as <a href="../011-consolidated-benchmark/index.html">011</a>: float32, TF32 disabled, <code>max_iter=12</code>, <code>tol=1e-8</code>, seeds 0 to 2, 4 CPU threads, a fresh process per run, and a 60-second limit per worker. One NVIDIA L4.</li><li>Array-API rows call <code>KMeans(n_clusters=k, init=..., n_init=1).fit(X)</code> on a tensor or array already on the device. Each run therefore includes input validation, the Lloyd iterations, a final assignment, and an inertia pass. cuML and scikit-learn receive NumPy input as before, so cuML timings include the host-to-device copy.</li><li>&quot;generic update&quot; rows run the same estimator with <code>use_native_backends(False)</code>.</li><li>Two sections: greedy k-means++ followed by 12 Lloyd iterations, and 12 Lloyd iterations from the same random data rows for every implementation. The shared-start section includes estimator overhead that 011&#x27;s Lloyd-only rows did not have.</li><li>Memory meters: PyTorch and CuPy pool peaks on CUDA, <code>VmHWM</code> on CPU, and nvidia-smi for cuML.</li><li>Initializer rows are unchanged code and come from the first run.</li></ul>
+<ul>
+<li>Same five tasks, seeds, and limits as <a href="../011-consolidated-benchmark/index.html">011</a>: float32, TF32 disabled, <code>max_iter=12</code>, <code>tol=1e-8</code>, seeds 0 to 2, 4 CPU threads, a fresh process per run, and a 60-second limit per worker. One NVIDIA L4.</li>
+<li>Array-API rows call <code>KMeans(n_clusters=k, init=..., n_init=1).fit(X)</code> on a tensor or array already on the device. Each run therefore includes input validation, the Lloyd iterations, a final assignment, and an inertia pass. cuML and scikit-learn receive NumPy input as before, so cuML timings include the host-to-device copy.</li>
+<li>"generic update" rows run the same estimator with <code>use_native_backends(False)</code>.</li>
+<li>Two sections: greedy k-means++ followed by 12 Lloyd iterations, and 12 Lloyd iterations from the same random data rows for every implementation. The shared-start section includes estimator overhead that 011's Lloyd-only rows did not have.</li>
+<li>Memory meters: PyTorch and CuPy pool peaks on CUDA, <code>VmHWM</code> on CPU, and nvidia-smi for cuML.</li>
+<li>Initializer rows are unchanged code and come from the first run.</li>
+</ul>
 <h2 id="two-fixes-found-by-the-first-run">Two fixes found by the first run</h2>
 <p>The first full run, on commit <a href="https://github.com/ogrisel/cursor-sandbox/tree/f13c0743ad47471ddc74d764dba8db3744ff400f/kmeans_lloyd">f13c074</a>, exposed two problems. Both are fixed in 04848dd and every array-API row was rerun.</p>
-<p>**Finiteness check memory.** The estimator validated non-NumPy input with <code>xp.all(xp.isfinite(X))</code>. CuPy fuses that into one kernel, but eager PyTorch materializes a boolean array plus float temporaries as large as <code>X</code>. The check is now <a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/kmeans.py#L323-L338"><code>_all_finite</code></a>: it tests column sums first and falls back to a tiled exact check only when a sum is not finite, which also covers finite data whose sums overflow.</p>
-<table><thead><tr><th>k-means++ fit, peak extra memory</th><th>k3-d1000</th><th>k17-d180</th></tr></thead><tbody><tr><td>Torch CPU, first run</td><td>6301 MiB</td><td>2526 MiB</td></tr><tr><td>Torch CPU, final</td><td>961 MiB</td><td>2075 MiB</td></tr><tr><td>Torch CUDA, first run</td><td>6342 MiB</td><td>2523 MiB</td></tr><tr><td>Torch CUDA, final</td><td>939 MiB</td><td>2051 MiB</td></tr><tr><td>CuPy, both runs</td><td>939 MiB</td><td>2051 MiB</td></tr></tbody></table>
-<p>**Atomic contention at few clusters.** On CUDA the scatter-add was slower than the portable update on the 3-cluster, 1000-feature task: Torch CUDA k-means++ fits took 1.56 s against 1.08 s generic. With 950000 samples and 3 clusters, each output address receives about 300000 atomic additions, while the one-hot product is a cheap bandwidth-bound GEMM. The probe below times one update with uniformly random labels on each task&#x27;s data, sweeping <code>k</code>. Values are generic time divided by native time; italic cells are shapes where the final dispatch keeps the one-hot update.</p>
-<table><thead><tr><th>backend, samples x features</th><th>k=2</th><th>k=3</th><th>k=5</th><th>k=8</th><th>k=17</th><th>k=32</th><th>k=64</th><th>k=100</th></tr></thead><tbody><tr><td>Torch CUDA, 950000 x 1000</td><td>*0.66x*</td><td>*0.54x*</td><td>*0.60x*</td><td>*0.79x*</td><td>*0.77x*</td><td>*0.89x*</td><td>0.99x</td><td>1.38x</td></tr><tr><td>Torch CUDA, 2100000 x 180</td><td>*0.26x*</td><td>*0.42x*</td><td>*0.64x*</td><td>*1.07x*</td><td>1.18x</td><td>1.44x</td><td>1.57x</td><td>1.99x</td></tr><tr><td>Torch CUDA, 1500000 x 32</td><td>0.59x</td><td>0.89x</td><td>1.00x</td><td>1.27x</td><td>2.57x</td><td>4.72x</td><td>8.63x</td><td>6.95x</td></tr><tr><td>Torch CUDA, 525000 x 6</td><td>4.70x</td><td>5.26x</td><td>6.09x</td><td>5.94x</td><td>7.77x</td><td>6.85x</td><td>10.81x</td><td>13.81x</td></tr><tr><td>CuPy, 950000 x 1000</td><td>*0.83x*</td><td>*0.78x*</td><td>*0.82x*</td><td>*0.86x*</td><td>0.95x</td><td>1.20x</td><td>1.34x</td><td>1.58x</td></tr><tr><td>CuPy, 2100000 x 180</td><td>*1.25x*</td><td>1.71x</td><td>2.52x</td><td>2.73x</td><td>2.87x</td><td>3.70x</td><td>3.99x</td><td>4.33x</td></tr><tr><td>CuPy, 1500000 x 32</td><td>3.25x</td><td>4.73x</td><td>7.35x</td><td>6.08x</td><td>11.82x</td><td>15.71x</td><td>16.31x</td><td>18.19x</td></tr><tr><td>CuPy, 525000 x 6</td><td>6.64x</td><td>7.02x</td><td>8.00x</td><td>7.24x</td><td>9.53x</td><td>8.92x</td><td>13.55x</td><td>19.24x</td></tr></tbody></table>
-<p>The crossover depends on both <code>k</code> and the number of features <code>d</code>, and CuPy&#x27;s <code>add.at</code> tolerates contention better than PyTorch&#x27;s <code>index_add_</code>. The final dispatch keeps the one-hot update on CUDA when <code>16 * k &lt; d</code> for PyTorch and <code>64 * k &lt; d</code> for CuPy. Its worst misses in this sweep are at 2 clusters: PyTorch keeps the scatter-add at <code>d=32</code>, where it runs at 0.59x, and CuPy keeps the one-hot update at <code>d=180</code>, where the scatter-add would be 1.25x faster. On CPU the scatter-add won on every task, so Torch CPU always uses it. In the benchmark, only <code>k3-d1000</code> falls on the one-hot side, so its CUDA &quot;native&quot; and &quot;generic&quot; rows run the same code.</p>
+<p><strong>Finiteness check memory.</strong> The estimator validated non-NumPy input with <code>xp.all(xp.isfinite(X))</code>. CuPy fuses that into one kernel, but eager PyTorch materializes a boolean array plus float temporaries as large as <code>X</code>. The check is now <a href="https://github.com/ogrisel/cursor-sandbox/blob/04848dd752325d63aac8d33c37fca5de36900420/kmeans_lloyd/src/kmeans_lloyd/kmeans.py#L323-L338"><code>_all_finite</code></a>: it tests column sums first and falls back to a tiled exact check only when a sum is not finite, which also covers finite data whose sums overflow.</p>
+<table>
+<thead>
+<tr class="header">
+<th>k-means++ fit, peak extra memory</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Torch CPU, first run</td>
+<td style="text-align: right;">6301 MiB</td>
+<td style="text-align: right;">2526 MiB</td>
+</tr>
+<tr class="even">
+<td>Torch CPU, final</td>
+<td style="text-align: right;">961 MiB</td>
+<td style="text-align: right;">2075 MiB</td>
+</tr>
+<tr class="odd">
+<td>Torch CUDA, first run</td>
+<td style="text-align: right;">6342 MiB</td>
+<td style="text-align: right;">2523 MiB</td>
+</tr>
+<tr class="even">
+<td>Torch CUDA, final</td>
+<td style="text-align: right;">939 MiB</td>
+<td style="text-align: right;">2051 MiB</td>
+</tr>
+<tr class="odd">
+<td>CuPy, both runs</td>
+<td style="text-align: right;">939 MiB</td>
+<td style="text-align: right;">2051 MiB</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Atomic contention at few clusters.</strong> On CUDA the scatter-add was slower than the portable update on the 3-cluster, 1000-feature task: Torch CUDA k-means++ fits took 1.56 s against 1.08 s generic. With 950000 samples and 3 clusters, each output address receives about 300000 atomic additions, while the one-hot product is a cheap bandwidth-bound GEMM. The probe below times one update with uniformly random labels on each task's data, sweeping <code>k</code>. Values are generic time divided by native time; italic cells are shapes where the final dispatch keeps the one-hot update.</p>
+<table>
+<thead>
+<tr class="header">
+<th>backend, samples x features</th>
+<th style="text-align: right;">k=2</th>
+<th style="text-align: right;">k=3</th>
+<th style="text-align: right;">k=5</th>
+<th style="text-align: right;">k=8</th>
+<th style="text-align: right;">k=17</th>
+<th style="text-align: right;">k=32</th>
+<th style="text-align: right;">k=64</th>
+<th style="text-align: right;">k=100</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Torch CUDA, 950000 x 1000</td>
+<td style="text-align: right;"><em>0.66x</em></td>
+<td style="text-align: right;"><em>0.54x</em></td>
+<td style="text-align: right;"><em>0.60x</em></td>
+<td style="text-align: right;"><em>0.79x</em></td>
+<td style="text-align: right;"><em>0.77x</em></td>
+<td style="text-align: right;"><em>0.89x</em></td>
+<td style="text-align: right;">0.99x</td>
+<td style="text-align: right;">1.38x</td>
+</tr>
+<tr class="even">
+<td>Torch CUDA, 2100000 x 180</td>
+<td style="text-align: right;"><em>0.26x</em></td>
+<td style="text-align: right;"><em>0.42x</em></td>
+<td style="text-align: right;"><em>0.64x</em></td>
+<td style="text-align: right;"><em>1.07x</em></td>
+<td style="text-align: right;">1.18x</td>
+<td style="text-align: right;">1.44x</td>
+<td style="text-align: right;">1.57x</td>
+<td style="text-align: right;">1.99x</td>
+</tr>
+<tr class="odd">
+<td>Torch CUDA, 1500000 x 32</td>
+<td style="text-align: right;">0.59x</td>
+<td style="text-align: right;">0.89x</td>
+<td style="text-align: right;">1.00x</td>
+<td style="text-align: right;">1.27x</td>
+<td style="text-align: right;">2.57x</td>
+<td style="text-align: right;">4.72x</td>
+<td style="text-align: right;">8.63x</td>
+<td style="text-align: right;">6.95x</td>
+</tr>
+<tr class="even">
+<td>Torch CUDA, 525000 x 6</td>
+<td style="text-align: right;">4.70x</td>
+<td style="text-align: right;">5.26x</td>
+<td style="text-align: right;">6.09x</td>
+<td style="text-align: right;">5.94x</td>
+<td style="text-align: right;">7.77x</td>
+<td style="text-align: right;">6.85x</td>
+<td style="text-align: right;">10.81x</td>
+<td style="text-align: right;">13.81x</td>
+</tr>
+<tr class="odd">
+<td>CuPy, 950000 x 1000</td>
+<td style="text-align: right;"><em>0.83x</em></td>
+<td style="text-align: right;"><em>0.78x</em></td>
+<td style="text-align: right;"><em>0.82x</em></td>
+<td style="text-align: right;"><em>0.86x</em></td>
+<td style="text-align: right;">0.95x</td>
+<td style="text-align: right;">1.20x</td>
+<td style="text-align: right;">1.34x</td>
+<td style="text-align: right;">1.58x</td>
+</tr>
+<tr class="even">
+<td>CuPy, 2100000 x 180</td>
+<td style="text-align: right;"><em>1.25x</em></td>
+<td style="text-align: right;">1.71x</td>
+<td style="text-align: right;">2.52x</td>
+<td style="text-align: right;">2.73x</td>
+<td style="text-align: right;">2.87x</td>
+<td style="text-align: right;">3.70x</td>
+<td style="text-align: right;">3.99x</td>
+<td style="text-align: right;">4.33x</td>
+</tr>
+<tr class="odd">
+<td>CuPy, 1500000 x 32</td>
+<td style="text-align: right;">3.25x</td>
+<td style="text-align: right;">4.73x</td>
+<td style="text-align: right;">7.35x</td>
+<td style="text-align: right;">6.08x</td>
+<td style="text-align: right;">11.82x</td>
+<td style="text-align: right;">15.71x</td>
+<td style="text-align: right;">16.31x</td>
+<td style="text-align: right;">18.19x</td>
+</tr>
+<tr class="even">
+<td>CuPy, 525000 x 6</td>
+<td style="text-align: right;">6.64x</td>
+<td style="text-align: right;">7.02x</td>
+<td style="text-align: right;">8.00x</td>
+<td style="text-align: right;">7.24x</td>
+<td style="text-align: right;">9.53x</td>
+<td style="text-align: right;">8.92x</td>
+<td style="text-align: right;">13.55x</td>
+<td style="text-align: right;">19.24x</td>
+</tr>
+</tbody>
+</table>
+<p>The crossover depends on both <code>k</code> and the number of features <code>d</code>, and CuPy's <code>add.at</code> tolerates contention better than PyTorch's <code>index_add_</code>. The final dispatch keeps the one-hot update on CUDA when <code>16 * k &lt; d</code> for PyTorch and <code>64 * k &lt; d</code> for CuPy. Its worst misses in this sweep are at 2 clusters: PyTorch keeps the scatter-add at <code>d=32</code>, where it runs at 0.59x, and CuPy keeps the one-hot update at <code>d=180</code>, where the scatter-add would be 1.25x faster. On CPU the scatter-add won on every task, so Torch CPU always uses it. In the benchmark, only <code>k3-d1000</code> falls on the one-hot side, so its CUDA "native" and "generic" rows run the same code.</p>
 <h2 id="full-fit-after-k-means">Full fit after k-means++</h2>
-<img alt="Full-fit duration" src="fit-duration.svg" />
-<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>Array API - Torch CPU</td><td>20.24 ± 6.30 s</td><td>11.08 ± 0.17 s</td><td>16.86 ± 0.17 s</td><td>17.94 ± 0.14 s</td><td>40.03 ± 0.54 s</td></tr><tr><td>Array API - Torch CPU, generic update</td><td>18.23 ± 0.22 s</td><td>11.74 ± 0.18 s</td><td>20.06 ± 0.09 s</td><td>34.15 ± 0.24 s</td><td>timeout</td></tr><tr><td>Array API - Torch CUDA</td><td>1.07 ± 0.04 s</td><td>0.88 ± 0.01 s</td><td>0.79 ± 0.00 s</td><td>1.14 ± 0.01 s</td><td>2.00 ± 0.02 s</td></tr><tr><td>Array API - Torch CUDA, generic update</td><td>1.04 ± 0.00 s</td><td>0.86 ± 0.00 s</td><td>0.86 ± 0.00 s</td><td>1.23 ± 0.00 s</td><td>2.14 ± 0.01 s</td></tr><tr><td>Array API - CuPy</td><td>2.53 ± 2.46 s</td><td>0.92 ± 0.01 s</td><td>1.09 ± 0.01 s</td><td>1.76 ± 0.01 s</td><td>3.43 ± 0.03 s</td></tr><tr><td>Array API - CuPy, generic update</td><td>1.12 ± 0.01 s</td><td>1.11 ± 0.02 s</td><td>1.27 ± 0.00 s</td><td>1.93 ± 0.00 s</td><td>3.64 ± 0.02 s</td></tr><tr><td>scikit-learn 1.7.2</td><td>12.29 ± 0.71 s</td><td>10.52 ± 0.01 s</td><td>13.22 ± 0.47 s</td><td>16.91 ± 0.14 s</td><td>29.24 ± 0.13 s</td></tr><tr><td>scikit-learn PRs 23+26</td><td>7.40 ± 0.05 s</td><td>5.02 ± 0.00 s</td><td>2.94 ± 0.02 s</td><td>3.25 ± 0.02 s</td><td>4.52 ± 0.01 s</td></tr><tr><td>cuML 26.10</td><td>7.18 ± 0.08 s</td><td>2.50 ± 0.01 s</td><td>0.98 ± 0.01 s</td><td>1.01 ± 0.01 s</td><td>1.20 ± 0.00 s</td></tr><tr><td>cuML 26.10, scalable</td><td>6.38 ± 1.67 s</td><td>2.39 ± 0.02 s</td><td>0.73 ± 0.01 s</td><td>0.64 ± 0.01 s</td><td>1.16 ± 0.01 s</td></tr></tbody></table>
+<p><img src="fit-duration.svg" alt="Full-fit duration" /></p>
+<table>
+<thead>
+<tr class="header">
+<th>implementation</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Array API - Torch CPU</td>
+<td style="text-align: right;">20.24 ± 6.30 s</td>
+<td style="text-align: right;">11.08 ± 0.17 s</td>
+<td style="text-align: right;">16.86 ± 0.17 s</td>
+<td style="text-align: right;">17.94 ± 0.14 s</td>
+<td style="text-align: right;">40.03 ± 0.54 s</td>
+</tr>
+<tr class="even">
+<td>Array API - Torch CPU, generic update</td>
+<td style="text-align: right;">18.23 ± 0.22 s</td>
+<td style="text-align: right;">11.74 ± 0.18 s</td>
+<td style="text-align: right;">20.06 ± 0.09 s</td>
+<td style="text-align: right;">34.15 ± 0.24 s</td>
+<td style="text-align: right;">timeout</td>
+</tr>
+<tr class="odd">
+<td>Array API - Torch CUDA</td>
+<td style="text-align: right;">1.07 ± 0.04 s</td>
+<td style="text-align: right;">0.88 ± 0.01 s</td>
+<td style="text-align: right;">0.79 ± 0.00 s</td>
+<td style="text-align: right;">1.14 ± 0.01 s</td>
+<td style="text-align: right;">2.00 ± 0.02 s</td>
+</tr>
+<tr class="even">
+<td>Array API - Torch CUDA, generic update</td>
+<td style="text-align: right;">1.04 ± 0.00 s</td>
+<td style="text-align: right;">0.86 ± 0.00 s</td>
+<td style="text-align: right;">0.86 ± 0.00 s</td>
+<td style="text-align: right;">1.23 ± 0.00 s</td>
+<td style="text-align: right;">2.14 ± 0.01 s</td>
+</tr>
+<tr class="odd">
+<td>Array API - CuPy</td>
+<td style="text-align: right;">2.53 ± 2.46 s</td>
+<td style="text-align: right;">0.92 ± 0.01 s</td>
+<td style="text-align: right;">1.09 ± 0.01 s</td>
+<td style="text-align: right;">1.76 ± 0.01 s</td>
+<td style="text-align: right;">3.43 ± 0.03 s</td>
+</tr>
+<tr class="even">
+<td>Array API - CuPy, generic update</td>
+<td style="text-align: right;">1.12 ± 0.01 s</td>
+<td style="text-align: right;">1.11 ± 0.02 s</td>
+<td style="text-align: right;">1.27 ± 0.00 s</td>
+<td style="text-align: right;">1.93 ± 0.00 s</td>
+<td style="text-align: right;">3.64 ± 0.02 s</td>
+</tr>
+<tr class="odd">
+<td>scikit-learn 1.7.2</td>
+<td style="text-align: right;">12.29 ± 0.71 s</td>
+<td style="text-align: right;">10.52 ± 0.01 s</td>
+<td style="text-align: right;">13.22 ± 0.47 s</td>
+<td style="text-align: right;">16.91 ± 0.14 s</td>
+<td style="text-align: right;">29.24 ± 0.13 s</td>
+</tr>
+<tr class="even">
+<td>scikit-learn PRs 23+26</td>
+<td style="text-align: right;">7.40 ± 0.05 s</td>
+<td style="text-align: right;">5.02 ± 0.00 s</td>
+<td style="text-align: right;">2.94 ± 0.02 s</td>
+<td style="text-align: right;">3.25 ± 0.02 s</td>
+<td style="text-align: right;">4.52 ± 0.01 s</td>
+</tr>
+<tr class="odd">
+<td>cuML 26.10</td>
+<td style="text-align: right;">7.18 ± 0.08 s</td>
+<td style="text-align: right;">2.50 ± 0.01 s</td>
+<td style="text-align: right;">0.98 ± 0.01 s</td>
+<td style="text-align: right;">1.01 ± 0.01 s</td>
+<td style="text-align: right;">1.20 ± 0.00 s</td>
+</tr>
+<tr class="even">
+<td>cuML 26.10, scalable</td>
+<td style="text-align: right;">6.38 ± 1.67 s</td>
+<td style="text-align: right;">2.39 ± 0.02 s</td>
+<td style="text-align: right;">0.73 ± 0.01 s</td>
+<td style="text-align: right;">0.64 ± 0.01 s</td>
+<td style="text-align: right;">1.16 ± 0.01 s</td>
+</tr>
+</tbody>
+</table>
 <p>Three cells have one slow seed, and the means above include it:</p>
-<ul><li>CuPy <code>k3-d1000</code>: seed 0 took 5.38 s against 1.11 s for seeds 1 and 2. It was the first CuPy process after the code change and paid CuPy&#x27;s one-time kernel compilation for the new validation reductions. A rerun with an empty <code>CUPY_CACHE_DIR</code> took 8.36 s, and 1.11 s once warm.</li><li>Torch CPU <code>k3-d1000</code> (seed 2: 27.5 s against 16.6 s) and the shared-start Torch CPU <code>k100-d32</code> (seed 2: 18.1 s against 4.8 s): reruns of those exact cells took 16.5 s and 4.8 s, so these were transient host noise.</li></ul>
-<img alt="Full-fit quality" src="fit-quality.svg" />
-<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>Array API - Torch CPU</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>1.0013</td><td>1.0017</td></tr><tr><td>Array API - Torch CPU, generic update</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>1.0013</td><td>timeout</td></tr><tr><td>Array API - Torch CUDA</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>1.0007</td><td>1.0021</td></tr><tr><td>Array API - Torch CUDA, generic update</td><td>1.0000</td><td>1.0000</td><td>1.0001</td><td>1.0013</td><td>1.0034</td></tr><tr><td>Array API - CuPy</td><td>1.0000</td><td>1.0000</td><td>1.0001</td><td>1.0008</td><td>1.0000</td></tr><tr><td>Array API - CuPy, generic update</td><td>1.0000</td><td>1.0000</td><td>1.0001</td><td>1.0008</td><td>1.0000</td></tr><tr><td>scikit-learn 1.7.2</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>1.0009</td><td>1.0036</td></tr><tr><td>scikit-learn PRs 23+26</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>1.0013</td><td>1.0007</td></tr><tr><td>cuML 26.10</td><td>1.0000</td><td>1.0000</td><td>1.0001</td><td>1.0008</td><td>1.0034</td></tr><tr><td>cuML 26.10, scalable</td><td>1.0005</td><td>1.0011</td><td>1.0000</td><td>1.0000</td><td>1.0554</td></tr></tbody></table>
+<ul>
+<li>CuPy <code>k3-d1000</code>: seed 0 took 5.38 s against 1.11 s for seeds 1 and 2. It was the first CuPy process after the code change and paid CuPy's one-time kernel compilation for the new validation reductions. A rerun with an empty <code>CUPY_CACHE_DIR</code> took 8.36 s, and 1.11 s once warm.</li>
+<li>Torch CPU <code>k3-d1000</code> (seed 2: 27.5 s against 16.6 s) and the shared-start Torch CPU <code>k100-d32</code> (seed 2: 18.1 s against 4.8 s): reruns of those exact cells took 16.5 s and 4.8 s, so these were transient host noise.</li>
+</ul>
+<p><img src="fit-quality.svg" alt="Full-fit quality" /></p>
+<table>
+<thead>
+<tr class="header">
+<th>implementation</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Array API - Torch CPU</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0013</td>
+<td style="text-align: right;">1.0017</td>
+</tr>
+<tr class="even">
+<td>Array API - Torch CPU, generic update</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0013</td>
+<td style="text-align: right;">timeout</td>
+</tr>
+<tr class="odd">
+<td>Array API - Torch CUDA</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0007</td>
+<td style="text-align: right;">1.0021</td>
+</tr>
+<tr class="even">
+<td>Array API - Torch CUDA, generic update</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0001</td>
+<td style="text-align: right;">1.0013</td>
+<td style="text-align: right;">1.0034</td>
+</tr>
+<tr class="odd">
+<td>Array API - CuPy</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0001</td>
+<td style="text-align: right;">1.0008</td>
+<td style="text-align: right;">1.0000</td>
+</tr>
+<tr class="even">
+<td>Array API - CuPy, generic update</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0001</td>
+<td style="text-align: right;">1.0008</td>
+<td style="text-align: right;">1.0000</td>
+</tr>
+<tr class="odd">
+<td>scikit-learn 1.7.2</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0009</td>
+<td style="text-align: right;">1.0036</td>
+</tr>
+<tr class="even">
+<td>scikit-learn PRs 23+26</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0013</td>
+<td style="text-align: right;">1.0007</td>
+</tr>
+<tr class="odd">
+<td>cuML 26.10</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0001</td>
+<td style="text-align: right;">1.0008</td>
+<td style="text-align: right;">1.0034</td>
+</tr>
+<tr class="even">
+<td>cuML 26.10, scalable</td>
+<td style="text-align: right;">1.0005</td>
+<td style="text-align: right;">1.0011</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">1.0554</td>
+</tr>
+</tbody>
+</table>
 <p>Quality is mean inertia divided by the best mean in the same section. The native and generic paths agree to the shown precision except where seeded PyTorch CUDA k-means++ draws already differ across processes, as noted in 011; CuPy rows match exactly.</p>
-<img alt="Full-fit peak memory" src="fit-memory.svg" />
-<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>Array API - Torch CPU</td><td>961 MiB</td><td>2075 MiB</td><td>385 MiB</td><td>156 MiB</td><td>55 MiB</td></tr><tr><td>Array API - Torch CUDA</td><td>939 MiB</td><td>2051 MiB</td><td>368 MiB</td><td>98 MiB</td><td>68 MiB</td></tr><tr><td>Array API - Torch CUDA, generic update</td><td>939 MiB</td><td>2051 MiB</td><td>368 MiB</td><td>98 MiB</td><td>78 MiB</td></tr><tr><td>Array API - CuPy</td><td>939 MiB</td><td>2051 MiB</td><td>366 MiB</td><td>98 MiB</td><td>68 MiB</td></tr><tr><td>Array API - CuPy, generic update</td><td>939 MiB</td><td>2051 MiB</td><td>366 MiB</td><td>98 MiB</td><td>74 MiB</td></tr><tr><td>scikit-learn 1.7.2</td><td>7226 MiB</td><td>2884 MiB</td><td>366 MiB</td><td>60 MiB</td><td>16 MiB</td></tr><tr><td>scikit-learn PRs 23+26</td><td>7239 MiB</td><td>2884 MiB</td><td>366 MiB</td><td>59 MiB</td><td>16 MiB</td></tr><tr><td>cuML 26.10</td><td>3882 MiB</td><td>1778 MiB</td><td>478 MiB</td><td>266 MiB</td><td>210 MiB</td></tr><tr><td>cuML 26.10, scalable</td><td>3880 MiB</td><td>1768 MiB</td><td>456 MiB</td><td>256 MiB</td><td>213 MiB</td></tr></tbody></table>
+<p><img src="fit-memory.svg" alt="Full-fit peak memory" /></p>
+<table>
+<thead>
+<tr class="header">
+<th>implementation</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Array API - Torch CPU</td>
+<td style="text-align: right;">961 MiB</td>
+<td style="text-align: right;">2075 MiB</td>
+<td style="text-align: right;">385 MiB</td>
+<td style="text-align: right;">156 MiB</td>
+<td style="text-align: right;">55 MiB</td>
+</tr>
+<tr class="even">
+<td>Array API - Torch CUDA</td>
+<td style="text-align: right;">939 MiB</td>
+<td style="text-align: right;">2051 MiB</td>
+<td style="text-align: right;">368 MiB</td>
+<td style="text-align: right;">98 MiB</td>
+<td style="text-align: right;">68 MiB</td>
+</tr>
+<tr class="odd">
+<td>Array API - Torch CUDA, generic update</td>
+<td style="text-align: right;">939 MiB</td>
+<td style="text-align: right;">2051 MiB</td>
+<td style="text-align: right;">368 MiB</td>
+<td style="text-align: right;">98 MiB</td>
+<td style="text-align: right;">78 MiB</td>
+</tr>
+<tr class="even">
+<td>Array API - CuPy</td>
+<td style="text-align: right;">939 MiB</td>
+<td style="text-align: right;">2051 MiB</td>
+<td style="text-align: right;">366 MiB</td>
+<td style="text-align: right;">98 MiB</td>
+<td style="text-align: right;">68 MiB</td>
+</tr>
+<tr class="odd">
+<td>Array API - CuPy, generic update</td>
+<td style="text-align: right;">939 MiB</td>
+<td style="text-align: right;">2051 MiB</td>
+<td style="text-align: right;">366 MiB</td>
+<td style="text-align: right;">98 MiB</td>
+<td style="text-align: right;">74 MiB</td>
+</tr>
+<tr class="even">
+<td>scikit-learn 1.7.2</td>
+<td style="text-align: right;">7226 MiB</td>
+<td style="text-align: right;">2884 MiB</td>
+<td style="text-align: right;">366 MiB</td>
+<td style="text-align: right;">60 MiB</td>
+<td style="text-align: right;">16 MiB</td>
+</tr>
+<tr class="odd">
+<td>scikit-learn PRs 23+26</td>
+<td style="text-align: right;">7239 MiB</td>
+<td style="text-align: right;">2884 MiB</td>
+<td style="text-align: right;">366 MiB</td>
+<td style="text-align: right;">59 MiB</td>
+<td style="text-align: right;">16 MiB</td>
+</tr>
+<tr class="even">
+<td>cuML 26.10</td>
+<td style="text-align: right;">3882 MiB</td>
+<td style="text-align: right;">1778 MiB</td>
+<td style="text-align: right;">478 MiB</td>
+<td style="text-align: right;">266 MiB</td>
+<td style="text-align: right;">210 MiB</td>
+</tr>
+<tr class="odd">
+<td>cuML 26.10, scalable</td>
+<td style="text-align: right;">3880 MiB</td>
+<td style="text-align: right;">1768 MiB</td>
+<td style="text-align: right;">456 MiB</td>
+<td style="text-align: right;">256 MiB</td>
+<td style="text-align: right;">213 MiB</td>
+</tr>
+</tbody>
+</table>
 <p>The scatter-add removes the one-hot tile, which saves 6 to 10 MiB at 3000 clusters; elsewhere the assignment tiles dominate and memory is unchanged.</p>
 <h2 id="lloyd-from-shared-random-rows">Lloyd from shared random rows</h2>
-<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>Array API - Torch CPU</td><td>14.81 ± 0.43 s</td><td>7.42 ± 0.13 s</td><td>9.24 ± 7.68 s</td><td>4.41 ± 0.01 s</td><td>20.86 ± 0.15 s</td></tr><tr><td>Array API - Torch CPU, generic update</td><td>16.30 ± 0.14 s</td><td>8.09 ± 0.04 s</td><td>8.56 ± 0.05 s</td><td>20.34 ± 0.16 s</td><td>44.45 ± 0.67 s</td></tr><tr><td>Array API - Torch CUDA</td><td>0.89 ± 0.00 s</td><td>0.64 ± 0.01 s</td><td>0.39 ± 0.00 s</td><td>0.49 ± 0.00 s</td><td>0.62 ± 0.03 s</td></tr><tr><td>Array API - Torch CUDA, generic update</td><td>0.89 ± 0.00 s</td><td>0.63 ± 0.01 s</td><td>0.46 ± 0.00 s</td><td>0.59 ± 0.00 s</td><td>0.75 ± 0.00 s</td></tr><tr><td>Array API - CuPy</td><td>1.06 ± 0.05 s</td><td>0.67 ± 0.00 s</td><td>0.39 ± 0.00 s</td><td>0.42 ± 0.00 s</td><td>0.58 ± 0.04 s</td></tr><tr><td>Array API - CuPy, generic update</td><td>1.00 ± 0.00 s</td><td>0.87 ± 0.00 s</td><td>0.58 ± 0.00 s</td><td>0.60 ± 0.01 s</td><td>0.76 ± 0.00 s</td></tr><tr><td>scikit-learn 1.7.2</td><td>6.79 ± 0.06 s</td><td>3.17 ± 0.00 s</td><td>1.42 ± 0.00 s</td><td>1.32 ± 0.01 s</td><td>1.54 ± 0.00 s</td></tr><tr><td>scikit-learn PRs 23+26</td><td>7.02 ± 0.63 s</td><td>3.18 ± 0.02 s</td><td>1.44 ± 0.01 s</td><td>1.31 ± 0.01 s</td><td>1.55 ± 0.01 s</td></tr><tr><td>cuML 26.10</td><td>6.88 ± 0.03 s</td><td>2.12 ± 0.02 s</td><td>0.54 ± 0.02 s</td><td>0.35 ± 0.01 s</td><td>0.32 ± 0.01 s</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>implementation</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Array API - Torch CPU</td>
+<td style="text-align: right;">14.81 ± 0.43 s</td>
+<td style="text-align: right;">7.42 ± 0.13 s</td>
+<td style="text-align: right;">9.24 ± 7.68 s</td>
+<td style="text-align: right;">4.41 ± 0.01 s</td>
+<td style="text-align: right;">20.86 ± 0.15 s</td>
+</tr>
+<tr class="even">
+<td>Array API - Torch CPU, generic update</td>
+<td style="text-align: right;">16.30 ± 0.14 s</td>
+<td style="text-align: right;">8.09 ± 0.04 s</td>
+<td style="text-align: right;">8.56 ± 0.05 s</td>
+<td style="text-align: right;">20.34 ± 0.16 s</td>
+<td style="text-align: right;">44.45 ± 0.67 s</td>
+</tr>
+<tr class="odd">
+<td>Array API - Torch CUDA</td>
+<td style="text-align: right;">0.89 ± 0.00 s</td>
+<td style="text-align: right;">0.64 ± 0.01 s</td>
+<td style="text-align: right;">0.39 ± 0.00 s</td>
+<td style="text-align: right;">0.49 ± 0.00 s</td>
+<td style="text-align: right;">0.62 ± 0.03 s</td>
+</tr>
+<tr class="even">
+<td>Array API - Torch CUDA, generic update</td>
+<td style="text-align: right;">0.89 ± 0.00 s</td>
+<td style="text-align: right;">0.63 ± 0.01 s</td>
+<td style="text-align: right;">0.46 ± 0.00 s</td>
+<td style="text-align: right;">0.59 ± 0.00 s</td>
+<td style="text-align: right;">0.75 ± 0.00 s</td>
+</tr>
+<tr class="odd">
+<td>Array API - CuPy</td>
+<td style="text-align: right;">1.06 ± 0.05 s</td>
+<td style="text-align: right;">0.67 ± 0.00 s</td>
+<td style="text-align: right;">0.39 ± 0.00 s</td>
+<td style="text-align: right;">0.42 ± 0.00 s</td>
+<td style="text-align: right;">0.58 ± 0.04 s</td>
+</tr>
+<tr class="even">
+<td>Array API - CuPy, generic update</td>
+<td style="text-align: right;">1.00 ± 0.00 s</td>
+<td style="text-align: right;">0.87 ± 0.00 s</td>
+<td style="text-align: right;">0.58 ± 0.00 s</td>
+<td style="text-align: right;">0.60 ± 0.01 s</td>
+<td style="text-align: right;">0.76 ± 0.00 s</td>
+</tr>
+<tr class="odd">
+<td>scikit-learn 1.7.2</td>
+<td style="text-align: right;">6.79 ± 0.06 s</td>
+<td style="text-align: right;">3.17 ± 0.00 s</td>
+<td style="text-align: right;">1.42 ± 0.00 s</td>
+<td style="text-align: right;">1.32 ± 0.01 s</td>
+<td style="text-align: right;">1.54 ± 0.00 s</td>
+</tr>
+<tr class="even">
+<td>scikit-learn PRs 23+26</td>
+<td style="text-align: right;">7.02 ± 0.63 s</td>
+<td style="text-align: right;">3.18 ± 0.02 s</td>
+<td style="text-align: right;">1.44 ± 0.01 s</td>
+<td style="text-align: right;">1.31 ± 0.01 s</td>
+<td style="text-align: right;">1.55 ± 0.01 s</td>
+</tr>
+<tr class="odd">
+<td>cuML 26.10</td>
+<td style="text-align: right;">6.88 ± 0.03 s</td>
+<td style="text-align: right;">2.12 ± 0.02 s</td>
+<td style="text-align: right;">0.54 ± 0.02 s</td>
+<td style="text-align: right;">0.35 ± 0.01 s</td>
+<td style="text-align: right;">0.32 ± 0.01 s</td>
+</tr>
+</tbody>
+</table>
 <p>Every implementation reaches the same objective within 0.07% on all tasks, except cuML at 3000 clusters, which keeps empty centers and ends 6.99% above the best, as in 011.</p>
 <h2 id="native-speedup-over-the-generic-update">Native speedup over the generic update</h2>
 <p>Generic time divided by native time, from the seed means above.</p>
-<table><thead><tr><th>backend, start</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>Torch CPU, k-means++</td><td>0.90x</td><td>1.06x</td><td>1.19x</td><td>1.90x</td><td>generic times out</td></tr><tr><td>Torch CPU, shared rows</td><td>1.10x</td><td>1.09x</td><td>0.93x</td><td>4.61x</td><td>2.13x</td></tr><tr><td>Torch CUDA, k-means++</td><td>0.97x (same code)</td><td>0.98x</td><td>1.09x</td><td>1.08x</td><td>1.07x</td></tr><tr><td>Torch CUDA, shared rows</td><td>1.00x (same code)</td><td>0.99x</td><td>1.17x</td><td>1.21x</td><td>1.22x</td></tr><tr><td>CuPy, k-means++</td><td>0.44x (same code)</td><td>1.21x</td><td>1.16x</td><td>1.10x</td><td>1.06x</td></tr><tr><td>CuPy, shared rows</td><td>0.94x (same code)</td><td>1.29x</td><td>1.47x</td><td>1.43x</td><td>1.31x</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>backend, start</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Torch CPU, k-means++</td>
+<td style="text-align: right;">0.90x</td>
+<td style="text-align: right;">1.06x</td>
+<td style="text-align: right;">1.19x</td>
+<td style="text-align: right;">1.90x</td>
+<td style="text-align: right;">generic times out</td>
+</tr>
+<tr class="even">
+<td>Torch CPU, shared rows</td>
+<td style="text-align: right;">1.10x</td>
+<td style="text-align: right;">1.09x</td>
+<td style="text-align: right;">0.93x</td>
+<td style="text-align: right;">4.61x</td>
+<td style="text-align: right;">2.13x</td>
+</tr>
+<tr class="odd">
+<td>Torch CUDA, k-means++</td>
+<td style="text-align: right;">0.97x (same code)</td>
+<td style="text-align: right;">0.98x</td>
+<td style="text-align: right;">1.09x</td>
+<td style="text-align: right;">1.08x</td>
+<td style="text-align: right;">1.07x</td>
+</tr>
+<tr class="even">
+<td>Torch CUDA, shared rows</td>
+<td style="text-align: right;">1.00x (same code)</td>
+<td style="text-align: right;">0.99x</td>
+<td style="text-align: right;">1.17x</td>
+<td style="text-align: right;">1.21x</td>
+<td style="text-align: right;">1.22x</td>
+</tr>
+<tr class="odd">
+<td>CuPy, k-means++</td>
+<td style="text-align: right;">0.44x (same code)</td>
+<td style="text-align: right;">1.21x</td>
+<td style="text-align: right;">1.16x</td>
+<td style="text-align: right;">1.10x</td>
+<td style="text-align: right;">1.06x</td>
+</tr>
+<tr class="even">
+<td>CuPy, shared rows</td>
+<td style="text-align: right;">0.94x (same code)</td>
+<td style="text-align: right;">1.29x</td>
+<td style="text-align: right;">1.47x</td>
+<td style="text-align: right;">1.43x</td>
+<td style="text-align: right;">1.31x</td>
+</tr>
+</tbody>
+</table>
 <p>The two Torch CPU cells below 1x come from the noisy seed-2 runs above: without seed 2 they are 1.10x and 1.78x. The CuPy <code>k3-d1000</code> k-means++ cell reflects the one-time kernel compilation.</p>
 <h2 id="comparison-with-011">Comparison with 011</h2>
 <p>011 called the Lloyd loop directly, with the earlier tile schedule and the one-hot update; 015 goes through the estimator with the tile schedule chosen in 014 and the native update. Seed means, k-means++ full fit:</p>
-<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>Torch CPU, 011</td><td>17.31 s</td><td>11.21 s</td><td>25.88 s</td><td>53.53 s</td><td>timeout</td></tr><tr><td>Torch CPU, 015</td><td>20.24 s</td><td>11.08 s</td><td>16.86 s</td><td>17.94 s</td><td>40.03 s</td></tr><tr><td>Torch CUDA, 011</td><td>0.94 s</td><td>1.25 s</td><td>1.20 s</td><td>1.66 s</td><td>2.62 s</td></tr><tr><td>Torch CUDA, 015</td><td>1.07 s</td><td>0.88 s</td><td>0.79 s</td><td>1.14 s</td><td>2.00 s</td></tr><tr><td>CuPy, 011</td><td>1.13 s</td><td>1.77 s</td><td>1.79 s</td><td>2.44 s</td><td>4.32 s</td></tr><tr><td>CuPy, 015</td><td>2.53 s</td><td>0.92 s</td><td>1.09 s</td><td>1.76 s</td><td>3.43 s</td></tr><tr><td>cuML 26.10</td><td>7.18 s</td><td>2.50 s</td><td>0.98 s</td><td>1.01 s</td><td>1.20 s</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>implementation</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Torch CPU, 011</td>
+<td style="text-align: right;">17.31 s</td>
+<td style="text-align: right;">11.21 s</td>
+<td style="text-align: right;">25.88 s</td>
+<td style="text-align: right;">53.53 s</td>
+<td style="text-align: right;">timeout</td>
+</tr>
+<tr class="even">
+<td>Torch CPU, 015</td>
+<td style="text-align: right;">20.24 s</td>
+<td style="text-align: right;">11.08 s</td>
+<td style="text-align: right;">16.86 s</td>
+<td style="text-align: right;">17.94 s</td>
+<td style="text-align: right;">40.03 s</td>
+</tr>
+<tr class="odd">
+<td>Torch CUDA, 011</td>
+<td style="text-align: right;">0.94 s</td>
+<td style="text-align: right;">1.25 s</td>
+<td style="text-align: right;">1.20 s</td>
+<td style="text-align: right;">1.66 s</td>
+<td style="text-align: right;">2.62 s</td>
+</tr>
+<tr class="even">
+<td>Torch CUDA, 015</td>
+<td style="text-align: right;">1.07 s</td>
+<td style="text-align: right;">0.88 s</td>
+<td style="text-align: right;">0.79 s</td>
+<td style="text-align: right;">1.14 s</td>
+<td style="text-align: right;">2.00 s</td>
+</tr>
+<tr class="odd">
+<td>CuPy, 011</td>
+<td style="text-align: right;">1.13 s</td>
+<td style="text-align: right;">1.77 s</td>
+<td style="text-align: right;">1.79 s</td>
+<td style="text-align: right;">2.44 s</td>
+<td style="text-align: right;">4.32 s</td>
+</tr>
+<tr class="even">
+<td>CuPy, 015</td>
+<td style="text-align: right;">2.53 s</td>
+<td style="text-align: right;">0.92 s</td>
+<td style="text-align: right;">1.09 s</td>
+<td style="text-align: right;">1.76 s</td>
+<td style="text-align: right;">3.43 s</td>
+</tr>
+<tr class="odd">
+<td>cuML 26.10</td>
+<td style="text-align: right;">7.18 s</td>
+<td style="text-align: right;">2.50 s</td>
+<td style="text-align: right;">0.98 s</td>
+<td style="text-align: right;">1.01 s</td>
+<td style="text-align: right;">1.20 s</td>
+</tr>
+</tbody>
+</table>
 <p>The shared-start rows, 011 Lloyd-only against 015 estimator fit:</p>
-<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>Torch CUDA, 011</td><td>0.77 s</td><td>1.01 s</td><td>0.79 s</td><td>0.98 s</td><td>1.25 s</td></tr><tr><td>Torch CUDA, 015</td><td>0.89 s</td><td>0.64 s</td><td>0.39 s</td><td>0.49 s</td><td>0.62 s</td></tr><tr><td>CuPy, 011</td><td>0.96 s</td><td>1.54 s</td><td>1.07 s</td><td>1.07 s</td><td>1.39 s</td></tr><tr><td>CuPy, 015</td><td>1.06 s</td><td>0.67 s</td><td>0.39 s</td><td>0.42 s</td><td>0.58 s</td></tr><tr><td>cuML 26.10</td><td>6.88 s</td><td>2.12 s</td><td>0.54 s</td><td>0.35 s</td><td>0.32 s</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>implementation</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Torch CUDA, 011</td>
+<td style="text-align: right;">0.77 s</td>
+<td style="text-align: right;">1.01 s</td>
+<td style="text-align: right;">0.79 s</td>
+<td style="text-align: right;">0.98 s</td>
+<td style="text-align: right;">1.25 s</td>
+</tr>
+<tr class="even">
+<td>Torch CUDA, 015</td>
+<td style="text-align: right;">0.89 s</td>
+<td style="text-align: right;">0.64 s</td>
+<td style="text-align: right;">0.39 s</td>
+<td style="text-align: right;">0.49 s</td>
+<td style="text-align: right;">0.62 s</td>
+</tr>
+<tr class="odd">
+<td>CuPy, 011</td>
+<td style="text-align: right;">0.96 s</td>
+<td style="text-align: right;">1.54 s</td>
+<td style="text-align: right;">1.07 s</td>
+<td style="text-align: right;">1.07 s</td>
+<td style="text-align: right;">1.39 s</td>
+</tr>
+<tr class="even">
+<td>CuPy, 015</td>
+<td style="text-align: right;">1.06 s</td>
+<td style="text-align: right;">0.67 s</td>
+<td style="text-align: right;">0.39 s</td>
+<td style="text-align: right;">0.42 s</td>
+<td style="text-align: right;">0.58 s</td>
+</tr>
+<tr class="odd">
+<td>cuML 26.10</td>
+<td style="text-align: right;">6.88 s</td>
+<td style="text-align: right;">2.12 s</td>
+<td style="text-align: right;">0.54 s</td>
+<td style="text-align: right;">0.35 s</td>
+<td style="text-align: right;">0.32 s</td>
+</tr>
+</tbody>
+</table>
 <p>From 17 clusters up, most of the GPU gain over 011 comes from the tile schedule: the shared-start generic rows are already 1.6x to 1.8x faster than 011. The native update adds another 1.2x to 1.5x from 100 clusters up. At 3 clusters, 015 is about 0.1 s slower because the estimator adds validation, a final assignment, and an inertia pass over the 3.8 GB input.</p>
 <h2 id="initialization-only">Initialization only</h2>
 <p>Greedy k-means++ does not use the centroid update, so these rows only check that the initializer still matches 011.</p>
-<img alt="Initialization duration" src="init-duration.svg" />
-<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>Array API - Torch CPU</td><td>2.20 s</td><td>3.62 s</td><td>12.73 s</td><td>13.79 s</td><td>21.54 s</td></tr><tr><td>Array API - Torch CUDA</td><td>0.22 s</td><td>0.36 s</td><td>0.47 s</td><td>0.74 s</td><td>1.49 s</td></tr><tr><td>Array API - CuPy</td><td>0.16 s</td><td>0.28 s</td><td>0.74 s</td><td>1.38 s</td><td>2.93 s</td></tr><tr><td>scikit-learn 1.7.2</td><td>5.14 s</td><td>7.65 s</td><td>11.45 s</td><td>15.34 s</td><td>28.06 s</td></tr><tr><td>scikit-learn PRs 23+26</td><td>1.30 s</td><td>2.04 s</td><td>1.53 s</td><td>1.96 s</td><td>3.00 s</td></tr><tr><td>cuML 26.10</td><td>0.13 s</td><td>0.40 s</td><td>0.48 s</td><td>0.69 s</td><td>0.92 s</td></tr><tr><td>cuML 26.10, scalable</td><td>0.49 s</td><td>0.28 s</td><td>0.25 s</td><td>0.33 s</td><td>0.90 s</td></tr></tbody></table>
-<p>Every row is within 0.2 s or 10% of 011. Quality and memory are in <a href="init-quality.svg">init-quality.svg</a> and <a href="init-memory.svg">init-memory.svg</a>; they repeat 011&#x27;s conclusions.</p>
+<p><img src="init-duration.svg" alt="Initialization duration" /></p>
+<table>
+<thead>
+<tr class="header">
+<th>implementation</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Array API - Torch CPU</td>
+<td style="text-align: right;">2.20 s</td>
+<td style="text-align: right;">3.62 s</td>
+<td style="text-align: right;">12.73 s</td>
+<td style="text-align: right;">13.79 s</td>
+<td style="text-align: right;">21.54 s</td>
+</tr>
+<tr class="even">
+<td>Array API - Torch CUDA</td>
+<td style="text-align: right;">0.22 s</td>
+<td style="text-align: right;">0.36 s</td>
+<td style="text-align: right;">0.47 s</td>
+<td style="text-align: right;">0.74 s</td>
+<td style="text-align: right;">1.49 s</td>
+</tr>
+<tr class="odd">
+<td>Array API - CuPy</td>
+<td style="text-align: right;">0.16 s</td>
+<td style="text-align: right;">0.28 s</td>
+<td style="text-align: right;">0.74 s</td>
+<td style="text-align: right;">1.38 s</td>
+<td style="text-align: right;">2.93 s</td>
+</tr>
+<tr class="even">
+<td>scikit-learn 1.7.2</td>
+<td style="text-align: right;">5.14 s</td>
+<td style="text-align: right;">7.65 s</td>
+<td style="text-align: right;">11.45 s</td>
+<td style="text-align: right;">15.34 s</td>
+<td style="text-align: right;">28.06 s</td>
+</tr>
+<tr class="odd">
+<td>scikit-learn PRs 23+26</td>
+<td style="text-align: right;">1.30 s</td>
+<td style="text-align: right;">2.04 s</td>
+<td style="text-align: right;">1.53 s</td>
+<td style="text-align: right;">1.96 s</td>
+<td style="text-align: right;">3.00 s</td>
+</tr>
+<tr class="even">
+<td>cuML 26.10</td>
+<td style="text-align: right;">0.13 s</td>
+<td style="text-align: right;">0.40 s</td>
+<td style="text-align: right;">0.48 s</td>
+<td style="text-align: right;">0.69 s</td>
+<td style="text-align: right;">0.92 s</td>
+</tr>
+<tr class="odd">
+<td>cuML 26.10, scalable</td>
+<td style="text-align: right;">0.49 s</td>
+<td style="text-align: right;">0.28 s</td>
+<td style="text-align: right;">0.25 s</td>
+<td style="text-align: right;">0.33 s</td>
+<td style="text-align: right;">0.90 s</td>
+</tr>
+</tbody>
+</table>
+<p>Every row is within 0.2 s or 10% of 011. Quality and memory are in <a href="init-quality.svg">init-quality.svg</a> and <a href="init-memory.svg">init-memory.svg</a>; they repeat 011's conclusions.</p>
 <h2 id="conclusions">Conclusions</h2>
-<ul><li>The native PyTorch and CuPy updates are now the default for those namespaces, with the portable update kept for every other namespace and for wide CUDA inputs with few clusters.</li><li>On CUDA, the native update speeds up k-means++ fits by 1.06x to 1.21x and shared-start fits by 1.17x to 1.47x, from 17 clusters up on CuPy and from 100 clusters up on PyTorch. Assignment now dominates the remaining time.</li><li>Torch CPU gains the most: 1.9x on the 550-cluster k-means++ fit, 4.6x on its shared-start fit, and the 3000-cluster k-means++ fit now finishes in 40 s instead of timing out.</li><li>PyTorch CUDA and CuPy now beat cuML&#x27;s shared-start Lloyd at 100 clusters (0.39 s against 0.54 s) and stay faster at 3 and 17 clusters. cuML remains faster at 550 and 3000 clusters, by 1.2x to 1.9x. For k-means++ fits, cuML greedy is faster at 550 and 3000 clusters and cuML scalable from 100 clusters up; greedy initialization alone costs 0.5 to 2.9 s on the array-API backends there.</li><li>Two estimator-level fixes came out of the first run: a finiteness check without input-sized temporaries, which recovers 5.3 GiB of PyTorch memory on the widest task, and a backend-specific <code>k</code>-versus-<code>d</code> crossover for the scatter-add.</li></ul>
+<ul>
+<li>The native PyTorch and CuPy updates are now the default for those namespaces, with the portable update kept for every other namespace and for wide CUDA inputs with few clusters.</li>
+<li>On CUDA, the native update speeds up k-means++ fits by 1.06x to 1.21x and shared-start fits by 1.17x to 1.47x, from 17 clusters up on CuPy and from 100 clusters up on PyTorch. Assignment now dominates the remaining time.</li>
+<li>Torch CPU gains the most: 1.9x on the 550-cluster k-means++ fit, 4.6x on its shared-start fit, and the 3000-cluster k-means++ fit now finishes in 40 s instead of timing out.</li>
+<li>PyTorch CUDA and CuPy now beat cuML's shared-start Lloyd at 100 clusters (0.39 s against 0.54 s) and stay faster at 3 and 17 clusters. cuML remains faster at 550 and 3000 clusters, by 1.2x to 1.9x. For k-means++ fits, cuML greedy is faster at 550 and 3000 clusters and cuML scalable from 100 clusters up; greedy initialization alone costs 0.5 to 2.9 s on the array-API backends there.</li>
+<li>Two estimator-level fixes came out of the first run: a finiteness check without input-sized temporaries, which recovers 5.3 GiB of PyTorch memory on the widest task, and a backend-specific <code>k</code>-versus-<code>d</code> crossover for the scatter-add.</li>
+</ul>
 <p>Previous: <a href="../014-portable-array-api-kmeans/index.html">portable array-API KMeans</a>. Next: <a href="../016-gemm-vs-broadcast-distances/index.html">GEMM versus broadcast distances</a>. Index: <a href="../index.html">journal</a>.</p>
+
 </main>
 </body>
 </html>

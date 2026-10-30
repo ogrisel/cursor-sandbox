@@ -14,16 +14,162 @@
 </nav>
 </header>
 <main>
-<h1 id="023-dpnp-array-api-on-arc-b390">023 — dpnp array API on Arc B390</h1>
+<h1 id="023--dpnp-array-api-on-arc-b390">023 — dpnp array API on Arc B390</h1>
 <p><a href="../022-intel-arc-xpu/index.html">022</a> timed PyTorch XPU, PyTorch CPU, stock scikit-learn 1.9.1, and cakedev0 on this laptop. This entry adds the same estimator on dpnp GPU arrays, using the portable one-hot centroid update. The 022 rows are unchanged. Seed-level rows are in <a href="runs.jsonl">runs.jsonl</a>. Means are in <a href="results.json">results.json</a>.</p>
 <h2 id="setup">Setup</h2>
-<ul><li>Same host, tasks, dtype, seeds, and stopping rule as 022: <code>xps-ultra-x7</code>, Intel Arc B390, float32, seeds 0–2, greedy k-means++ or the shared random-row centers, <code>max_iter=12</code>, <code>tol=1e-8</code>, a fresh process per run.</li><li>dpnp 0.19.1+1.gcc1019cbc92 and dpctl 0.21.1. Samples and the shared centers are copied with <code>dpnp.asarray(..., device=&quot;gpu&quot;)</code>, which selects the Level Zero Arc B390. The worker is left unpinned. The timed region is <code>perf_counter</code> between <code>sycl_queue.wait()</code> calls, so the host-to-device copy sits outside the timer. The memory figure is host VmHWM above that copy.</li><li><code>native_accumulate</code> returns <code>None</code> for dpnp, so every cell is the portable one-hot update. There is no scatter-add variant to compare.</li><li>Each shape and initializer gets one discarded warmup process, as the XPU cells did in 022. The worker limit is 90 s. Every run finished. The first <code>k3-d1000</code> pass still had a cold seed 0 (9.48 s greedy, 8.96 s shared-start). That task was measured again after the other shapes; the tables use the second pass. The generated arrays, about 5.3 GiB, remain at <code>~/task-mix-data-v4</code>.</li></ul>
+<ul>
+<li>Same host, tasks, dtype, seeds, and stopping rule as 022: <code>xps-ultra-x7</code>, Intel Arc B390, float32, seeds 0–2, greedy k-means++ or the shared random-row centers, <code>max_iter=12</code>, <code>tol=1e-8</code>, a fresh process per run.</li>
+<li>dpnp 0.19.1+1.gcc1019cbc92 and dpctl 0.21.1. Samples and the shared centers are copied with <code>dpnp.asarray(..., device="gpu")</code>, which selects the Level Zero Arc B390. The worker is left unpinned. The timed region is <code>perf_counter</code> between <code>sycl_queue.wait()</code> calls, so the host-to-device copy sits outside the timer. The memory figure is host VmHWM above that copy.</li>
+<li><code>native_accumulate</code> returns <code>None</code> for dpnp, so every cell is the portable one-hot update. There is no scatter-add variant to compare.</li>
+<li>Each shape and initializer gets one discarded warmup process, as the XPU cells did in 022. The worker limit is 90 s. Every run finished. The first <code>k3-d1000</code> pass still had a cold seed 0 (9.48 s greedy, 8.96 s shared-start). That task was measured again after the other shapes; the tables use the second pass. The generated arrays, about 5.3 GiB, remain at <code>~/task-mix-data-v4</code>.</li>
+</ul>
 <h2 id="full-fit-from-greedy-k-means">Full fit from greedy k-means++</h2>
-<p>Time in seconds, mean ± sample standard deviation. The non-dpnp rows are the 022 means. **Bold** is the fastest mean in the column.</p>
-<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k256-d128</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>dpnp, portable</td><td>4.83 ± 0.17</td><td>2.57 ± 0.09</td><td>2.71 ± 0.04</td><td>1.11 ± 0.01</td><td>5.74 ± 0.14</td><td>11.28 ± 0.82</td></tr><tr><td>Torch XPU, generic</td><td>**3.22 ± 0.25**</td><td>2.83 ± 0.43</td><td>2.78 ± 0.01</td><td>1.87 ± 0.01</td><td>4.07 ± 0.01</td><td>4.97 ± 0.01</td></tr><tr><td>Torch XPU, native</td><td>4.45 ± 0.00</td><td>3.36 ± 0.01</td><td>2.98 ± 0.01</td><td>2.05 ± 0.01</td><td>4.02 ± 0.01</td><td>4.88 ± 0.03</td></tr><tr><td>Torch CPU, native</td><td>4.99 ± 0.06</td><td>3.82 ± 0.07</td><td>5.12 ± 0.10</td><td>1.85 ± 0.04</td><td>5.98 ± 0.17</td><td>17.06 ± 0.19</td></tr><tr><td>scikit-learn 1.9.1</td><td>33.12 ± 6.69</td><td>7.31 ± 0.23</td><td>8.95 ± 0.07</td><td>5.72 ± 0.01</td><td>10.26 ± 0.03</td><td>13.67 ± 0.67</td></tr><tr><td>cakedev0 PRs 23+26</td><td>9.01 ± 0.22</td><td>**2.35 ± 0.10**</td><td>**1.92 ± 0.04**</td><td>**1.06 ± 0.02**</td><td>**2.18 ± 0.01**</td><td>**3.01 ± 0.01**</td></tr></tbody></table>
-<ul><li>dpnp and Torch XPU generic run the same one-hot update. dpnp is faster at 17 clusters (2.57 s against 2.83 s) and at 256 (1.11 s against 1.87 s). At 100 clusters the two are within 0.1 s (2.71 s against 2.78 s). XPU is faster at 3 clusters (3.22 s against 4.83 s), at 550 (4.07 s against 5.74 s), and at 3000 (4.97 s against 11.28 s).</li><li>dpnp is faster than native Torch CPU on every full fit. The gap is 4.83 s against 4.99 s at 3 clusters and 5.74 s against 5.98 s at 550, and it widens at 100 clusters (2.71 s against 5.12 s) and at 3000 (11.28 s against 17.06 s).</li><li>cakedev0 remains the fastest full fit from 17 clusters up. dpnp is second at 17 clusters (2.57 s against 2.35 s) and at 256 (1.11 s against 1.06 s). At 3 clusters the fastest fit is still the XPU one-hot update, at 3.22 s; dpnp takes 4.83 s and cakedev0 takes 9.01 s.</li><li>The <code>k3000-d2</code> greedy seeds are 10.89 s, 10.74 s, and 12.22 s, all 12 iterations, with inertia 0.0182. Shared-start Lloyd on that task is 4.83 ± 0.07 s, so the full-fit spread includes the greedy initializer.</li></ul>
+<p>Time in seconds, mean ± sample standard deviation. The non-dpnp rows are the 022 means. <strong>Bold</strong> is the fastest mean in the column.</p>
+<table>
+<thead>
+<tr class="header">
+<th>implementation</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k256-d128</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>dpnp, portable</td>
+<td style="text-align: right;">4.83 ± 0.17</td>
+<td style="text-align: right;">2.57 ± 0.09</td>
+<td style="text-align: right;">2.71 ± 0.04</td>
+<td style="text-align: right;">1.11 ± 0.01</td>
+<td style="text-align: right;">5.74 ± 0.14</td>
+<td style="text-align: right;">11.28 ± 0.82</td>
+</tr>
+<tr class="even">
+<td>Torch XPU, generic</td>
+<td style="text-align: right;"><strong>3.22 ± 0.25</strong></td>
+<td style="text-align: right;">2.83 ± 0.43</td>
+<td style="text-align: right;">2.78 ± 0.01</td>
+<td style="text-align: right;">1.87 ± 0.01</td>
+<td style="text-align: right;">4.07 ± 0.01</td>
+<td style="text-align: right;">4.97 ± 0.01</td>
+</tr>
+<tr class="odd">
+<td>Torch XPU, native</td>
+<td style="text-align: right;">4.45 ± 0.00</td>
+<td style="text-align: right;">3.36 ± 0.01</td>
+<td style="text-align: right;">2.98 ± 0.01</td>
+<td style="text-align: right;">2.05 ± 0.01</td>
+<td style="text-align: right;">4.02 ± 0.01</td>
+<td style="text-align: right;">4.88 ± 0.03</td>
+</tr>
+<tr class="even">
+<td>Torch CPU, native</td>
+<td style="text-align: right;">4.99 ± 0.06</td>
+<td style="text-align: right;">3.82 ± 0.07</td>
+<td style="text-align: right;">5.12 ± 0.10</td>
+<td style="text-align: right;">1.85 ± 0.04</td>
+<td style="text-align: right;">5.98 ± 0.17</td>
+<td style="text-align: right;">17.06 ± 0.19</td>
+</tr>
+<tr class="odd">
+<td>scikit-learn 1.9.1</td>
+<td style="text-align: right;">33.12 ± 6.69</td>
+<td style="text-align: right;">7.31 ± 0.23</td>
+<td style="text-align: right;">8.95 ± 0.07</td>
+<td style="text-align: right;">5.72 ± 0.01</td>
+<td style="text-align: right;">10.26 ± 0.03</td>
+<td style="text-align: right;">13.67 ± 0.67</td>
+</tr>
+<tr class="even">
+<td>cakedev0 PRs 23+26</td>
+<td style="text-align: right;">9.01 ± 0.22</td>
+<td style="text-align: right;"><strong>2.35 ± 0.10</strong></td>
+<td style="text-align: right;"><strong>1.92 ± 0.04</strong></td>
+<td style="text-align: right;"><strong>1.06 ± 0.02</strong></td>
+<td style="text-align: right;"><strong>2.18 ± 0.01</strong></td>
+<td style="text-align: right;"><strong>3.01 ± 0.01</strong></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>dpnp and Torch XPU generic run the same one-hot update. dpnp is faster at 17 clusters (2.57 s against 2.83 s) and at 256 (1.11 s against 1.87 s). At 100 clusters the two are within 0.1 s (2.71 s against 2.78 s). XPU is faster at 3 clusters (3.22 s against 4.83 s), at 550 (4.07 s against 5.74 s), and at 3000 (4.97 s against 11.28 s).</li>
+<li>dpnp is faster than native Torch CPU on every full fit. The gap is 4.83 s against 4.99 s at 3 clusters and 5.74 s against 5.98 s at 550, and it widens at 100 clusters (2.71 s against 5.12 s) and at 3000 (11.28 s against 17.06 s).</li>
+<li>cakedev0 remains the fastest full fit from 17 clusters up. dpnp is second at 17 clusters (2.57 s against 2.35 s) and at 256 (1.11 s against 1.06 s). At 3 clusters the fastest fit is still the XPU one-hot update, at 3.22 s; dpnp takes 4.83 s and cakedev0 takes 9.01 s.</li>
+<li>The <code>k3000-d2</code> greedy seeds are 10.89 s, 10.74 s, and 12.22 s, all 12 iterations, with inertia 0.0182. Shared-start Lloyd on that task is 4.83 ± 0.07 s, so the full-fit spread includes the greedy initializer.</li>
+</ul>
 <h2 id="lloyd-from-the-same-random-rows">Lloyd from the same random rows</h2>
-<table><thead><tr><th>implementation</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k256-d128</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>dpnp, portable</td><td>4.20 ± 0.16</td><td>2.11 ± 0.07</td><td>1.95 ± 0.17</td><td>0.47 ± 0.01</td><td>3.56 ± 0.11</td><td>4.83 ± 0.07</td></tr><tr><td>Torch XPU, generic</td><td>**3.15 ± 0.47**</td><td>2.23 ± 0.15</td><td>2.05 ± 0.00</td><td>1.48 ± 0.00</td><td>2.73 ± 0.00</td><td>3.29 ± 0.01</td></tr><tr><td>Torch XPU, native</td><td>4.18 ± 0.00</td><td>2.95 ± 0.00</td><td>2.24 ± 0.00</td><td>1.66 ± 0.00</td><td>2.68 ± 0.01</td><td>3.08 ± 0.01</td></tr><tr><td>Torch CPU, native</td><td>4.55 ± 0.27</td><td>2.66 ± 0.01</td><td>1.69 ± 0.11</td><td>1.13 ± 0.00</td><td>1.92 ± 0.00</td><td>10.62 ± 0.38</td></tr><tr><td>scikit-learn 1.9.1</td><td>8.53 ± 0.19</td><td>**1.80 ± 0.02**</td><td>**0.88 ± 0.00**</td><td>0.47 ± 0.01</td><td>**1.13 ± 0.00**</td><td>**1.59 ± 0.00**</td></tr><tr><td>cakedev0 PRs 23+26</td><td>8.64 ± 0.22</td><td>**1.80 ± 0.02**</td><td>0.95 ± 0.01</td><td>**0.46 ± 0.00**</td><td>1.20 ± 0.01</td><td>1.63 ± 0.01</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>implementation</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k256-d128</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>dpnp, portable</td>
+<td style="text-align: right;">4.20 ± 0.16</td>
+<td style="text-align: right;">2.11 ± 0.07</td>
+<td style="text-align: right;">1.95 ± 0.17</td>
+<td style="text-align: right;">0.47 ± 0.01</td>
+<td style="text-align: right;">3.56 ± 0.11</td>
+<td style="text-align: right;">4.83 ± 0.07</td>
+</tr>
+<tr class="even">
+<td>Torch XPU, generic</td>
+<td style="text-align: right;"><strong>3.15 ± 0.47</strong></td>
+<td style="text-align: right;">2.23 ± 0.15</td>
+<td style="text-align: right;">2.05 ± 0.00</td>
+<td style="text-align: right;">1.48 ± 0.00</td>
+<td style="text-align: right;">2.73 ± 0.00</td>
+<td style="text-align: right;">3.29 ± 0.01</td>
+</tr>
+<tr class="odd">
+<td>Torch XPU, native</td>
+<td style="text-align: right;">4.18 ± 0.00</td>
+<td style="text-align: right;">2.95 ± 0.00</td>
+<td style="text-align: right;">2.24 ± 0.00</td>
+<td style="text-align: right;">1.66 ± 0.00</td>
+<td style="text-align: right;">2.68 ± 0.01</td>
+<td style="text-align: right;">3.08 ± 0.01</td>
+</tr>
+<tr class="even">
+<td>Torch CPU, native</td>
+<td style="text-align: right;">4.55 ± 0.27</td>
+<td style="text-align: right;">2.66 ± 0.01</td>
+<td style="text-align: right;">1.69 ± 0.11</td>
+<td style="text-align: right;">1.13 ± 0.00</td>
+<td style="text-align: right;">1.92 ± 0.00</td>
+<td style="text-align: right;">10.62 ± 0.38</td>
+</tr>
+<tr class="odd">
+<td>scikit-learn 1.9.1</td>
+<td style="text-align: right;">8.53 ± 0.19</td>
+<td style="text-align: right;"><strong>1.80 ± 0.02</strong></td>
+<td style="text-align: right;"><strong>0.88 ± 0.00</strong></td>
+<td style="text-align: right;">0.47 ± 0.01</td>
+<td style="text-align: right;"><strong>1.13 ± 0.00</strong></td>
+<td style="text-align: right;"><strong>1.59 ± 0.00</strong></td>
+</tr>
+<tr class="even">
+<td>cakedev0 PRs 23+26</td>
+<td style="text-align: right;">8.64 ± 0.22</td>
+<td style="text-align: right;"><strong>1.80 ± 0.02</strong></td>
+<td style="text-align: right;">0.95 ± 0.01</td>
+<td style="text-align: right;"><strong>0.46 ± 0.00</strong></td>
+<td style="text-align: right;">1.20 ± 0.01</td>
+<td style="text-align: right;">1.63 ± 0.01</td>
+</tr>
+</tbody>
+</table>
 <p>At 256 clusters dpnp Lloyd takes 0.47 s, level with stock scikit-learn (0.47 s) and cakedev0 (0.46 s), and ahead of the XPU one-hot update (1.48 s). At 3 clusters dpnp takes 4.20 s, ahead of both scikit-learn builds (8.53 s and 8.64 s) and native Torch CPU (4.55 s). The XPU one-hot update is still faster there, at 3.15 s.</p>
 <p>From 17 clusters up, Cython Lloyd is faster except at 256 clusters, where the three times agree. At 3000 clusters dpnp takes 4.83 s and native XPU takes 3.08 s, while both scikit-learn builds take about 1.6 s.</p>
 <h2 id="quality-and-memory">Quality and memory</h2>
@@ -32,6 +178,7 @@
 <h2 id="conclusion">Conclusion</h2>
 <p>On this Arc B390 the portable dpnp path is faster than native Torch CPU on every full fit, and it matches Cython Lloyd at 256 clusters (0.47 s). It is also faster than the XPU one-hot update at 17 and 256 clusters. The XPU one-hot update stays ahead at 3 clusters (3.22 s against 4.83 s). From 17 clusters up, cakedev0 remains the fastest full fit. At 550 and 3000 clusters both XPU updates and Cython Lloyd are faster than dpnp.</p>
 <p>Previous: <a href="../022-intel-arc-xpu/index.html">PyTorch XPU on Arc B390</a>. Index: <a href="../index.html">journal</a>.</p>
+
 </main>
 </body>
 </html>

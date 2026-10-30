@@ -14,70 +14,326 @@
 </nav>
 </header>
 <main>
-<h1 id="013-why-large-k-cuml-lloyd-wins-and-what-to-optimize-next">013 — why large-k cuML Lloyd wins, and what to optimize next</h1>
+<h1 id="013--why-large-k-cuml-lloyd-wins-and-what-to-optimize-next">013 — why large-k cuML Lloyd wins, and what to optimize next</h1>
 <p>This iteration answers two questions raised by the consolidated results in <a href="../011-consolidated-benchmark/index.html">011</a>:</p>
-<p>1. Is the current array-API scalable k-means++ ever competitive with its    greedy alternative? 2. Why does cuML overtake PyTorch CUDA in Lloyd iterations as <code>k</code> grows, and    which changes have the best chance of closing that gap?</p>
+<ol type="1">
+<li>Is the current array-API scalable k-means++ ever competitive with its greedy alternative?</li>
+<li>Why does cuML overtake PyTorch CUDA in Lloyd iterations as <code>k</code> grows, and which changes have the best chance of closing that gap?</li>
+</ol>
 <p>The short answers are:</p>
-<ul><li>**No, not for these tasks and this single-start, 12-iteration workload.** Scalable initialization can lower inertia before Lloyd, but every tested configuration costs more than greedy k-means++, and Lloyd erases that quality advantage.</li><li>**The large-<code>k</code> Lloyd gap is structural, not a faster GEMM.** cuVS fuses distance evaluation with the top-1 reduction and updates centroids with keyed reductions. The current array-API code materializes score tiles, reduces each tile twice, and builds about 400 one-hot membership tiles per iteration.</li><li>**There is a clear path forward.** Portable tile and reduction changes roughly halve the 12-iteration time on both PyTorch and CuPy. A compiled PyTorch assignment plus a native keyed update is faster than the cuML times reported in 011, although device-resident cuML remains faster in the isolated kernel comparison.</li></ul>
+<ul>
+<li><strong>No, not for these tasks and this single-start, 12-iteration workload.</strong> Scalable initialization can lower inertia before Lloyd, but every tested configuration costs more than greedy k-means++, and Lloyd erases that quality advantage.</li>
+<li><strong>The large-<code>k</code> Lloyd gap is structural, not a faster GEMM.</strong> cuVS fuses distance evaluation with the top-1 reduction and updates centroids with keyed reductions. The current array-API code materializes score tiles, reduces each tile twice, and builds about 400 one-hot membership tiles per iteration.</li>
+<li><strong>There is a clear path forward.</strong> Portable tile and reduction changes roughly halve the 12-iteration time on both PyTorch and CuPy. A compiled PyTorch assignment plus a native keyed update is faster than the cuML times reported in 011, although device-resident cuML remains faster in the isolated kernel comparison.</li>
+</ul>
 <h2 id="experimental-scope">Experimental scope</h2>
 <p>All new GPU measurements run on the same NVIDIA L4 as 011, with float32 and TF32 disabled. Times are medians of three measurements after warmup.</p>
-<ul><li>The phase probes use the seed-0 shared random rows and time assignment and update independently.</li><li>The portable end-to-end probe calls the production <code>fit_lloyd</code> for 12 fixed iterations on PyTorch and CuPy.</li><li>The compiled and native-update controls use a small interchangeable-phase loop. They measure optimization potential, not a new public implementation.</li><li>The cuML scaling probe passes a CuPy array to <code>KMeans.fit</code>, so data is already on the GPU. The 011 cuML rows instead pass a NumPy array and include host-to-device transfer, while the array-API timer starts after its transfer.</li><li>Scalable-init sensitivity covers seeds 0 through 2 on <code>k17-d180</code>, <code>k100-d32</code>, and <code>k3000-d2</code>.</li></ul>
+<ul>
+<li>The phase probes use the seed-0 shared random rows and time assignment and update independently.</li>
+<li>The portable end-to-end probe calls the production <code>fit_lloyd</code> for 12 fixed iterations on PyTorch and CuPy.</li>
+<li>The compiled and native-update controls use a small interchangeable-phase loop. They measure optimization potential, not a new public implementation.</li>
+<li>The cuML scaling probe passes a CuPy array to <code>KMeans.fit</code>, so data is already on the GPU. The 011 cuML rows instead pass a NumPy array and include host-to-device transfer, while the array-API timer starts after its transfer.</li>
+<li>Scalable-init sensitivity covers seeds 0 through 2 on <code>k17-d180</code>, <code>k100-d32</code>, and <code>k3000-d2</code>.</li>
+</ul>
 <p>The drivers and raw data are <a href="https://github.com/ogrisel/cursor-sandbox/blob/b0a5d9bf758e6fcd39f554a25ccc0176379c032e/kmeans_lloyd/scripts/probe_lloyd_large_k.py"><code>probe_lloyd_large_k.py</code></a>, <a href="https://github.com/ogrisel/cursor-sandbox/blob/b0a5d9bf758e6fcd39f554a25ccc0176379c032e/kmeans_lloyd/scripts/probe_portable_lloyd.py"><code>probe_portable_lloyd.py</code></a>, <a href="https://github.com/ogrisel/cursor-sandbox/blob/b0a5d9bf758e6fcd39f554a25ccc0176379c032e/kmeans_lloyd/scripts/probe_cuml_lloyd_scaling.py"><code>probe_cuml_lloyd_scaling.py</code></a>, <a href="lloyd-probes.json">lloyd-probes.json</a>, <a href="portable-results.json">portable-results.json</a>, and <a href="scalable-sensitivity.json">scalable-sensitivity.json</a>.</p>
 <h2 id="scalable-k-means-is-dominated-here">Scalable k-means++ is dominated here</h2>
 <p>The figure plots each scalable configuration relative to greedy k-means++. Circles are initialization alone; squares are initialization followed by 12 Lloyd iterations. A point is competitive only if it approaches the lower-left corner <code>(1, 1)</code>.</p>
-<img alt="Scalable initialization sensitivity" src="scalable-sensitivity.svg" />
+<p><img src="scalable-sensitivity.svg" alt="Scalable initialization sensitivity" /></p>
 <p><code>r4-o1</code>, for example, means four sampling rounds with oversampling factor 1. The current default is <code>r8-o2</code>.</p>
-<table><thead><tr><th>init only</th><th>k17-d180</th><th>k100-d32</th><th>k3000-d2</th></tr></thead><tbody><tr><td>r2-o2</td><td>2.24x time, 0.9844x inertia</td><td>1.26x time, 0.9969x inertia</td><td>1.24x time, 1.0356x inertia</td></tr><tr><td>r4-o1</td><td>2.52x time, 0.9875x inertia</td><td>1.32x time, 0.9905x inertia</td><td>1.42x time, 1.0260x inertia</td></tr><tr><td>r4-o2</td><td>3.93x time, 0.9797x inertia</td><td>2.05x time, 0.9669x inertia</td><td>1.60x time, 1.0149x inertia</td></tr><tr><td>r8-o1</td><td>3.37x time, 0.9768x inertia</td><td>1.80x time, 0.9671x inertia</td><td>1.76x time, 1.0109x inertia</td></tr><tr><td>r8-o2 default</td><td>5.31x time, 0.9626x inertia</td><td>2.66x time, 0.9506x inertia</td><td>1.72x time, 1.0031x inertia</td></tr></tbody></table>
-<table><thead><tr><th>full fit</th><th>k17-d180</th><th>k100-d32</th><th>k3000-d2</th></tr></thead><tbody><tr><td>r2-o2</td><td>1.32x time, 1.0000x inertia</td><td>1.21x time, 0.9999x inertia</td><td>1.20x time, 1.0037x inertia</td></tr><tr><td>r4-o1</td><td>1.47x time, 1.0000x inertia</td><td>1.21x time, 0.9999x inertia</td><td>1.14x time, 1.0032x inertia</td></tr><tr><td>r4-o2</td><td>1.92x time, 1.0000x inertia</td><td>1.40x time, 1.0000x inertia</td><td>1.43x time, 1.0024x inertia</td></tr><tr><td>r8-o1</td><td>1.61x time, 1.0000x inertia</td><td>1.30x time, 1.0000x inertia</td><td>1.24x time, 1.0017x inertia</td></tr><tr><td>r8-o2 default</td><td>2.08x time, 1.0000x inertia</td><td>1.65x time, 1.0000x inertia</td><td>1.39x time, 1.0005x inertia</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>init only</th>
+<th>k17-d180</th>
+<th>k100-d32</th>
+<th>k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>r2-o2</td>
+<td>2.24x time, 0.9844x inertia</td>
+<td>1.26x time, 0.9969x inertia</td>
+<td>1.24x time, 1.0356x inertia</td>
+</tr>
+<tr class="even">
+<td>r4-o1</td>
+<td>2.52x time, 0.9875x inertia</td>
+<td>1.32x time, 0.9905x inertia</td>
+<td>1.42x time, 1.0260x inertia</td>
+</tr>
+<tr class="odd">
+<td>r4-o2</td>
+<td>3.93x time, 0.9797x inertia</td>
+<td>2.05x time, 0.9669x inertia</td>
+<td>1.60x time, 1.0149x inertia</td>
+</tr>
+<tr class="even">
+<td>r8-o1</td>
+<td>3.37x time, 0.9768x inertia</td>
+<td>1.80x time, 0.9671x inertia</td>
+<td>1.76x time, 1.0109x inertia</td>
+</tr>
+<tr class="odd">
+<td>r8-o2 default</td>
+<td>5.31x time, 0.9626x inertia</td>
+<td>2.66x time, 0.9506x inertia</td>
+<td>1.72x time, 1.0031x inertia</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr class="header">
+<th>full fit</th>
+<th>k17-d180</th>
+<th>k100-d32</th>
+<th>k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>r2-o2</td>
+<td>1.32x time, 1.0000x inertia</td>
+<td>1.21x time, 0.9999x inertia</td>
+<td>1.20x time, 1.0037x inertia</td>
+</tr>
+<tr class="even">
+<td>r4-o1</td>
+<td>1.47x time, 1.0000x inertia</td>
+<td>1.21x time, 0.9999x inertia</td>
+<td>1.14x time, 1.0032x inertia</td>
+</tr>
+<tr class="odd">
+<td>r4-o2</td>
+<td>1.92x time, 1.0000x inertia</td>
+<td>1.40x time, 1.0000x inertia</td>
+<td>1.43x time, 1.0024x inertia</td>
+</tr>
+<tr class="even">
+<td>r8-o1</td>
+<td>1.61x time, 1.0000x inertia</td>
+<td>1.30x time, 1.0000x inertia</td>
+<td>1.24x time, 1.0017x inertia</td>
+</tr>
+<tr class="odd">
+<td>r8-o2 default</td>
+<td>2.08x time, 1.0000x inertia</td>
+<td>1.65x time, 1.0000x inertia</td>
+<td>1.39x time, 1.0005x inertia</td>
+</tr>
+</tbody>
+</table>
 <p>The strongest initial gains are real: the default lowers pre-Lloyd inertia by 3.7% at 17 clusters and 4.9% at 100 clusters. They are not useful in this workload. At 17 clusters, greedy initialization plus all 12 Lloyd iterations already finishes in 1.25 s, less than the scalable initializer alone at 1.66 s. After Lloyd, every scalable result at 17 and 100 clusters agrees with greedy within 0.01%, while taking 21% to 108% longer. At 3000 clusters, scalable initialization is worse before and after Lloyd for every setting.</p>
 <p>This does not disprove scalable k-means++ as an algorithm. Its intended advantages are parallel and distributed candidate sampling, and it can matter when one greedy D² pass per selected center is prohibitive. Those conditions are absent from this single-GPU task mix. The present implementation should remain experimental rather than become the default.</p>
 <h2 id="why-cuml-lloyd-gets-faster-as-k-grows">Why cuML Lloyd gets faster as <code>k</code> grows</h2>
 <p>The 011 times include substantial fixed costs. Fitting cuML from a NumPy array includes transfer to the GPU; the array-API timer starts after its data is resident. Repeating the cuML measurement with a CuPy input exposes the actual iteration cost:</p>
-<table><thead><tr><th>task</th><th>PyTorch current, 12 iterations</th><th>cuML from NumPy, 12 iterations</th><th>cuML from CuPy, 12 iterations</th><th>fitted PyTorch cost / iteration</th><th>fitted device-cuML cost / iteration</th></tr></thead><tbody><tr><td>k100-d32</td><td>0.812 s</td><td>0.615 s</td><td>0.126 s</td><td>48.8 ms</td><td>8.6 ms</td></tr><tr><td>k550-d6</td><td>1.033 s</td><td>0.511 s</td><td>0.090 s</td><td>67.7 ms</td><td>6.1 ms</td></tr><tr><td>k3000-d2</td><td>1.407 s</td><td>0.377 s</td><td>0.086 s</td><td>101.4 ms</td><td>6.0 ms</td></tr></tbody></table>
-<p>The fitted costs are slopes through <code>max_iter</code> 1, 4, and 12. cuML has a higher fixed cost with NumPy input, which is why PyTorch wins the small-<code>k</code> cases in 011. Once enough iterations or clusters amortize that cost, cuML&#x27;s much cheaper iteration dominates.</p>
+<table>
+<thead>
+<tr class="header">
+<th>task</th>
+<th>PyTorch current, 12 iterations</th>
+<th>cuML from NumPy, 12 iterations</th>
+<th>cuML from CuPy, 12 iterations</th>
+<th>fitted PyTorch cost / iteration</th>
+<th>fitted device-cuML cost / iteration</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>k100-d32</td>
+<td>0.812 s</td>
+<td>0.615 s</td>
+<td>0.126 s</td>
+<td>48.8 ms</td>
+<td>8.6 ms</td>
+</tr>
+<tr class="even">
+<td>k550-d6</td>
+<td>1.033 s</td>
+<td>0.511 s</td>
+<td>0.090 s</td>
+<td>67.7 ms</td>
+<td>6.1 ms</td>
+</tr>
+<tr class="odd">
+<td>k3000-d2</td>
+<td>1.407 s</td>
+<td>0.377 s</td>
+<td>0.086 s</td>
+<td>101.4 ms</td>
+<td>6.0 ms</td>
+</tr>
+</tbody>
+</table>
+<p>The fitted costs are slopes through <code>max_iter</code> 1, 4, and 12. cuML has a higher fixed cost with NumPy input, which is why PyTorch wins the small-<code>k</code> cases in 011. Once enough iterations or clusters amortize that cost, cuML's much cheaper iteration dominates.</p>
 <h3 id="assignment">Assignment</h3>
 <p>On the L4, cuVS always selects its fused path: <a href="https://github.com/NVIDIA/cuvs/blob/v26.10.00/cpp/src/cluster/detail/kmeans_common.cuh#L60-L82"><code>use_fused</code></a> selects it for compute capability major version 8, and the L4 is 8.9. <a href="https://github.com/NVIDIA/cuvs/blob/v26.10.00/cpp/src/cluster/detail/minClusterDistanceCompute.cu#L30-L75"><code>fusedDistanceNNMinReduce</code></a> computes distances and returns one <code>KeyValuePair&lt;label, distance&gt;</code> per sample without materializing a distance matrix. <a href="https://github.com/NVIDIA/cuvs/blob/v26.10.00/cpp/src/cluster/detail/kmeans.cuh#L819-L835">Sample norms are computed once</a> before the iteration loop.</p>
-<p>The array-API assignment makes a score tile, calls <code>argmin</code>, calls <code>min</code> over the same tile, then merges that tile&#x27;s result into a running minimum. The current schedules are:</p>
-<table><thead><tr><th>task</th><th>assignment tiles</th><th>update membership tiles</th><th>assignment</th><th>update</th></tr></thead><tbody><tr><td>k100-d32</td><td>23</td><td>367</td><td>10.8 ms</td><td>44.6 ms</td></tr><tr><td>k550-d6</td><td>27</td><td>387</td><td>33.6 ms</td><td>47.0 ms</td></tr><tr><td>k3000-d2</td><td>36</td><td>396</td><td>47.3 ms</td><td>52.3 ms</td></tr></tbody></table>
+<p>The array-API assignment makes a score tile, calls <code>argmin</code>, calls <code>min</code> over the same tile, then merges that tile's result into a running minimum. The current schedules are:</p>
+<table>
+<thead>
+<tr class="header">
+<th>task</th>
+<th style="text-align: right;">assignment tiles</th>
+<th style="text-align: right;">update membership tiles</th>
+<th style="text-align: right;">assignment</th>
+<th style="text-align: right;">update</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>k100-d32</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">367</td>
+<td style="text-align: right;">10.8 ms</td>
+<td style="text-align: right;">44.6 ms</td>
+</tr>
+<tr class="even">
+<td>k550-d6</td>
+<td style="text-align: right;">27</td>
+<td style="text-align: right;">387</td>
+<td style="text-align: right;">33.6 ms</td>
+<td style="text-align: right;">47.0 ms</td>
+</tr>
+<tr class="odd">
+<td>k3000-d2</td>
+<td style="text-align: right;">36</td>
+<td style="text-align: right;">396</td>
+<td style="text-align: right;">47.3 ms</td>
+<td style="text-align: right;">52.3 ms</td>
+</tr>
+</tbody>
+</table>
 <p>The task arithmetic actually falls from about 4.8 billion multiply-add terms at <code>k100-d32</code> to 0.81 billion at <code>k3000-d2</code>. PyTorch gets slower because the low-dimensional GEMMs and hundreds of small reductions use the GPU poorly; the work is no longer proportional to useful floating-point operations.</p>
 <h3 id="centroid-update">Centroid update</h3>
-<p>cuVS passes the labels directly to <a href="https://github.com/NVIDIA/cuvs/blob/v26.10.00/cpp/src/cluster/detail/kmeans_common.cuh#L523-L560"><code>reduce_rows_by_key</code> and <code>reduce_cols_by_key</code></a> for feature sums and cluster weights. Those are keyed (segmented) reductions: for every row, add its feature vector into the bucket named by its label, and add one into that bucket&#x27;s count. No buffer proportional to <code>n_samples x n_clusters</code> is ever materialized.</p>
-<p>The <a href="https://data-apis.org/array-api/latest/">Python array API standard</a> has no such operation. It defines whole-array reductions (<code>sum</code>, <code>mean</code>, <code>argmin</code>, ...) along an axis, but nothing that scatters contributions into <code>n_clusters</code> buckets named by an arbitrary integer label array. Without a keyed reduction, the only portable way to turn &quot;sum rows that share a label&quot; into axis reductions is to make the label visible as an axis: build a one-hot membership matrix and reduce along its sample axis. That is what <a href="https://github.com/ogrisel/cursor-sandbox/blob/92a3f4abba39d8a9a167e959debbdb5065c999f0/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L288-L355"><code>update_centroids_tiled</code></a> does, one <code>(tile_n, tile_k)</code> tile at a time:</p>
-<pre><code># kmeans_lloyd/src/kmeans_lloyd/iteration.py, inside update_centroids_tiled
-ids = xp.arange(k1 - k0, dtype=labels.dtype, device=_device(X)) + k0
-membership = xp.astype(labels[:, None] == ids[None, :], X.dtype)  # (tile_n, tile_k)
-counts = xp.sum(membership, axis=0)
-sums = xp.matmul(xp.matrix_transpose(membership), X)              # (tile_k, n_features)</code></pre>
-<p><code>labels[:, None] == ids[None, :]</code> is the only portable stand-in for a scatter: it is a whole-array comparison that happens to encode &quot;which bucket does this row belong to&quot; as a dense <code>0</code>/<code>1</code> matrix, which <code>matmul</code> can then reduce. Every one of the roughly 400 tiles per iteration recomputes this matrix and immediately discards it; none of that <code>tile_n x tile_k</code> work represents a cluster that could not have been added to directly.</p>
+<p>cuVS passes the labels directly to <a href="https://github.com/NVIDIA/cuvs/blob/v26.10.00/cpp/src/cluster/detail/kmeans_common.cuh#L523-L560"><code>reduce_rows_by_key</code> and <code>reduce_cols_by_key</code></a> for feature sums and cluster weights. Those are keyed (segmented) reductions: for every row, add its feature vector into the bucket named by its label, and add one into that bucket's count. No buffer proportional to <code>n_samples x n_clusters</code> is ever materialized.</p>
+<p>The <a href="https://data-apis.org/array-api/latest/">Python array API standard</a> has no such operation. It defines whole-array reductions (<code>sum</code>, <code>mean</code>, <code>argmin</code>, ...) along an axis, but nothing that scatters contributions into <code>n_clusters</code> buckets named by an arbitrary integer label array. Without a keyed reduction, the only portable way to turn "sum rows that share a label" into axis reductions is to make the label visible as an axis: build a one-hot membership matrix and reduce along its sample axis. That is what <a href="https://github.com/ogrisel/cursor-sandbox/blob/92a3f4abba39d8a9a167e959debbdb5065c999f0/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L288-L355"><code>update_centroids_tiled</code></a> does, one <code>(tile_n, tile_k)</code> tile at a time:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># kmeans_lloyd/src/kmeans_lloyd/iteration.py, inside update_centroids_tiled</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>ids <span class="op">=</span> xp.arange(k1 <span class="op">-</span> k0, dtype<span class="op">=</span>labels.dtype, device<span class="op">=</span>_device(X)) <span class="op">+</span> k0</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>membership <span class="op">=</span> xp.astype(labels[:, <span class="va">None</span>] <span class="op">==</span> ids[<span class="va">None</span>, :], X.dtype)  <span class="co"># (tile_n, tile_k)</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>counts <span class="op">=</span> xp.<span class="bu">sum</span>(membership, axis<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>sums <span class="op">=</span> xp.matmul(xp.matrix_transpose(membership), X)              <span class="co"># (tile_k, n_features)</span></span></code></pre></div>
+<p><code>labels[:, None] == ids[None, :]</code> is the only portable stand-in for a scatter: it is a whole-array comparison that happens to encode "which bucket does this row belong to" as a dense <code>0</code>/<code>1</code> matrix, which <code>matmul</code> can then reduce. Every one of the roughly 400 tiles per iteration recomputes this matrix and immediately discards it; none of that <code>tile_n x tile_k</code> work represents a cluster that could not have been added to directly.</p>
 <p>PyTorch (and CuPy, through its own non-standard API) does expose the keyed reduction cuVS uses, just not through the array API. <code>Tensor.index_add_</code> adds rows of <code>X</code> into <code>sums</code> at the row positions given by <code>labels</code>, in one launch, with no intermediate matrix:</p>
-<pre><code># kmeans_lloyd/scripts/probe_lloyd_large_k.py, update_index_add
-def update_index_add(X, labels, old):
-    &quot;&quot;&quot;Torch control for a native scatter-based centroid update.&quot;&quot;&quot;
-    sums = torch.zeros_like(old)
-    sums.index_add_(0, labels, X)
-    counts = torch.bincount(labels, minlength=old.shape[0]).to(X.dtype)
-    return torch.where(
-        counts[:, None] == 0,
-        old,
-        sums / torch.clamp(counts[:, None], min=1),
-    )</code></pre>
-<p>This is not a drop-in replacement inside the array-API code path. <code>index_add_</code> is a <code>torch.Tensor</code> method, not an <code>array_api_compat</code> function, so calling it means branching on the concrete backend instead of writing one function that runs unchanged on PyTorch, CuPy, and NumPy. CuPy has its own equivalent, <code>cupyx.scatter_add(sums, labels, X)</code>, with the same effect and the same unbuffered-add semantics, but a different name and import path. NumPy&#x27;s is <code>np.add.at(sums, labels, X)</code>, slower than either because it is not vectorized on CPU. None of the three is exposed by the array API standard, so today&#x27;s single code path cannot reach any of them without an <code>if xp is torch: ... elif xp is cupy: ... else: ...</code> fork, which is what the <a href="#2-add-an-explicit-centroid-update-hook">&quot;add an explicit centroid-update hook&quot;</a> recommendation below proposes to isolate behind one optional callable rather than scatter throughout <code>update_centroids_tiled</code>.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># kmeans_lloyd/scripts/probe_lloyd_large_k.py, update_index_add</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> update_index_add(X, labels, old):</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">&quot;&quot;&quot;Torch control for a native scatter-based centroid update.&quot;&quot;&quot;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    sums <span class="op">=</span> torch.zeros_like(old)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    sums.index_add_(<span class="dv">0</span>, labels, X)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    counts <span class="op">=</span> torch.bincount(labels, minlength<span class="op">=</span>old.shape[<span class="dv">0</span>]).to(X.dtype)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> torch.where(</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        counts[:, <span class="va">None</span>] <span class="op">==</span> <span class="dv">0</span>,</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        old,</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        sums <span class="op">/</span> torch.clamp(counts[:, <span class="va">None</span>], <span class="bu">min</span><span class="op">=</span><span class="dv">1</span>),</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div>
+<p>This is not a drop-in replacement inside the array-API code path. <code>index_add_</code> is a <code>torch.Tensor</code> method, not an <code>array_api_compat</code> function, so calling it means branching on the concrete backend instead of writing one function that runs unchanged on PyTorch, CuPy, and NumPy. CuPy has its own equivalent, <code>cupyx.scatter_add(sums, labels, X)</code>, with the same effect and the same unbuffered-add semantics, but a different name and import path. NumPy's is <code>np.add.at(sums, labels, X)</code>, slower than either because it is not vectorized on CPU. None of the three is exposed by the array API standard, so today's single code path cannot reach any of them without an <code>if xp is torch: ... elif xp is cupy: ... else: ...</code> fork, which is what the <a href="#2-add-an-explicit-centroid-update-hook">"add an explicit centroid-update hook"</a> recommendation below proposes to isolate behind one optional callable rather than scatter throughout <code>update_centroids_tiled</code>.</p>
 <p>The effect of avoiding the one-hot matrix entirely is large. Measured on the same three large-<code>k</code> probes, with labels and final centers validated against the current tiled implementation:</p>
-<table><thead><tr><th>update phase, 12 iterations of the probe loop</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>current one-hot tiles (<code>k256</code>, <code>n4096</code>)</td><td>44.6 ms</td><td>47.0 ms</td><td>52.3 ms</td></tr><tr><td>tuned one-hot tiles (<code>k100</code>/<code>k512</code>, <code>n16384</code>)</td><td>11.2 ms</td><td>8.9 ms</td><td>11.5 ms</td></tr><tr><td>native <code>index_add_</code></td><td>3.18 ms</td><td>0.36 ms</td><td>0.24 ms</td></tr></tbody></table>
-<p>Tuning the one-hot tile shape alone, with no backend-specific code, already removes most of the gap: it launches about 25 tiles per iteration instead of 400, each doing more useful work per equality comparison. <code>index_add_</code> removes the equality comparison altogether, and its cost falls as <code>k</code> grows instead of rising, because the kernel&#x27;s work is proportional to <code>n_samples x n_features</code>, not to the number of one-hot tiles needed to cover <code>n_clusters</code>. This is the mechanism behind the largest numbers in the &quot;Optimization probes&quot; table below: the one-hot matrix is pure overhead that a keyed reduction does not pay.</p>
+<table>
+<thead>
+<tr class="header">
+<th>update phase, 12 iterations of the probe loop</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>current one-hot tiles (<code>k256</code>, <code>n4096</code>)</td>
+<td style="text-align: right;">44.6 ms</td>
+<td style="text-align: right;">47.0 ms</td>
+<td style="text-align: right;">52.3 ms</td>
+</tr>
+<tr class="even">
+<td>tuned one-hot tiles (<code>k100</code>/<code>k512</code>, <code>n16384</code>)</td>
+<td style="text-align: right;">11.2 ms</td>
+<td style="text-align: right;">8.9 ms</td>
+<td style="text-align: right;">11.5 ms</td>
+</tr>
+<tr class="odd">
+<td>native <code>index_add_</code></td>
+<td style="text-align: right;">3.18 ms</td>
+<td style="text-align: right;">0.36 ms</td>
+<td style="text-align: right;">0.24 ms</td>
+</tr>
+</tbody>
+</table>
+<p>Tuning the one-hot tile shape alone, with no backend-specific code, already removes most of the gap: it launches about 25 tiles per iteration instead of 400, each doing more useful work per equality comparison. <code>index_add_</code> removes the equality comparison altogether, and its cost falls as <code>k</code> grows instead of rising, because the kernel's work is proportional to <code>n_samples x n_features</code>, not to the number of one-hot tiles needed to cover <code>n_clusters</code>. This is the mechanism behind the largest numbers in the "Optimization probes" table below: the one-hot matrix is pure overhead that a keyed reduction does not pay.</p>
 <h2 id="optimization-probes">Optimization probes</h2>
-<img alt="Per-phase optimization probes" src="lloyd-phases.svg" />
+<p><img src="lloyd-phases.svg" alt="Per-phase optimization probes" /></p>
 <p>Three results stand out:</p>
-<p>1. Replacing the second reduction with <code>argmin</code> plus    <code>take_along_axis</code> is portable and saves 9% to 13% of assignment time. 2. Increasing the membership tile from 4096 by 256 to 16384 by up to 512    cuts update time from 45–52 ms to 9–11 ms. It spends more memory per tile    but launches far fewer tiles. 3. <code>torch.compile</code> cuts assignment to 5–10 ms. A native <code>index_add_</code> update    takes 0.24–3.2 ms. Together they show that PyTorch itself is not the    limitation; the portable schedule and missing keyed-reduction operation    are.</p>
+<ol type="1">
+<li>Replacing the second reduction with <code>argmin</code> plus <code>take_along_axis</code> is portable and saves 9% to 13% of assignment time.</li>
+<li>Increasing the membership tile from 4096 by 256 to 16384 by up to 512 cuts update time from 45–52 ms to 9–11 ms. It spends more memory per tile but launches far fewer tiles.</li>
+<li><code>torch.compile</code> cuts assignment to 5–10 ms. A native <code>index_add_</code> update takes 0.24–3.2 ms. Together they show that PyTorch itself is not the limitation; the portable schedule and missing keyed-reduction operation are.</li>
+</ol>
 <p>The sorted-segment experiment is not a general replacement. It is fast only at <code>k3000-d2</code>; it takes 56 ms at <code>k550-d6</code> and 496 ms at <code>k100-d32</code>, and subtracting large cumulative sums increases the maximum center discrepancy to between <code>1.7e-4</code> and <code>7.8e-4</code>.</p>
-<img alt="End-to-end Lloyd optimization probes" src="lloyd-optimization.svg" />
-<table><thead><tr><th>12 iterations</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>PyTorch current</td><td>0.626 s</td><td>0.793 s</td><td>1.001 s</td></tr><tr><td>PyTorch portable tuned</td><td>0.251 s</td><td>0.377 s</td><td>0.508 s</td></tr><tr><td>CuPy current</td><td>0.992 s</td><td>0.997 s</td><td>1.228 s</td></tr><tr><td>CuPy portable tuned</td><td>0.461 s</td><td>0.484 s</td><td>0.610 s</td></tr><tr><td>PyTorch compile + tuned one-hot</td><td>0.203 s</td><td>0.227 s</td><td>0.302 s</td></tr><tr><td>PyTorch compile + native index-add</td><td>0.091 s</td><td>0.119 s</td><td>0.150 s</td></tr><tr><td>cuML, device-resident input</td><td>0.126 s</td><td>0.090 s</td><td>0.086 s</td></tr></tbody></table>
+<p><img src="lloyd-optimization.svg" alt="End-to-end Lloyd optimization probes" /></p>
+<table>
+<thead>
+<tr class="header">
+<th>12 iterations</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>PyTorch current</td>
+<td style="text-align: right;">0.626 s</td>
+<td style="text-align: right;">0.793 s</td>
+<td style="text-align: right;">1.001 s</td>
+</tr>
+<tr class="even">
+<td>PyTorch portable tuned</td>
+<td style="text-align: right;">0.251 s</td>
+<td style="text-align: right;">0.377 s</td>
+<td style="text-align: right;">0.508 s</td>
+</tr>
+<tr class="odd">
+<td>CuPy current</td>
+<td style="text-align: right;">0.992 s</td>
+<td style="text-align: right;">0.997 s</td>
+<td style="text-align: right;">1.228 s</td>
+</tr>
+<tr class="even">
+<td>CuPy portable tuned</td>
+<td style="text-align: right;">0.461 s</td>
+<td style="text-align: right;">0.484 s</td>
+<td style="text-align: right;">0.610 s</td>
+</tr>
+<tr class="odd">
+<td>PyTorch compile + tuned one-hot</td>
+<td style="text-align: right;">0.203 s</td>
+<td style="text-align: right;">0.227 s</td>
+<td style="text-align: right;">0.302 s</td>
+</tr>
+<tr class="even">
+<td>PyTorch compile + native index-add</td>
+<td style="text-align: right;">0.091 s</td>
+<td style="text-align: right;">0.119 s</td>
+<td style="text-align: right;">0.150 s</td>
+</tr>
+<tr class="odd">
+<td>cuML, device-resident input</td>
+<td style="text-align: right;">0.126 s</td>
+<td style="text-align: right;">0.090 s</td>
+<td style="text-align: right;">0.086 s</td>
+</tr>
+</tbody>
+</table>
 <p>The portable schedule is the strongest low-risk result. It is 2.0x to 2.5x faster on PyTorch and 2.0x to 2.2x faster on CuPy. At 550 and 3000 clusters, its peak allocator increment also falls from 138 and 132 MiB to 84 and 78 MiB on PyTorch, and to 80 and 74 MiB on CuPy. Final inertia changes by at most <code>3.4e-5</code> relative.</p>
 <p>Compilation plus the tuned one-hot update is 2.9x to 3.4x faster than the current PyTorch schedule. The native-update control is 6.5x to 6.8x faster and beats the cuML timings from 011. Device-resident cuML remains 1.3x faster at 550 clusters and 1.7x faster at 3000 clusters, consistent with its fully fused assignment and keyed update.</p>
 <h2 id="recommended-next-steps">Recommended next steps</h2>
 <p>The order matters: land the portable win first, then add optional backend acceleration without making the portable implementation harder to reason about.</p>
 <h3 id="1-land-the-portable-schedule">1. Land the portable schedule</h3>
-<ul><li>Change the assignment tile to obtain labels with <code>argmin</code> and gather the selected score with <code>take_along_axis</code>, rather than reducing the score tile a second time.</li><li>Use 16384 sample rows and up to 512 centroid columns for the GPU one-hot update. Use 128 centroid columns for low-dimensional, large-<code>k</code> assignment.</li><li>Keep the existing schedule on CPU. Express the GPU choice as one documented memory-budget heuristic rather than backend-name conditionals.</li><li>Re-run all five tasks on PyTorch and CuPy, including empty-center relocation, before changing the default. The probe covers shared random starts but not every initializer path.</li></ul>
+<ul>
+<li>Change the assignment tile to obtain labels with <code>argmin</code> and gather the selected score with <code>take_along_axis</code>, rather than reducing the score tile a second time.</li>
+<li>Use 16384 sample rows and up to 512 centroid columns for the GPU one-hot update. Use 128 centroid columns for low-dimensional, large-<code>k</code> assignment.</li>
+<li>Keep the existing schedule on CPU. Express the GPU choice as one documented memory-budget heuristic rather than backend-name conditionals.</li>
+<li>Re-run all five tasks on PyTorch and CuPy, including empty-center relocation, before changing the default. The probe covers shared random starts but not every initializer path.</li>
+</ul>
 <p>Expected result: about 2x faster Lloyd on both CUDA backends and lower peak memory at large <code>k</code>, with no backend-specific operations.</p>
 <h3 id="2-add-an-explicit-centroid-update-hook">2. Add an explicit centroid-update hook</h3>
 <p>Add an optional update callable to <code>lloyd_step</code>, <code>fit_lloyd</code>, and <code>fit_kmeans</code>, analogous to the existing assignment <code>step</code> hook. Then provide experimental controls using PyTorch <code>index_add_</code> and the CuPy equivalent, while retaining the one-hot array-API fallback.</p>
@@ -88,11 +344,17 @@ def update_index_add(X, labels, old):
 <h3 id="4-reassess-before-writing-a-custom-fused-kernel">4. Reassess before writing a custom fused kernel</h3>
 <p>After the keyed update and compiled assignment, PyTorch reaches 0.15 s for the 3000-cluster probe. Only then is it worth evaluating a Triton distance-plus-top-1 kernel analogous to cuVS. Writing that kernel first would optimize the smaller bottleneck while leaving the one-hot update untouched.</p>
 <h3 id="5-keep-scalable-initialization-experimental">5. Keep scalable initialization experimental</h3>
-<ul><li>Keep greedy k-means++ as the default for this task class.</li><li>Do not tune the number of rounds further: every 2-, 4-, and 8-round result is dominated after Lloyd.</li><li>If a distributed or out-of-core workload is added, revisit scalable initialization under a fixed wall-time budget and include the weighted candidate Lloyd refinement identified in 011.</li><li>Re-run this decision after Lloyd is optimized. Faster Lloyd makes the current scalable initializer&#x27;s fixed overhead relatively larger, not smaller.</li></ul>
+<ul>
+<li>Keep greedy k-means++ as the default for this task class.</li>
+<li>Do not tune the number of rounds further: every 2-, 4-, and 8-round result is dominated after Lloyd.</li>
+<li>If a distributed or out-of-core workload is added, revisit scalable initialization under a fixed wall-time budget and include the weighted candidate Lloyd refinement identified in 011.</li>
+<li>Re-run this decision after Lloyd is optimized. Faster Lloyd makes the current scalable initializer's fixed overhead relatively larger, not smaller.</li>
+</ul>
 <h2 id="conclusion">Conclusion</h2>
 <p>The 011 result is not evidence that Python or PyTorch cannot compete with cuML at large <code>k</code>. It identifies two missing execution strategies: fused top-1 assignment and keyed centroid reduction. The portable code can recover roughly half the gap with better tiles and one fewer reduction. A compiled assignment and native keyed update recover most of the rest.</p>
 <p>By contrast, no scalable-init setting tested here reaches the greedy time-quality frontier after Lloyd. Improving Lloyd should take priority over further scalable-seeding work in this PR.</p>
 <p>Previous: <a href="../012-source-link-audit/index.html">source-link audit</a>. Index: <a href="../index.html">journal</a>. Next: <a href="../014-portable-array-api-kmeans/index.html">portable array-API KMeans</a>.</p>
+
 </main>
 </body>
 </html>

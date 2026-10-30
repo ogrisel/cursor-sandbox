@@ -14,45 +14,184 @@
 </nav>
 </header>
 <main>
-<h1 id="017-catastrophic-cancellation-and-a-direct-distance-fallback">017 — Catastrophic cancellation and a direct-distance fallback</h1>
+<h1 id="017--catastrophic-cancellation-and-a-direct-distance-fallback">017 — Catastrophic cancellation and a direct-distance fallback</h1>
 <p>The GEMM identity</p>
-<pre><code>||x - c||² = ||x||² + ||c||² - 2 x @ c.T</code></pre>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">||</span>x <span class="op">-</span> c<span class="op">||</span>² <span class="op">=</span> <span class="op">||</span>x<span class="op">||</span>² <span class="op">+</span> <span class="op">||</span>c<span class="op">||</span>² <span class="op">-</span> <span class="dv">2</span> x <span class="op">@</span> c.T</span></code></pre></div>
 <p>subtracts three large, rounded terms when <code>x</code> and <code>c</code> are close but far from the origin. The result can be zero, negative, or large enough to change the nearest center even though the true squared distance is small. Clamping the result to zero removes negative distances but does not recover the lost precision.</p>
 <p>This experiment evaluates the safeguard from <a href="https://github.com/cakedev0/scikit-learn/pull/23">cakedev0/scikit-learn#23</a>: if the GEMM result is less than a dtype-specific fraction of <code>||x||² + ||c||²</code>, recompute that pair directly as <code>sum((x - c)²)</code>. The referenced Cython implementation uses <a href="https://github.com/cakedev0/scikit-learn/blob/7e26a5c37e1fa8031bef7da0ee43b633b07c8b9b/sklearn/cluster/_k_means_common.pyx#L171-L186"><code>1e-2</code> for float32 and <code>1e-8</code> for float64</a> and applies the check inside its <a href="https://github.com/cakedev0/scikit-learn/blob/7e26a5c37e1fa8031bef7da0ee43b633b07c8b9b/sklearn/cluster/_k_means_common.pyx#L241-L265">pairwise loops</a>.</p>
 <p>The array-backend prototype is pinned to commit <a href="https://github.com/ogrisel/cursor-sandbox/tree/3ca8690e2abc5fe3da3bded3c34d6ca2a4cf06e8/kmeans_lloyd"><code>3ca8690</code></a>:</p>
-<ul><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/3ca8690e2abc5fe3da3bded3c34d6ca2a4cf06e8/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L271-L319"><code>stable_gemm_distances</code></a> computes GEMM distances, gathers suspicious pairs, recomputes direct distances in bounded chunks, and scatters them back;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/3ca8690e2abc5fe3da3bded3c34d6ca2a4cf06e8/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L322-L338"><code>stable_gemm_scores_argmin</code></a> uses the corrected matrix for assignment;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/3ca8690e2abc5fe3da3bded3c34d6ca2a4cf06e8/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L977-L988"><code>stable_distances_to_candidates</code></a> applies the same correction to greedy k-means++;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/3ca8690e2abc5fe3da3bded3c34d6ca2a4cf06e8/kmeans_lloyd/tests/test_iteration.py#L157-L188">the regression test</a> checks assignment and unique-center recovery far from the origin.</li></ul>
+<ul>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/3ca8690e2abc5fe3da3bded3c34d6ca2a4cf06e8/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L271-L319"><code>stable_gemm_distances</code></a> computes GEMM distances, gathers suspicious pairs, recomputes direct distances in bounded chunks, and scatters them back;</li>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/3ca8690e2abc5fe3da3bded3c34d6ca2a4cf06e8/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L322-L338"><code>stable_gemm_scores_argmin</code></a> uses the corrected matrix for assignment;</li>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/3ca8690e2abc5fe3da3bded3c34d6ca2a4cf06e8/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L977-L988"><code>stable_distances_to_candidates</code></a> applies the same correction to greedy k-means++;</li>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/3ca8690e2abc5fe3da3bded3c34d6ca2a4cf06e8/kmeans_lloyd/tests/test_iteration.py#L157-L188">the regression test</a> checks assignment and unique-center recovery far from the origin.</li>
+</ul>
 <p><a href="results.json">results.json</a> contains the 135 ordinary stable-distance runs, 315 CPU/CUDA accuracy-probe rows, and 108 translated-assignment runs. <a href="tables.md">tables.md</a> contains the ordinary-workload time ratios and recomputation rates.</p>
 <h2 id="setup">Setup</h2>
-<ul><li>Accuracy probe: 32 unique random rows repeated four times, 32 candidate centers, dimensions 2, 32, and 1000, translations from 0 through <code>1e5</code>, float32 and float64, and thresholds from <code>1e-8</code> through <code>1e-2</code>.</li><li>Initialization regression: 10 unique two-dimensional rows repeated 50 times, requesting all 10 centers with greedy k-means++.</li><li>Translated assignment benchmark: 100,000 by 32 float32 rows, 100 centers, offsets 0, 10, and 1000, and three seeds.</li><li>Ordinary workload benchmark: the five tasks and three phases from <a href="../016-gemm-vs-broadcast-distances/index.html">016</a>, using the <code>1e-2</code> float32 threshold.</li><li>Backends: PyTorch CPU, PyTorch CUDA, and CuPy CUDA; four CPU threads; TF32 disabled; one NVIDIA L4.</li><li>Direct broadcast is the correctness reference. Timing and memory cover only the selected assignment implementation; reference calculation is outside measurement.</li></ul>
+<ul>
+<li>Accuracy probe: 32 unique random rows repeated four times, 32 candidate centers, dimensions 2, 32, and 1000, translations from 0 through <code>1e5</code>, float32 and float64, and thresholds from <code>1e-8</code> through <code>1e-2</code>.</li>
+<li>Initialization regression: 10 unique two-dimensional rows repeated 50 times, requesting all 10 centers with greedy k-means++.</li>
+<li>Translated assignment benchmark: 100,000 by 32 float32 rows, 100 centers, offsets 0, 10, and 1000, and three seeds.</li>
+<li>Ordinary workload benchmark: the five tasks and three phases from <a href="../016-gemm-vs-broadcast-distances/index.html">016</a>, using the <code>1e-2</code> float32 threshold.</li>
+<li>Backends: PyTorch CPU, PyTorch CUDA, and CuPy CUDA; four CPU threads; TF32 disabled; one NVIDIA L4.</li>
+<li>Direct broadcast is the correctness reference. Timing and memory cover only the selected assignment implementation; reference calculation is outside measurement.</li>
+</ul>
 <h2 id="cancellation-is-a-correctness-problem">Cancellation is a correctness problem</h2>
 <p>In the exact upstream-style float32 regression translated by <code>1e3</code>, plain GEMM returns only 7 of 10 unique centers on CPU and 6 of 10 on both CUDA backends. Stable GEMM returns all 10. At offsets <code>1e4</code> and <code>1e5</code>, plain GEMM still returns only 3–6 centers while the fallback returns all 10.</p>
-<table><thead><tr><th>float32 k-means++, unique centers / 10</th><th>offset <code>1e3</code></th><th>offset <code>1e4</code></th><th>offset <code>1e5</code></th></tr></thead><tbody><tr><td>Torch CPU, GEMM</td><td>7</td><td>3</td><td>5</td></tr><tr><td>Torch CUDA, GEMM</td><td>6</td><td>6</td><td>6</td></tr><tr><td>CuPy CUDA, GEMM</td><td>6</td><td>6</td><td>6</td></tr><tr><td>every backend, stable</td><td>10</td><td>10</td><td>10</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>float32 k-means++, unique centers / 10</th>
+<th style="text-align: right;">offset <code>1e3</code></th>
+<th style="text-align: right;">offset <code>1e4</code></th>
+<th style="text-align: right;">offset <code>1e5</code></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Torch CPU, GEMM</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr class="even">
+<td>Torch CUDA, GEMM</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr class="odd">
+<td>CuPy CUDA, GEMM</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr class="even">
+<td>every backend, stable</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">10</td>
+</tr>
+</tbody>
+</table>
 <p>The broader probe confirms that this is not limited to exact duplicates. At offset <code>1e3</code>, plain float32 GEMM mislabels 104–124 of 128 rows depending on dimension and backend; the <code>1e-2</code> fallback has zero errors. Float64 GEMM has no label errors through offset <code>1e5</code> in this probe, although the safeguard conservatively recomputes small residuals.</p>
-<img alt="Threshold sensitivity at offset 1000" src="threshold-sensitivity.svg" />
-<p>The threshold matters. <code>1e-8</code> is insufficient for float32. <code>1e-6</code> fixes the small offset-<code>1e3</code> probe, but not the larger offset-10 benchmark below. Cakedev0&#x27;s <code>1e-2</code> threshold has zero label errors in every tested float32 case. Its conservatism is intentional: at offset 10 it marks all pairs in the translated benchmark before cancellation becomes catastrophic.</p>
+<p><img src="threshold-sensitivity.svg" alt="Threshold sensitivity at offset 1000" /></p>
+<p>The threshold matters. <code>1e-8</code> is insufficient for float32. <code>1e-6</code> fixes the small offset-<code>1e3</code> probe, but not the larger offset-10 benchmark below. Cakedev0's <code>1e-2</code> threshold has zero label errors in every tested float32 case. Its conservatism is intentional: at offset 10 it marks all pairs in the translated benchmark before cancellation becomes catastrophic.</p>
 <h2 id="assignment-quality">Assignment quality</h2>
-<img alt="Wrong labels under translation" src="translated-errors.svg" />
-<table><thead><tr><th>offset</th><th>plain GEMM wrong labels</th><th>stable <code>1e-6</code></th><th>stable <code>1e-2</code></th></tr></thead><tbody><tr><td>0</td><td>0</td><td>0</td><td>0</td></tr><tr><td>10</td><td>96–99</td><td>100–106</td><td>0</td></tr><tr><td>1000</td><td>97,141–97,213</td><td>0</td><td>0</td></tr></tbody></table>
-<p>Ranges span the three backends after averaging three seeds. At offset 1000, plain GEMM&#x27;s direct-reference inertia is 1.63–1.64 times broadcast inertia. Both stable thresholds match broadcast there because both recompute all pairs. At offset 10, only <code>1e-2</code> is reliable.</p>
+<p><img src="translated-errors.svg" alt="Wrong labels under translation" /></p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: right;">offset</th>
+<th style="text-align: right;">plain GEMM wrong labels</th>
+<th style="text-align: right;">stable <code>1e-6</code></th>
+<th style="text-align: right;">stable <code>1e-2</code></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">96–99</td>
+<td style="text-align: right;">100–106</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">1000</td>
+<td style="text-align: right;">97,141–97,213</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<p>Ranges span the three backends after averaging three seeds. At offset 1000, plain GEMM's direct-reference inertia is 1.63–1.64 times broadcast inertia. Both stable thresholds match broadcast there because both recompute all pairs. At offset 10, only <code>1e-2</code> is reliable.</p>
 <p>Ordinary centered-like data does not expose a material quality regression: stable versus plain GEMM full-fit inertia ranges from <code>-0.0031%</code> to <code>+0.1411%</code>. As with <a href="../016-gemm-vs-broadcast-distances/index.html">016</a>, initializer roundoff can alter stochastic center selection, so exact inertia equality is not expected.</p>
 <h2 id="time">Time</h2>
-<img alt="Stable fallback overhead on ordinary tasks" src="ordinary-overhead.svg" />
+<p><img src="ordinary-overhead.svg" alt="Stable fallback overhead on ordinary tasks" /></p>
 <p>On ordinary workloads, only about 0–3 pairs per million trigger in the first four tasks. The quantized <code>k3000-d2</code> task triggers roughly 0.5% of pairs. Despite sparse recomputation, detecting indices and gathering/scattering them has visible eager-execution overhead:</p>
-<table><thead><tr><th>phase</th><th>Torch CPU stable / GEMM</th><th>Torch CUDA</th><th>CuPy CUDA</th></tr></thead><tbody><tr><td>initialization</td><td>0.99–1.51x</td><td>1.19–1.53x</td><td>1.09–1.49x</td></tr><tr><td>Lloyd</td><td>1.14–1.77x</td><td>1.70–2.74x</td><td>1.54–3.20x</td></tr><tr><td>full fit</td><td>1.11–1.46x</td><td>1.47–1.91x</td><td>1.37–1.77x</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>phase</th>
+<th style="text-align: right;">Torch CPU stable / GEMM</th>
+<th style="text-align: right;">Torch CUDA</th>
+<th style="text-align: right;">CuPy CUDA</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>initialization</td>
+<td style="text-align: right;">0.99–1.51x</td>
+<td style="text-align: right;">1.19–1.53x</td>
+<td style="text-align: right;">1.09–1.49x</td>
+</tr>
+<tr class="even">
+<td>Lloyd</td>
+<td style="text-align: right;">1.14–1.77x</td>
+<td style="text-align: right;">1.70–2.74x</td>
+<td style="text-align: right;">1.54–3.20x</td>
+</tr>
+<tr class="odd">
+<td>full fit</td>
+<td style="text-align: right;">1.11–1.46x</td>
+<td style="text-align: right;">1.47–1.91x</td>
+<td style="text-align: right;">1.37–1.77x</td>
+</tr>
+</tbody>
+</table>
 <p>The fallback remains much faster than full broadcast when triggers are sparse. For centered 100,000 by 32 assignment, stable <code>1e-2</code> takes 17.7 ms on CPU, 4.2 ms on Torch CUDA, and 4.3 ms on CuPy, versus 304, 22.7, and 22.7 ms for broadcast.</p>
-<img alt="Assignment time under translation" src="translated-time.svg" />
+<p><img src="translated-time.svg" alt="Assignment time under translation" /></p>
 <p>The Python pair fallback loses that advantage when the trigger is dense:</p>
-<table><thead><tr><th>offset 1000</th><th>GEMM</th><th>stable <code>1e-2</code></th><th>bounded broadcast</th></tr></thead><tbody><tr><td>Torch CPU</td><td>13.7 ms, wrong</td><td>828.5 ms</td><td>477.1 ms</td></tr><tr><td>Torch CUDA</td><td>2.0 ms, wrong</td><td>53.7 ms</td><td>22.9 ms</td></tr><tr><td>CuPy CUDA</td><td>2.4 ms, wrong</td><td>49.1 ms</td><td>22.8 ms</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>offset 1000</th>
+<th style="text-align: right;">GEMM</th>
+<th style="text-align: right;">stable <code>1e-2</code></th>
+<th style="text-align: right;">bounded broadcast</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Torch CPU</td>
+<td style="text-align: right;">13.7 ms, wrong</td>
+<td style="text-align: right;">828.5 ms</td>
+<td style="text-align: right;">477.1 ms</td>
+</tr>
+<tr class="even">
+<td>Torch CUDA</td>
+<td style="text-align: right;">2.0 ms, wrong</td>
+<td style="text-align: right;">53.7 ms</td>
+<td style="text-align: right;">22.9 ms</td>
+</tr>
+<tr class="odd">
+<td>CuPy CUDA</td>
+<td style="text-align: right;">2.4 ms, wrong</td>
+<td style="text-align: right;">49.1 ms</td>
+<td style="text-align: right;">22.8 ms</td>
+</tr>
+</tbody>
+</table>
 <p>When every pair triggers, gather/scatter stable GEMM is 1.7–2.3 times slower than bounded broadcast, in addition to paying for the now-discarded GEMM.</p>
 <h2 id="memory">Memory</h2>
-<p>For centered translated-benchmark data, CUDA peak increments are 52–54 MiB for GEMM, 83–86 MiB for stable GEMM, and 261 MiB for bounded broadcast. Sparse fallback therefore keeps most of GEMM&#x27;s memory advantage.</p>
-<p>When all pairs trigger, the selected-pair index arrays and gathered rows raise stable GEMM to 376–380 MiB, above broadcast&#x27;s 261 MiB. On ordinary tasks, stable/GEMM peak ratios range from measurement-noise-level equality up to 1.61x. Input storage dominates several large tasks, hiding smaller temporary differences.</p>
+<p>For centered translated-benchmark data, CUDA peak increments are 52–54 MiB for GEMM, 83–86 MiB for stable GEMM, and 261 MiB for bounded broadcast. Sparse fallback therefore keeps most of GEMM's memory advantage.</p>
+<p>When all pairs trigger, the selected-pair index arrays and gathered rows raise stable GEMM to 376–380 MiB, above broadcast's 261 MiB. On ordinary tasks, stable/GEMM peak ratios range from measurement-noise-level equality up to 1.61x. Input storage dominates several large tasks, hiding smaller temporary differences.</p>
 <h2 id="recommendation">Recommendation</h2>
-<p>The fallback fixes a real, severe, translation-dependent correctness failure. Clamping GEMM distances is not enough, and <code>1e-6</code> is not a robust float32 threshold. Retain cakedev0&#x27;s <code>1e-2</code> float32 and <code>1e-8</code> float64 criteria.</p>
+<p>The fallback fixes a real, severe, translation-dependent correctness failure. Clamping GEMM distances is not enough, and <code>1e-6</code> is not a robust float32 threshold. Retain cakedev0's <code>1e-2</code> float32 and <code>1e-8</code> float64 criteria.</p>
 <p>The current Python gather/scatter prototype is suitable evidence, not the preferred production shape:</p>
-<p>1. Use pair-selective direct recomputation while the suspicious fraction is    low, preserving GEMM&#x27;s time and memory advantages. 2. If a tile has a high suspicious fraction, discard its GEMM result and    recompute the whole tile with bounded direct broadcast. This avoids large    index and gathered-row buffers. 3. Prefer a backend-fused implementation longer term. Cakedev0&#x27;s Cython loop    tests and repairs each pair in place, avoiding the eager indexing overhead    measured here.</p>
-<p>Centering dense training data before fitting reduces the risk, as in scikit-learn&#x27;s estimator, but it is not a complete API-level solution: standalone k-means++ and precomputed or externally supplied centers still need stable distances.</p>
+<ol type="1">
+<li>Use pair-selective direct recomputation while the suspicious fraction is low, preserving GEMM's time and memory advantages.</li>
+<li>If a tile has a high suspicious fraction, discard its GEMM result and recompute the whole tile with bounded direct broadcast. This avoids large index and gathered-row buffers.</li>
+<li>Prefer a backend-fused implementation longer term. Cakedev0's Cython loop tests and repairs each pair in place, avoiding the eager indexing overhead measured here.</li>
+</ol>
+<p>Centering dense training data before fitting reduces the risk, as in scikit-learn's estimator, but it is not a complete API-level solution: standalone k-means++ and precomputed or externally supplied centers still need stable distances.</p>
 <p>Previous: <a href="../016-gemm-vs-broadcast-distances/index.html">GEMM versus broadcast distances</a>. Next: <a href="../018-cpu-array-api-optimization/index.html">backend-neutral CPU optimizations</a>. Index: <a href="../index.html">journal</a>.</p>
+
 </main>
 </body>
 </html>

@@ -14,35 +14,144 @@
 </nav>
 </header>
 <main>
-<h1 id="014-a-portable-kmeans-estimator-and-cupy-native-update-paths">014 — a portable KMeans estimator and CuPy-native update paths</h1>
+<h1 id="014--a-portable-kmeans-estimator-and-cupy-native-update-paths">014 — a portable KMeans estimator and CuPy-native update paths</h1>
 <p>This iteration turns the experimental Lloyd functions into a reusable <a href="https://github.com/ogrisel/cursor-sandbox/blob/49f904a3aea28e55f4e015347324bd9603001615/kmeans_lloyd/src/kmeans_lloyd/kmeans.py#L39-L277"><code>KMeans</code></a> estimator while keeping the portable path backend-agnostic. It also tests which CuPy-specific primitive should sit behind the future centroid-update hook proposed in <a href="../013-large-k-lloyd-optimization/index.html">013</a>.</p>
 <h2 id="public-estimator-surface">Public estimator surface</h2>
 <p>The estimator mirrors the dense Lloyd subset of <code>sklearn.cluster.KMeans</code>:</p>
-<table><thead><tr><th>parameter</th><th>supported behavior</th></tr></thead><tbody><tr><td><code>n_clusters</code></td><td>positive integer</td></tr><tr><td><code>init</code></td><td><code>&quot;k-means++&quot;</code> or <code>&quot;random&quot;</code></td></tr><tr><td><code>n_init</code></td><td>positive integer or <code>&quot;auto&quot;</code>; auto means 1 for k-means++ and 10 for random</td></tr><tr><td><code>max_iter</code>, <code>tol</code>, <code>verbose</code>, <code>random_state</code>, <code>copy_x</code></td><td>same public role as scikit-learn</td></tr><tr><td><code>algorithm</code></td><td><code>&quot;lloyd&quot;</code> only</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>parameter</th>
+<th>supported behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>n_clusters</code></td>
+<td>positive integer</td>
+</tr>
+<tr class="even">
+<td><code>init</code></td>
+<td><code>"k-means++"</code> or <code>"random"</code></td>
+</tr>
+<tr class="odd">
+<td><code>n_init</code></td>
+<td>positive integer or <code>"auto"</code>; auto means 1 for k-means++ and 10 for random</td>
+</tr>
+<tr class="even">
+<td><code>max_iter</code>, <code>tol</code>, <code>verbose</code>, <code>random_state</code>, <code>copy_x</code></td>
+<td>same public role as scikit-learn</td>
+</tr>
+<tr class="odd">
+<td><code>algorithm</code></td>
+<td><code>"lloyd"</code> only</td>
+</tr>
+</tbody>
+</table>
 <p>Scalable k-means++ is not exposed by this class. The old experimental helper remains in the benchmark module so entries 010–013 stay reproducible, but it is no longer part of the package-level API. Sparse input, sample weights, callable or array initializers, and Elkan are intentionally outside this portable implementation.</p>
 <p><code>fit</code> exposes the conventional <code>cluster_centers_</code>, <code>labels_</code>, <code>inertia_</code>, and <code>n_iter_</code> attributes. <code>predict</code>, <code>transform</code>, <code>score</code>, <code>fit_predict</code>, and <code>fit_transform</code> follow the estimator API. NumPy, PyTorch, CuPy, and strict array-API arrays retain their namespace, device, and float32 or float64 dtype.</p>
 <p>The implementation uses shape- and device-based tile budgets rather than backend names. The CUDA schedule incorporates the portable 013 result: argmin plus gather, update tiles of 16384 rows by up to 512 centers, and smaller assignment center tiles for low-dimensional large-<code>k</code> inputs.</p>
 <p>Two inline TODOs define the intended acceleration boundary:</p>
-<p>1. an assignment factory may cache <code>torch.compile</code> or a CuPy fused top-1    kernel by shape and dtype; 2. a centroid-update callable may select <code>torch.index_add_</code>,    <code>cupyx.scatter_add</code>, or another native keyed reduction while retaining the    one-hot array-API fallback.</p>
+<ol type="1">
+<li>an assignment factory may cache <code>torch.compile</code> or a CuPy fused top-1 kernel by shape and dtype;</li>
+<li>a centroid-update callable may select <code>torch.index_add_</code>, <code>cupyx.scatter_add</code>, or another native keyed reduction while retaining the one-hot array-API fallback.</li>
+</ol>
 <h2 id="estimator-compliance">Estimator compliance</h2>
 <p>The complete local suite passes with <code>SCIPY_ARRAY_API=1</code>:</p>
-<table><thead><tr><th>check</th><th>result</th></tr></thead><tbody><tr><td>scikit-learn estimator checks</td><td>60 passed, 17 skipped for unavailable optional backends</td></tr><tr><td>full local package suite</td><td>79 passed, 20 skipped</td></tr><tr><td>strict array-API namespace and device checks</td><td>passed on <code>array_api_strict</code> CPU and secondary device</td></tr><tr><td>CUDA smoke and package tests</td><td>58 estimator checks passed; PyTorch and CuPy fit/predict/transform tests passed</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>check</th>
+<th>result</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>scikit-learn estimator checks</td>
+<td>60 passed, 17 skipped for unavailable optional backends</td>
+</tr>
+<tr class="even">
+<td>full local package suite</td>
+<td>79 passed, 20 skipped</td>
+</tr>
+<tr class="odd">
+<td>strict array-API namespace and device checks</td>
+<td>passed on <code>array_api_strict</code> CPU and secondary device</td>
+</tr>
+<tr class="even">
+<td>CUDA smoke and package tests</td>
+<td>58 estimator checks passed; PyTorch and CuPy fit/predict/transform tests passed</td>
+</tr>
+</tbody>
+</table>
 <p>The estimator checks caught portability details that NumPy accepts but the standard does not: out-of-bounds slice stops, row indexing without an explicit second axis, zero-dimensional indices passed to <code>take</code>, and calls with a different namespace after fitting. Fixing those made the low-level initializer and Lloyd path conform to strict array-API indexing.</p>
 <h2 id="cupy-update-experiment">CuPy update experiment</h2>
 <p>The new <a href="https://github.com/ogrisel/cursor-sandbox/blob/27747a6570f592858a799c6ca17a1a52e8e0f806/kmeans_lloyd/scripts/probe_cupy_updates.py"><code>probe_cupy_updates.py</code></a> compares five ways to accumulate rows by label on the same L4 and full task shapes as 013. Labels are a fixed uniform random draw so every implementation receives identical contention. Times are medians of five warm measurements and cover one complete centroid update.</p>
-<table><thead><tr><th>update time</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>portable current one-hot tiles</td><td>56.95 ms</td><td>60.02 ms</td><td>65.89 ms</td></tr><tr><td>portable tuned one-hot tiles</td><td>19.20 ms</td><td>17.66 ms</td><td>18.00 ms</td></tr><tr><td><code>cupyx.scatter_add</code> + <code>bincount</code></td><td>1.172 ms</td><td>0.350 ms</td><td>0.365 ms</td></tr><tr><td><code>cupy.add.at</code> + <code>bincount</code></td><td>1.143 ms</td><td>0.336 ms</td><td>0.336 ms</td></tr><tr><td>fused sum/count <code>RawKernel</code></td><td>1.064 ms</td><td>0.161 ms</td><td>0.152 ms</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>update time</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>portable current one-hot tiles</td>
+<td style="text-align: right;">56.95 ms</td>
+<td style="text-align: right;">60.02 ms</td>
+<td style="text-align: right;">65.89 ms</td>
+</tr>
+<tr class="even">
+<td>portable tuned one-hot tiles</td>
+<td style="text-align: right;">19.20 ms</td>
+<td style="text-align: right;">17.66 ms</td>
+<td style="text-align: right;">18.00 ms</td>
+</tr>
+<tr class="odd">
+<td><code>cupyx.scatter_add</code> + <code>bincount</code></td>
+<td style="text-align: right;">1.172 ms</td>
+<td style="text-align: right;">0.350 ms</td>
+<td style="text-align: right;">0.365 ms</td>
+</tr>
+<tr class="even">
+<td><code>cupy.add.at</code> + <code>bincount</code></td>
+<td style="text-align: right;">1.143 ms</td>
+<td style="text-align: right;">0.336 ms</td>
+<td style="text-align: right;">0.336 ms</td>
+</tr>
+<tr class="odd">
+<td>fused sum/count <code>RawKernel</code></td>
+<td style="text-align: right;">1.064 ms</td>
+<td style="text-align: right;">0.161 ms</td>
+<td style="text-align: right;">0.152 ms</td>
+</tr>
+</tbody>
+</table>
 <p><code>cupyx.scatter_add</code> is 16x to 50x faster than the tuned portable update and 49x to 181x faster than the old tile schedule. It reduces the same structural bottleneck as PyTorch <code>index_add_</code>: work scales with <code>n_samples x n_features</code>, not with a dense membership matrix covering every center tile.</p>
 <p>The raw kernel fuses feature sums and counts into one launch. It is only 1.1x faster than <code>scatter_add</code> at 100 clusters, but 2.2x to 2.4x faster at 550 and 3000 clusters. All native variants agree with <code>scatter_add</code> within <code>8.4e-7</code> maximum absolute center error; the small differences are expected from non-deterministic floating-point atomic order.</p>
 <h2 id="what-should-become-a-cupy-fast-path">What should become a CuPy fast path</h2>
 <p><code>cupyx.scatter_add</code> is the best first backend-specific implementation:</p>
-<ul><li>it is a public, small, auditable operation and already matches NumPy <code>add.at</code> semantics for repeated labels;</li><li>it captures almost all the measured gain without maintaining CUDA source;</li><li>it composes directly with <code>cupy.bincount</code> and the existing empty-center policy.</li></ul>
+<ul>
+<li>it is a public, small, auditable operation and already matches NumPy <code>add.at</code> semantics for repeated labels;</li>
+<li>it captures almost all the measured gain without maintaining CUDA source;</li>
+<li>it composes directly with <code>cupy.bincount</code> and the existing empty-center policy.</li>
+</ul>
 <p>It has important constraints. CuPy 14.2 documents indexed <code>scatter_add</code> only for CUDA <code>atomicAdd</code> types, including float32 but not float64. Out-of-range indices wrap instead of raising. Floating-point atomics are not deterministic. The adapter must therefore validate labels, use this path for supported dtypes only, and fall back to the portable update for float64 unless a separate implementation is validated. <code>cupy.bincount</code> may also synchronize the device, so microbenchmarks must time the complete update rather than infer its cost from asynchronous launches.</p>
 <p><code>cupy.add.at</code> has the same semantics and nearly identical timing, so it adds no useful alternative. The fused <code>RawKernel</code> is worth retaining as a second experiment, not as the first production path: the present probe is float32 and int64-label specific, and production code would need per-dtype kernels, launch caching, bounds guarantees, empty-center tests, and documented atomic non-determinism.</p>
 <p>After the update hook lands, assignment becomes the next CuPy target. Neither <code>cupy.fuse</code> nor a standard reduction expresses distance-plus-top-1 without a score tile. A <code>RawKernel</code> or <code>cupyx.jit</code> kernel can stream centers and retain one best label per sample, analogous to cuVS, but it should be attempted only after end-to-end measurements with the inexpensive scatter update show that assignment is again dominant.</p>
 <h2 id="next-implementation-steps">Next implementation steps</h2>
-<p>1. Keep the new estimator&#x27;s default path pure array API. 2. Add a private optional centroid-update callable to <code>lloyd_step</code> and    <code>fit_lloyd</code>; keep it out of the sklearn-compatible constructor. Lock down    the contract <code>(X, labels, old_centers) -&gt; updated_centers</code>: empty clusters    keep their old center unless the caller requested farthest-point    relocation, in which case the native path must still invoke the shared    relocation bookkeeping. 3. Implement a CuPy adapter with <code>cupyx.scatter_add</code> plus <code>bincount</code> for    float32 and strict label validation. Add agreement, empty-center, and    namespace tests. 4. Implement the matching PyTorch adapter with <code>index_add_</code>, under the same    hook and tests. 5. Benchmark full fits before considering the fused raw accumulator or a    CuPy top-1 assignment kernel.</p>
+<ol type="1">
+<li>Keep the new estimator's default path pure array API.</li>
+<li>Add a private optional centroid-update callable to <code>lloyd_step</code> and <code>fit_lloyd</code>; keep it out of the sklearn-compatible constructor. Lock down the contract <code>(X, labels, old_centers) -&gt; updated_centers</code>: empty clusters keep their old center unless the caller requested farthest-point relocation, in which case the native path must still invoke the shared relocation bookkeeping.</li>
+<li>Implement a CuPy adapter with <code>cupyx.scatter_add</code> plus <code>bincount</code> for float32 and strict label validation. Add agreement, empty-center, and namespace tests.</li>
+<li>Implement the matching PyTorch adapter with <code>index_add_</code>, under the same hook and tests.</li>
+<li>Benchmark full fits before considering the fused raw accumulator or a CuPy top-1 assignment kernel.</li>
+</ol>
 <p>The result is a stable portable estimator now, with a narrow extension point for backend acceleration later. The CuPy measurements show that this boundary can recover essentially all of the update gap without contaminating the portable implementation with backend branches.</p>
 <p>Previous: <a href="../013-large-k-lloyd-optimization/index.html">large-k Lloyd optimization</a>. Next: <a href="../015-native-backend-estimator-benchmark/index.html">native backend updates in the estimator</a>. Index: <a href="../index.html">journal</a>.</p>
+
 </main>
 </body>
 </html>

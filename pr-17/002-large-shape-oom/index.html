@@ -16,14 +16,65 @@
 <main>
 <h1 id="large-shape-eager-gemm-out-of-memory">Large shape, eager GEMM out of memory</h1>
 <p>The first scaling attempt used one sample-heavy problem that is too big for eager temporaries, then tried to continue. It is kept as its own iteration because the out-of-memory result is evidence about fusion, not a failed run to hide.</p>
-<table><thead><tr><th></th><th>sample-heavy</th></tr></thead><tbody><tr><td>samples</td><td>524288</td></tr><tr><td>centroids</td><td>2048</td></tr><tr><td>features</td><td>4096</td></tr><tr><td><code>X</code></td><td>8 GiB</td></tr><tr><td>distance matrix <code>(n, k)</code></td><td>4 GiB</td></tr><tr><td>broadcast tensor <code>(n, k, d)</code></td><td>16 TiB</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th>sample-heavy</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>samples</td>
+<td>524288</td>
+</tr>
+<tr class="even">
+<td>centroids</td>
+<td>2048</td>
+</tr>
+<tr class="odd">
+<td>features</td>
+<td>4096</td>
+</tr>
+<tr class="even">
+<td><code>X</code></td>
+<td>8 GiB</td>
+</tr>
+<tr class="odd">
+<td>distance matrix <code>(n, k)</code></td>
+<td>4 GiB</td>
+</tr>
+<tr class="even">
+<td>broadcast tensor <code>(n, k, d)</code></td>
+<td>16 TiB</td>
+</tr>
+</tbody>
+</table>
 <p>Eager code was refused up front when the estimated temporary would leave under 20% of the 23 GiB card free. The 16 TiB broadcast is in that category. Eager GEMM was allowed through that check and then failed inside <code>X * X</code>, which is another full copy of the samples, before the 4 GiB GEMM output could be allocated. The driver reported 1.76 GiB free at the moment a 4 GiB allocation was requested.</p>
 <p><code>torch.compile</code> on the same GEMM argmin ran. Median time 0.90 s, peak extra 4.01 GiB, classified as a materialized distance matrix. That is the <code>(n, k)</code> GEMM output with the squared-norm terms and <code>argmin</code> folded into the epilogue, which is the same split the probe showed with kernel names. The 8 GiB <code>X * X</code> buffer is gone, so the call fits.</p>
 <p>A running tile of 32 centroids on this same <code>X</code>:</p>
-<table><thead><tr><th>schedule</th><th>result</th></tr></thead><tbody><tr><td>eager running tile</td><td>out of memory allocating another 8 GiB difference</td></tr><tr><td><code>torch.compile</code> running tile</td><td>0.209 s, peak extra 6.00 MiB</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>schedule</th>
+<th>result</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>eager running tile</td>
+<td>out of memory allocating another 8 GiB difference</td>
+</tr>
+<tr class="even">
+<td><code>torch.compile</code> running tile</td>
+<td>0.209 s, peak extra 6.00 MiB</td>
+</tr>
+</tbody>
+</table>
 <p>6.00 MiB is exactly <code>n * 8 + n * 4</code> bytes: the int64 labels and the float32 winning distances, and nothing else. The compiler kept the 32-centroid argmin inside the distance kernel on a problem whose broadcast tensor is 256 GiB. Sixty-four such tiles would cover every centroid. One tile times 64 is about 13 s, so the full pass was not launched in this round.</p>
 <p>After this case the process still reported only 5.7 GiB free, and the centroid-heavy and feature-heavy problems were skipped by the headroom check. <code>empty_cache</code> alone did not drop compiler reference cycles. The following iteration calls <code>gc.collect()</code> before releasing the pool, and uses three shapes whose eager <code>X * X</code> plus distance matrix fit with room to spare.</p>
 <p>Previous: <a href="../001-fusion-probe/index.html">fusion probe</a>. Next: <a href="../003-resized-shapes/index.html">three shapes that fit</a>.</p>
+
 </main>
 </body>
 </html>

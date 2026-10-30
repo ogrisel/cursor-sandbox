@@ -14,40 +14,388 @@
 </nav>
 </header>
 <main>
-<h1 id="019-optimization-impact-on-cpu-and-gpu-measured-beside-cakedev0">019 — Optimization impact on CPU and GPU, measured beside cakedev0</h1>
-<p><a href="../018-cpu-array-api-optimization/index.html">018</a> measured backend-neutral optimizations only on a local CPU and could only project the remaining gap to cakedev0&#x27;s Cython implementation. Here the benchmark host is back. Every method runs on Torch CPU, Torch CUDA, and CuPy CUDA across all five tasks. Cakedev0&#x27;s scikit-learn build runs on the same machine.</p>
+<h1 id="019--optimization-impact-on-cpu-and-gpu-measured-beside-cakedev0">019 — Optimization impact on CPU and GPU, measured beside cakedev0</h1>
+<p><a href="../018-cpu-array-api-optimization/index.html">018</a> measured backend-neutral optimizations only on a local CPU and could only project the remaining gap to cakedev0's Cython implementation. Here the benchmark host is back. Every method runs on Torch CPU, Torch CUDA, and CuPy CUDA across all five tasks. Cakedev0's scikit-learn build runs on the same machine.</p>
 <p>The measured code is commit <a href="https://github.com/ogrisel/cursor-sandbox/tree/45199eb7cfe6653e6555b783843776be097907ae/kmeans_lloyd"><code>45199eb</code></a>:</p>
-<ul><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/45199eb7cfe6653e6555b783843776be097907ae/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L405-L461"><code>assign_homogeneous_tiled</code></a> evaluates <code>-2 X Cᵀ + ||C||²</code> as one GEMM of <code>[X, 1]</code> and <code>[-2C, ||C||²]</code>, and gives zero coefficients to extra trailing columns;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/45199eb7cfe6653e6555b783843776be097907ae/kmeans_lloyd/scripts/bench_cpu_optimizations.py#L63-L99"><code>_tiles</code></a> keeps the estimator&#x27;s device tile schedule on GPU for every method;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/45199eb7cfe6653e6555b783843776be097907ae/kmeans_lloyd/scripts/bench_cpu_optimizations.py#L384-L390"><code>_warm_gpu</code></a> runs the selected method on a small slice before timing;</li><li><a href="https://github.com/ogrisel/cursor-sandbox/blob/45199eb7cfe6653e6555b783843776be097907ae/kmeans_lloyd/scripts/bench_cpu_optimizations.py#L393-L450"><code>worker</code></a> measures one fresh-process row.</li></ul>
+<ul>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/45199eb7cfe6653e6555b783843776be097907ae/kmeans_lloyd/src/kmeans_lloyd/iteration.py#L405-L461"><code>assign_homogeneous_tiled</code></a> evaluates <code>-2 X Cᵀ + ||C||²</code> as one GEMM of <code>[X, 1]</code> and <code>[-2C, ||C||²]</code>, and gives zero coefficients to extra trailing columns;</li>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/45199eb7cfe6653e6555b783843776be097907ae/kmeans_lloyd/scripts/bench_cpu_optimizations.py#L63-L99"><code>_tiles</code></a> keeps the estimator's device tile schedule on GPU for every method;</li>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/45199eb7cfe6653e6555b783843776be097907ae/kmeans_lloyd/scripts/bench_cpu_optimizations.py#L384-L390"><code>_warm_gpu</code></a> runs the selected method on a small slice before timing;</li>
+<li><a href="https://github.com/ogrisel/cursor-sandbox/blob/45199eb7cfe6653e6555b783843776be097907ae/kmeans_lloyd/scripts/bench_cpu_optimizations.py#L393-L450"><code>worker</code></a> measures one fresh-process row.</li>
+</ul>
 <p><a href="results.json">results.json</a> contains the 450 final rows, the 75 first-run rows replaced by reruns, and 45 cakedev0 rows. <a href="tables.md">tables.md</a> has every mean, standard deviation, ratio, memory peak, and inertia change.</p>
 <h2 id="setup">Setup</h2>
-<ul><li>One host: four CPU threads, 15 GiB RAM, and an NVIDIA L4. Float32, TF32 disabled, three seeds, 12 Lloyd iterations, and <code>tol=1e-8</code>.</li><li>The five tasks from 011–017: <code>k3-d1000</code>, <code>k17-d180</code>, <code>k100-d32</code>, <code>k550-d6</code>, and <code>k3000-d2</code>.</li><li><code>init</code> is greedy k-means++. <code>lloyd</code> starts from shared random rows and ends with a final assignment and inertia pass. <code>fit</code> is k-means++ followed by Lloyd. Array-API rows call these functions directly rather than the estimator.</li><li>The methods compared are: - previous: the implementation before 018; - labels-only: skips the winning-score gather when every center fits in one center tile; - interleaved: assigns and accumulates one sample tile at a time; - augmented Lloyd: uses augmented GEMM only during Lloyd; - augmented init + Lloyd: also uses the augmented GEMM in k-means++ and reuses that matrix in Lloyd.</li><li>CPU rows use 018&#x27;s CPU tiles. GPU rows use the estimator&#x27;s GPU tiles for every method, so only the formulation or loop shape changes.</li><li>Cakedev0 uses <code>kmeans_plusplus</code> for initialization and <code>KMeans(n_init=1, algorithm=&quot;lloyd&quot;)</code> for Lloyd and full fit. Its Lloyd and fit rows therefore include estimator validation that the array-API rows do not.</li><li>CPU memory is the <code>VmHWM</code> increment after loading the input. GPU memory is the allocator peak above the pre-call baseline.</li><li>Host memory stayed above 6 GiB available, about 40% headroom, during the widest augmented runs.</li></ul>
+<ul>
+<li>One host: four CPU threads, 15 GiB RAM, and an NVIDIA L4. Float32, TF32 disabled, three seeds, 12 Lloyd iterations, and <code>tol=1e-8</code>.</li>
+<li>The five tasks from 011–017: <code>k3-d1000</code>, <code>k17-d180</code>, <code>k100-d32</code>, <code>k550-d6</code>, and <code>k3000-d2</code>.</li>
+<li><code>init</code> is greedy k-means++. <code>lloyd</code> starts from shared random rows and ends with a final assignment and inertia pass. <code>fit</code> is k-means++ followed by Lloyd. Array-API rows call these functions directly rather than the estimator.</li>
+<li>The methods compared are:
+<ul>
+<li>previous: the implementation before 018;</li>
+<li>labels-only: skips the winning-score gather when every center fits in one center tile;</li>
+<li>interleaved: assigns and accumulates one sample tile at a time;</li>
+<li>augmented Lloyd: uses augmented GEMM only during Lloyd;</li>
+<li>augmented init + Lloyd: also uses the augmented GEMM in k-means++ and reuses that matrix in Lloyd.</li>
+</ul></li>
+<li>CPU rows use 018's CPU tiles. GPU rows use the estimator's GPU tiles for every method, so only the formulation or loop shape changes.</li>
+<li>Cakedev0 uses <code>kmeans_plusplus</code> for initialization and <code>KMeans(n_init=1, algorithm="lloyd")</code> for Lloyd and full fit. Its Lloyd and fit rows therefore include estimator validation that the array-API rows do not.</li>
+<li>CPU memory is the <code>VmHWM</code> increment after loading the input. GPU memory is the allocator peak above the pre-call baseline.</li>
+<li>Host memory stayed above 6 GiB available, about 40% headroom, during the widest augmented runs.</li>
+</ul>
 <h2 id="iteration-notes">Iteration notes</h2>
 <p>The first full run had 10 cells with one 2–3× slower seed, the same transient host noise seen in <a href="../015-native-backend-estimator-benchmark/index.html">015</a>. All three seeds of those cells were rerun, and eight became stable. Two remain noisy after rerun: Torch CPU previous Lloyd at <code>k3-d1000</code> (16.5 ± 2.7 s) and augmented Lloyd at <code>k3000-d2</code> (6.6 ± 0.7 s).</p>
 <p>The first run also exposed a CuPy-only regression: augmented init plus Lloyd was 1.82× slower than previous at <code>k3-d1000</code>. K-means++ stores <code>[X, 1, ||x||²]</code>, and Lloyd originally column-sliced that to <code>[X, 1]</code>. That slice is a non-contiguous view. Timing one 950,000 by 1001 assignment pass with three centers shows the effect:</p>
-<table><thead><tr><th>backend</th><th>strided <code>[X, 1]</code> view</th><th>full width, zero coefficient</th></tr></thead><tbody><tr><td>CuPy CUDA</td><td>68.1 ms</td><td>17.3 ms</td></tr><tr><td>Torch CUDA</td><td>17.3 ms</td><td>17.2 ms</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>backend</th>
+<th style="text-align: right;">strided <code>[X, 1]</code> view</th>
+<th style="text-align: right;">full width, zero coefficient</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>CuPy CUDA</td>
+<td style="text-align: right;">68.1 ms</td>
+<td style="text-align: right;">17.3 ms</td>
+</tr>
+<tr class="even">
+<td>Torch CUDA</td>
+<td style="text-align: right;">17.3 ms</td>
+<td style="text-align: right;">17.2 ms</td>
+</tr>
+</tbody>
+</table>
 <p>CuPy copies the strided operand before every matrix product; PyTorch passes the stride to cuBLAS. <code>assign_homogeneous_tiled</code> now pads the center coefficients with zeros instead of slicing samples. That changes CuPy full fit from 1.672 to 0.953 s at <code>k3-d1000</code> and from 0.978 to 0.728 s at <code>k17-d180</code>. The tables use the rerun after this fix.</p>
 <h2 id="time">Time</h2>
-<img alt="Time divided by previous implementation" src="time-ratios.svg" />
+<p><img src="time-ratios.svg" alt="Time divided by previous implementation" /></p>
 <p>Speedups over the previous implementation (greater than 1 is faster):</p>
-<table><thead><tr><th>phase and method</th><th>backend</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>init, augmented</td><td>Torch CPU</td><td>0.75x</td><td>1.03x</td><td>1.44x</td><td>1.24x</td><td>0.93x</td></tr><tr><td>init, augmented</td><td>Torch CUDA</td><td>0.78x</td><td>1.02x</td><td>1.65x</td><td>1.55x</td><td>1.03x</td></tr><tr><td>init, augmented</td><td>CuPy CUDA</td><td>0.71x</td><td>0.97x</td><td>1.23x</td><td>1.17x</td><td>0.99x</td></tr><tr><td>Lloyd, labels-only</td><td>Torch CPU</td><td>1.16x</td><td>1.11x</td><td>1.12x</td><td>1.00x</td><td>1.00x</td></tr><tr><td>Lloyd, interleaved</td><td>Torch CPU</td><td>1.20x</td><td>1.27x</td><td>1.06x</td><td>1.04x</td><td>1.04x</td></tr><tr><td>Lloyd, augmented</td><td>Torch CPU</td><td>1.05x</td><td>1.08x</td><td>1.31x</td><td>1.25x</td><td>3.15x</td></tr><tr><td>Lloyd, augmented</td><td>Torch CUDA</td><td>0.96x</td><td>1.03x</td><td>1.37x</td><td>1.79x</td><td>1.68x</td></tr><tr><td>Lloyd, augmented</td><td>CuPy CUDA</td><td>0.97x</td><td>1.10x</td><td>1.25x</td><td>1.38x</td><td>1.18x</td></tr><tr><td>fit, augmented init + Lloyd</td><td>Torch CPU</td><td>0.96x</td><td>1.10x</td><td>1.42x</td><td>1.26x</td><td>1.35x</td></tr><tr><td>fit, augmented Lloyd</td><td>Torch CPU</td><td>0.94x</td><td>1.05x</td><td>1.05x</td><td>1.05x</td><td>1.45x</td></tr><tr><td>fit, augmented init + Lloyd</td><td>Torch CUDA</td><td>0.96x</td><td>1.04x</td><td>1.52x</td><td>1.61x</td><td>1.14x</td></tr><tr><td>fit, augmented init + Lloyd</td><td>CuPy CUDA</td><td>0.96x</td><td>1.09x</td><td>1.24x</td><td>1.18x</td><td>0.98x</td></tr></tbody></table>
+<table>
+<thead>
+<tr class="header">
+<th>phase and method</th>
+<th>backend</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>init, augmented</td>
+<td>Torch CPU</td>
+<td style="text-align: right;">0.75x</td>
+<td style="text-align: right;">1.03x</td>
+<td style="text-align: right;">1.44x</td>
+<td style="text-align: right;">1.24x</td>
+<td style="text-align: right;">0.93x</td>
+</tr>
+<tr class="even">
+<td>init, augmented</td>
+<td>Torch CUDA</td>
+<td style="text-align: right;">0.78x</td>
+<td style="text-align: right;">1.02x</td>
+<td style="text-align: right;">1.65x</td>
+<td style="text-align: right;">1.55x</td>
+<td style="text-align: right;">1.03x</td>
+</tr>
+<tr class="odd">
+<td>init, augmented</td>
+<td>CuPy CUDA</td>
+<td style="text-align: right;">0.71x</td>
+<td style="text-align: right;">0.97x</td>
+<td style="text-align: right;">1.23x</td>
+<td style="text-align: right;">1.17x</td>
+<td style="text-align: right;">0.99x</td>
+</tr>
+<tr class="even">
+<td>Lloyd, labels-only</td>
+<td>Torch CPU</td>
+<td style="text-align: right;">1.16x</td>
+<td style="text-align: right;">1.11x</td>
+<td style="text-align: right;">1.12x</td>
+<td style="text-align: right;">1.00x</td>
+<td style="text-align: right;">1.00x</td>
+</tr>
+<tr class="odd">
+<td>Lloyd, interleaved</td>
+<td>Torch CPU</td>
+<td style="text-align: right;">1.20x</td>
+<td style="text-align: right;">1.27x</td>
+<td style="text-align: right;">1.06x</td>
+<td style="text-align: right;">1.04x</td>
+<td style="text-align: right;">1.04x</td>
+</tr>
+<tr class="even">
+<td>Lloyd, augmented</td>
+<td>Torch CPU</td>
+<td style="text-align: right;">1.05x</td>
+<td style="text-align: right;">1.08x</td>
+<td style="text-align: right;">1.31x</td>
+<td style="text-align: right;">1.25x</td>
+<td style="text-align: right;">3.15x</td>
+</tr>
+<tr class="odd">
+<td>Lloyd, augmented</td>
+<td>Torch CUDA</td>
+<td style="text-align: right;">0.96x</td>
+<td style="text-align: right;">1.03x</td>
+<td style="text-align: right;">1.37x</td>
+<td style="text-align: right;">1.79x</td>
+<td style="text-align: right;">1.68x</td>
+</tr>
+<tr class="even">
+<td>Lloyd, augmented</td>
+<td>CuPy CUDA</td>
+<td style="text-align: right;">0.97x</td>
+<td style="text-align: right;">1.10x</td>
+<td style="text-align: right;">1.25x</td>
+<td style="text-align: right;">1.38x</td>
+<td style="text-align: right;">1.18x</td>
+</tr>
+<tr class="odd">
+<td>fit, augmented init + Lloyd</td>
+<td>Torch CPU</td>
+<td style="text-align: right;">0.96x</td>
+<td style="text-align: right;">1.10x</td>
+<td style="text-align: right;">1.42x</td>
+<td style="text-align: right;">1.26x</td>
+<td style="text-align: right;">1.35x</td>
+</tr>
+<tr class="even">
+<td>fit, augmented Lloyd</td>
+<td>Torch CPU</td>
+<td style="text-align: right;">0.94x</td>
+<td style="text-align: right;">1.05x</td>
+<td style="text-align: right;">1.05x</td>
+<td style="text-align: right;">1.05x</td>
+<td style="text-align: right;">1.45x</td>
+</tr>
+<tr class="odd">
+<td>fit, augmented init + Lloyd</td>
+<td>Torch CUDA</td>
+<td style="text-align: right;">0.96x</td>
+<td style="text-align: right;">1.04x</td>
+<td style="text-align: right;">1.52x</td>
+<td style="text-align: right;">1.61x</td>
+<td style="text-align: right;">1.14x</td>
+</tr>
+<tr class="even">
+<td>fit, augmented init + Lloyd</td>
+<td>CuPy CUDA</td>
+<td style="text-align: right;">0.96x</td>
+<td style="text-align: right;">1.09x</td>
+<td style="text-align: right;">1.24x</td>
+<td style="text-align: right;">1.18x</td>
+<td style="text-align: right;">0.98x</td>
+</tr>
+</tbody>
+</table>
 <p>The augmented GEMM is the only change with large gains on every backend, and those gains concentrate where the score tile dominates:</p>
-<ul><li>Lloyd gains appear when the number of centers is at least the number of features: 1.25–3.15× on CPU, 1.37–1.79× on Torch CUDA, and 1.18–1.38× on CuPy. Removing the per-tile norm addition and scaling matters most when the <code>(tile_n, k)</code> score tile is much larger than the <code>(tile_n, d)</code> input tile. At <code>k3-d1000</code> and <code>k17-d180</code>, Lloyd changes by only 0.96–1.10×.</li><li>Initialization loses 22–29% at <code>k3-d1000</code>: building the 3.8 GB augmented copy costs more than three cheap candidate scores save. At <code>k3000-d2</code>, the extra two columns double the GEMM width while each k-means++ round scores only 10 candidates, so the result is neutral or worse.</li><li>Full fit follows the dominant phase. At <code>k3000-d2</code> on CPU, Lloyd is 3.15× faster, but initialization takes 21 s of the 40 s fit. Keeping the previous initializer and augmenting only Lloyd is best there (1.45×).</li></ul>
+<ul>
+<li>Lloyd gains appear when the number of centers is at least the number of features: 1.25–3.15× on CPU, 1.37–1.79× on Torch CUDA, and 1.18–1.38× on CuPy. Removing the per-tile norm addition and scaling matters most when the <code>(tile_n, k)</code> score tile is much larger than the <code>(tile_n, d)</code> input tile. At <code>k3-d1000</code> and <code>k17-d180</code>, Lloyd changes by only 0.96–1.10×.</li>
+<li>Initialization loses 22–29% at <code>k3-d1000</code>: building the 3.8 GB augmented copy costs more than three cheap candidate scores save. At <code>k3000-d2</code>, the extra two columns double the GEMM width while each k-means++ round scores only 10 candidates, so the result is neutral or worse.</li>
+<li>Full fit follows the dominant phase. At <code>k3000-d2</code> on CPU, Lloyd is 3.15× faster, but initialization takes 21 s of the 40 s fit. Keeping the previous initializer and augmenting only Lloyd is best there (1.45×).</li>
+</ul>
 <p>Labels-only assignment is a small CPU win (up to 1.16×) and neutral on GPU (0.94–1.12×). Interleaving helps the two wide CPU tasks (1.20–1.27×) but slows GPU Lloyd by 7–16% on the three larger-<code>k</code> tasks. Accumulating per sample tile launches more small kernels than the batched update.</p>
 <h2 id="same-host-comparison-with-cakedev0">Same-host comparison with cakedev0</h2>
-<p>Time divided by cakedev0 time; lower is better and less than 1 means faster than cakedev0. &quot;Best&quot; is the fastest measured array-API method for each task and phase.</p>
-<table><thead><tr><th>phase</th><th>row</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>init</td><td>cakedev0 seconds</td><td>1.237</td><td>1.928</td><td>1.494</td><td>1.919</td><td>2.994</td></tr><tr><td>init</td><td>Torch CPU previous</td><td>2.27x</td><td>2.18x</td><td>8.78x</td><td>7.34x</td><td>6.95x</td></tr><tr><td>init</td><td>Torch CPU best</td><td>2.27x</td><td>2.11x</td><td>6.10x</td><td>5.91x</td><td>6.95x</td></tr><tr><td>Lloyd</td><td>cakedev0 seconds</td><td>6.337</td><td>3.079</td><td>1.424</td><td>1.316</td><td>1.541</td></tr><tr><td>Lloyd</td><td>Torch CPU previous</td><td>2.60x</td><td>2.55x</td><td>3.84x</td><td>3.85x</td><td>13.49x</td></tr><tr><td>Lloyd</td><td>Torch CPU best</td><td>2.16x</td><td>2.02x</td><td>2.94x</td><td>3.09x</td><td>4.29x</td></tr><tr><td>fit</td><td>cakedev0 seconds</td><td>7.309</td><td>4.985</td><td>2.861</td><td>3.203</td><td>4.508</td></tr><tr><td>fit</td><td>Torch CPU previous</td><td>2.31x</td><td>2.29x</td><td>6.14x</td><td>5.74x</td><td>8.88x</td></tr><tr><td>fit</td><td>Torch CPU best</td><td>2.23x</td><td>2.07x</td><td>4.31x</td><td>4.55x</td><td>6.14x</td></tr><tr><td>fit</td><td>Torch CUDA best</td><td>0.10x</td><td>0.12x</td><td>0.13x</td><td>0.17x</td><td>0.34x</td></tr><tr><td>fit</td><td>CuPy CUDA best</td><td>0.12x</td><td>0.15x</td><td>0.28x</td><td>0.44x</td><td>0.72x</td></tr></tbody></table>
-<p>On CPU, the optimizations narrow the gap, most at large <code>k</code>. The worst full fit moves from 8.88× to 6.14× slower than cakedev0, and the worst Lloyd case from 13.49× to 4.29×. They do not close it: the best eager CPU method remains 2.1–7.0× slower for initialization, 2.0–4.3× for Lloyd, and 2.1–6.1× for full fit. 018&#x27;s projection, made from local speedups, differed from these measurements by up to 37% in both directions.</p>
+<p>Time divided by cakedev0 time; lower is better and less than 1 means faster than cakedev0. "Best" is the fastest measured array-API method for each task and phase.</p>
+<table>
+<thead>
+<tr class="header">
+<th>phase</th>
+<th>row</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>init</td>
+<td>cakedev0 seconds</td>
+<td style="text-align: right;">1.237</td>
+<td style="text-align: right;">1.928</td>
+<td style="text-align: right;">1.494</td>
+<td style="text-align: right;">1.919</td>
+<td style="text-align: right;">2.994</td>
+</tr>
+<tr class="even">
+<td>init</td>
+<td>Torch CPU previous</td>
+<td style="text-align: right;">2.27x</td>
+<td style="text-align: right;">2.18x</td>
+<td style="text-align: right;">8.78x</td>
+<td style="text-align: right;">7.34x</td>
+<td style="text-align: right;">6.95x</td>
+</tr>
+<tr class="odd">
+<td>init</td>
+<td>Torch CPU best</td>
+<td style="text-align: right;">2.27x</td>
+<td style="text-align: right;">2.11x</td>
+<td style="text-align: right;">6.10x</td>
+<td style="text-align: right;">5.91x</td>
+<td style="text-align: right;">6.95x</td>
+</tr>
+<tr class="even">
+<td>Lloyd</td>
+<td>cakedev0 seconds</td>
+<td style="text-align: right;">6.337</td>
+<td style="text-align: right;">3.079</td>
+<td style="text-align: right;">1.424</td>
+<td style="text-align: right;">1.316</td>
+<td style="text-align: right;">1.541</td>
+</tr>
+<tr class="odd">
+<td>Lloyd</td>
+<td>Torch CPU previous</td>
+<td style="text-align: right;">2.60x</td>
+<td style="text-align: right;">2.55x</td>
+<td style="text-align: right;">3.84x</td>
+<td style="text-align: right;">3.85x</td>
+<td style="text-align: right;">13.49x</td>
+</tr>
+<tr class="even">
+<td>Lloyd</td>
+<td>Torch CPU best</td>
+<td style="text-align: right;">2.16x</td>
+<td style="text-align: right;">2.02x</td>
+<td style="text-align: right;">2.94x</td>
+<td style="text-align: right;">3.09x</td>
+<td style="text-align: right;">4.29x</td>
+</tr>
+<tr class="odd">
+<td>fit</td>
+<td>cakedev0 seconds</td>
+<td style="text-align: right;">7.309</td>
+<td style="text-align: right;">4.985</td>
+<td style="text-align: right;">2.861</td>
+<td style="text-align: right;">3.203</td>
+<td style="text-align: right;">4.508</td>
+</tr>
+<tr class="even">
+<td>fit</td>
+<td>Torch CPU previous</td>
+<td style="text-align: right;">2.31x</td>
+<td style="text-align: right;">2.29x</td>
+<td style="text-align: right;">6.14x</td>
+<td style="text-align: right;">5.74x</td>
+<td style="text-align: right;">8.88x</td>
+</tr>
+<tr class="odd">
+<td>fit</td>
+<td>Torch CPU best</td>
+<td style="text-align: right;">2.23x</td>
+<td style="text-align: right;">2.07x</td>
+<td style="text-align: right;">4.31x</td>
+<td style="text-align: right;">4.55x</td>
+<td style="text-align: right;">6.14x</td>
+</tr>
+<tr class="even">
+<td>fit</td>
+<td>Torch CUDA best</td>
+<td style="text-align: right;">0.10x</td>
+<td style="text-align: right;">0.12x</td>
+<td style="text-align: right;">0.13x</td>
+<td style="text-align: right;">0.17x</td>
+<td style="text-align: right;">0.34x</td>
+</tr>
+<tr class="odd">
+<td>fit</td>
+<td>CuPy CUDA best</td>
+<td style="text-align: right;">0.12x</td>
+<td style="text-align: right;">0.15x</td>
+<td style="text-align: right;">0.28x</td>
+<td style="text-align: right;">0.44x</td>
+<td style="text-align: right;">0.72x</td>
+</tr>
+</tbody>
+</table>
+<p>On CPU, the optimizations narrow the gap, most at large <code>k</code>. The worst full fit moves from 8.88× to 6.14× slower than cakedev0, and the worst Lloyd case from 13.49× to 4.29×. They do not close it: the best eager CPU method remains 2.1–7.0× slower for initialization, 2.0–4.3× for Lloyd, and 2.1–6.1× for full fit. 018's projection, made from local speedups, differed from these measurements by up to 37% in both directions.</p>
 <p>On GPU, the array-API implementation was already faster than cakedev0 on the host CPU. The augmented GEMM extends that lead: the best Torch CUDA full fit is 2.9–10× faster than cakedev0, and the best CuPy fit is 1.4–8× faster.</p>
 <h2 id="memory">Memory</h2>
-<img alt="Peak memory divided by previous implementation" src="memory-ratios.svg" />
-<table><thead><tr><th>peak increment (MiB)</th><th>k3-d1000</th><th>k17-d180</th><th>k100-d32</th><th>k550-d6</th><th>k3000-d2</th></tr></thead><tbody><tr><td>Torch CPU fit, previous</td><td>1008</td><td>2139</td><td>449</td><td>222</td><td>120</td></tr><tr><td>Torch CPU fit, augmented init + Lloyd</td><td>4656</td><td>3606</td><td>651</td><td>159</td><td>106</td></tr><tr><td>Torch CPU fit, augmented Lloyd</td><td>3786</td><td>2139</td><td>449</td><td>222</td><td>119</td></tr><tr><td>Torch CUDA fit, previous</td><td>939</td><td>2051</td><td>368</td><td>98</td><td>68</td></tr><tr><td>Torch CUDA fit, augmented init + Lloyd</td><td>4560</td><td>3509</td><td>563</td><td>90</td><td>70</td></tr><tr><td>CuPy CUDA fit, augmented init + Lloyd</td><td>4559</td><td>3509</td><td>561</td><td>90</td><td>70</td></tr></tbody></table>
+<p><img src="memory-ratios.svg" alt="Peak memory divided by previous implementation" /></p>
+<table>
+<thead>
+<tr class="header">
+<th>peak increment (MiB)</th>
+<th style="text-align: right;">k3-d1000</th>
+<th style="text-align: right;">k17-d180</th>
+<th style="text-align: right;">k100-d32</th>
+<th style="text-align: right;">k550-d6</th>
+<th style="text-align: right;">k3000-d2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Torch CPU fit, previous</td>
+<td style="text-align: right;">1008</td>
+<td style="text-align: right;">2139</td>
+<td style="text-align: right;">449</td>
+<td style="text-align: right;">222</td>
+<td style="text-align: right;">120</td>
+</tr>
+<tr class="even">
+<td>Torch CPU fit, augmented init + Lloyd</td>
+<td style="text-align: right;">4656</td>
+<td style="text-align: right;">3606</td>
+<td style="text-align: right;">651</td>
+<td style="text-align: right;">159</td>
+<td style="text-align: right;">106</td>
+</tr>
+<tr class="odd">
+<td>Torch CPU fit, augmented Lloyd</td>
+<td style="text-align: right;">3786</td>
+<td style="text-align: right;">2139</td>
+<td style="text-align: right;">449</td>
+<td style="text-align: right;">222</td>
+<td style="text-align: right;">119</td>
+</tr>
+<tr class="even">
+<td>Torch CUDA fit, previous</td>
+<td style="text-align: right;">939</td>
+<td style="text-align: right;">2051</td>
+<td style="text-align: right;">368</td>
+<td style="text-align: right;">98</td>
+<td style="text-align: right;">68</td>
+</tr>
+<tr class="odd">
+<td>Torch CUDA fit, augmented init + Lloyd</td>
+<td style="text-align: right;">4560</td>
+<td style="text-align: right;">3509</td>
+<td style="text-align: right;">563</td>
+<td style="text-align: right;">90</td>
+<td style="text-align: right;">70</td>
+</tr>
+<tr class="even">
+<td>CuPy CUDA fit, augmented init + Lloyd</td>
+<td style="text-align: right;">4559</td>
+<td style="text-align: right;">3509</td>
+<td style="text-align: right;">561</td>
+<td style="text-align: right;">90</td>
+<td style="text-align: right;">70</td>
+</tr>
+</tbody>
+</table>
 <p>The augmented matrix is one more input-sized array. At <code>k3-d1000</code>, it raises full-fit peak memory from about 0.95 GiB to 4.5 GiB on every backend. That is a poor trade at three centers, where it is also slower. On the low-dimensional tasks the copy is small, and removing per-tile temporaries lowers initialization peaks: 98 to 66 MiB on CUDA at <code>k550-d6</code>.</p>
 <h2 id="quality">Quality</h2>
-<img alt="Inertia change relative to previous" src="quality-impact.svg" />
+<p><img src="quality-impact.svg" alt="Inertia change relative to previous" /></p>
 <p>Lloyd from shared starts agrees within 0.005% for every method and backend. Augmented k-means++ changes floating-point rounding in the weighted sampling distribution, so it can select different centers. Initializer quality changes by −0.27% to +1.08%. Full-fit inertia changes by −0.10% to +0.13%. On Torch CUDA, even mathematically equivalent labels-only full fits differ by −0.09% to +0.18%, because Torch CUDA k-means++ draws are not reproducible across processes (noted in <a href="../011-consolidated-benchmark/index.html">011</a>). No method shows a consistent quality regression. As discussed in <a href="../017-gemm-cancellation-fallback/index.html">017</a>, the augmented identity is as vulnerable to catastrophic cancellation as plain GEMM.</p>
 <h2 id="conclusion">Conclusion</h2>
-<ul><li>Augmented GEMM is worth a guarded production dispatch on CPU and GPU. &quot;Augmented Lloyd when <code>k &gt;= d</code>&quot; chooses a non-losing option in all 15 Lloyd cells, with 1.18–3.15× gains where it applies. It also needs a memory budget for the extra <code>(n, d + 1)</code> array and the selective cancellation repair from 017.</li><li>Augmented initialization helps only at moderate dimensions with enough centers (<code>k100-d32</code> and <code>k550-d6</code>: 1.17–1.65×). It should not be the default for very wide or two-dimensional data.</li><li>Labels-only assignment is a safe, small default. Interleaving should stay CPU-only and opt-in.</li><li>On CPU, these backend-neutral changes recover up to 3.15× in Lloyd but remain 2.0–7.0× slower than cakedev0. Closing that gap needs a fused compiled kernel. On GPU, the eager array-API implementation is already 1.4–10× faster than cakedev0 on the host CPU, and augmented GEMM adds up to 1.79× more on Lloyd.</li><li>CuPy needs contiguous matrix-product operands. Portable code should avoid column-sliced views in hot loops.</li></ul>
+<ul>
+<li>Augmented GEMM is worth a guarded production dispatch on CPU and GPU. "Augmented Lloyd when <code>k &gt;= d</code>" chooses a non-losing option in all 15 Lloyd cells, with 1.18–3.15× gains where it applies. It also needs a memory budget for the extra <code>(n, d + 1)</code> array and the selective cancellation repair from 017.</li>
+<li>Augmented initialization helps only at moderate dimensions with enough centers (<code>k100-d32</code> and <code>k550-d6</code>: 1.17–1.65×). It should not be the default for very wide or two-dimensional data.</li>
+<li>Labels-only assignment is a safe, small default. Interleaving should stay CPU-only and opt-in.</li>
+<li>On CPU, these backend-neutral changes recover up to 3.15× in Lloyd but remain 2.0–7.0× slower than cakedev0. Closing that gap needs a fused compiled kernel. On GPU, the eager array-API implementation is already 1.4–10× faster than cakedev0 on the host CPU, and augmented GEMM adds up to 1.79× more on Lloyd.</li>
+<li>CuPy needs contiguous matrix-product operands. Portable code should avoid column-sliced views in hot loops.</li>
+</ul>
 <p>Previous: <a href="../018-cpu-array-api-optimization/index.html">backend-neutral CPU optimizations</a>. Index: <a href="../index.html">journal</a>.</p>
+
 </main>
 </body>
 </html>
