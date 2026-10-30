@@ -5,3 +5,4 @@ __pycache__/
 .pixi/*
 !.pixi/config.toml
 experiments/fraud_platform/.pixi/*
+experiments/fraud_platform/_site/

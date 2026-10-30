@@ -32,7 +32,7 @@ Paired per-fold AP differences (min to max over the 4 folds):
 
 ![AP in backtest vs serving](leakage_ap.svg)
 
-Raw values: [`fold_metrics.csv`](fold_metrics.csv). Runtime: 27 s in total (feature store 4.6 s, then 4–6 s per configuration for 4 folds).
+Raw values: [`fold_metrics.csv`](https://github.com/ogrisel/cursor-sandbox/tree/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/003-skrub-dataops/fold_metrics.csv). Runtime: 27 s in total (feature store 4.6 s, then 4–6 s per configuration for 4 folds).
 
 ## Analysis in light of the educational goal
 

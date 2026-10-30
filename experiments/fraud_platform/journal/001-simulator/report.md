@@ -1,5 +1,7 @@
 # 001 — Delayed-feedback payment fraud backtest
 
+> **Superseded.** Every model reached ROC AUC ≈ 1, so the comparisons below carry no information. See the critical review in [002](../002-realistic-dgp/report.md). The code for this iteration is at commit `2934bf3`.
+
 ## Purpose
 
 Build a fast, inspectable data-generating process for online card-not-present

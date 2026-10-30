@@ -55,7 +55,7 @@ Mean (std) over the 4 folds:
 | HGB, oracle labels | row-level | 0.831 (0.099) | 0.286 (0.073) |
 | HGB, oracle labels | row + windows | 0.928 (0.029) | 0.660 (0.055) |
 
-Raw values: [`fold_metrics.csv`](fold_metrics.csv), [`summary.json`](summary.json).
+Raw values: [`fold_metrics.csv`](https://github.com/ogrisel/cursor-sandbox/tree/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/002-realistic-dgp/fold_metrics.csv), [`summary.json`](summary.json).
 
 ## Analysis
 

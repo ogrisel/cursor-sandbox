@@ -30,5 +30,8 @@ python = "3.13.*"
 fraud-sim = { path = ".", editable = true }
 
 [tool.pixi.tasks]
-run = "python run_experiment.py"
 test = "python -m unittest discover -s tests -v"
+iter002 = "python journal/002-realistic-dgp/run.py"
+iter003 = "python journal/003-skrub-dataops/run.py"
+iter004 = "python journal/004-business-evaluation/run.py"
+render = "python ../../tools/render_journal.py --journal journal --site _site --title 'Shared payment-platform fraud simulator'"

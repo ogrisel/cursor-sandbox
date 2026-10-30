@@ -1,0 +1,7 @@
+policy,gain_eur,gain_vs_legacy,gain_vs_legacy_min_fold,gain_vs_legacy_max_fold,naive_gain_vs_legacy,fraud_loss_eur,fraud_value_stopped_share,legit_declined,reviews,stopped_card_testing,stopped_cash_out,stopped_stealth,share_of_perfect_uplift
+approve all,104888.7426,-9490.0828,-3878.4594,-685.094,-5807.04,56970.14,0.0,0,0,0.0,0.0,0.0,-0.1999
+legacy rules,114378.8254,0.0,0.0,0.0,0.0,36504.79,0.372,204,1680,0.4694,0.2853,0.0,0.0
+censored model on top of legacy,134438.1022,20059.2768,2717.2874,6851.2926,14448.4806,14831.96,0.7607,319,1680,0.8035,0.6623,0.0132,0.4225
+censored model replaces legacy,146148.7806,31769.9552,5437.4846,9906.366,23468.7016,13322.89,0.7898,7,462,0.7937,0.6652,0.0263,0.6691
+oracle-label model replaces legacy,146381.5724,32002.747,5005.1712,9809.6954,23484.6784,14297.11,0.762,11,212,0.8013,0.6714,0.0132,0.674
+perfect clairvoyant,161858.8826,47480.0572,7147.2524,14496.726,35867.4814,-0.0,1.0,0,0,1.0,1.0,1.0,1.0
