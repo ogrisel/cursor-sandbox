@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>005-mature-book</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="005-a-million-customer-book">005 — A million-customer book</h1>
+<h2 id="why-this-scale">Why this scale</h2>
+<p>Iterations 002–004 use 6,000 registered customers and about 1,200 attempts a day. That is small enough to iterate in seconds, and too small to look like a production book: almost every customer is active, histories are dense, and fraud is 0.43% of attempts.</p>
+<p><code>mature_config</code> keeps the same mechanisms and raises the book:</p>
+<table><thead><tr><th></th><th>Teaching book</th><th>This iteration</th></tr></thead><tbody><tr><td>Registered customers</td><td>6,000</td><td>1,000,000</td></tr><tr><td>Active in 180 days</td><td>(almost all)</td><td>123,469 (12.3%)</td></tr><tr><td>Shops</td><td>40</td><td>200</td></tr><tr><td>Attempts / day</td><td>~1,200</td><td>7,408</td></tr><tr><td>Attempted-fraud rate</td><td>0.43%</td><td>0.112%</td></tr><tr><td>Realized fraud, count / value</td><td>0.24% / 0.37%</td><td>0.076% / 0.106%</td></tr><tr><td>Median account age</td><td>months to a few years</td><td>4.8 years</td></tr><tr><td>Analyst reviews / day</td><td>20</td><td>50</td></tr><tr><td>Daily volume</td><td>~€93k</td><td>€601k</td></tr></tbody></table>
+<p>85% of accounts are dormant, so the activity distribution is the heavy tail of a mature book rather than a rescaling of the same 6,000 people. Fraudsters draw victims from active accounts. The analyst queue does not grow with the book (20 → 50 while attempts grow about 6×), which is the production constraint. The attempt rate is still a few times the 0.015% all-card figure in the <a href="https://www.ecb.europa.eu/press/intro/publications/pdf/ecb.ebaecb202512.en.pdf">EBA–ECB 2025 report</a>; it is card-not-present only, and it leaves 740 frauds in the test windows.</p>
+<p>The teaching book&#x27;s random stream is unchanged: rerunning iteration 002 reproduces its fold metrics. Large-book favourite shops use a vectorised weighted sample so that drawing a million customers is not a Python loop.</p>
+<h2 id="same-question-as-iteration-004">Same question as iteration 004</h2>
+<p>Four calendar folds, <code>row+window</code> features, <code>HistGradientBoostingClassifier</code> inside the skrub learner. Shop identifiers stay categorical (<code>cardinality_threshold=256</code>; the teaching runs keep 64). The model&#x27;s review capacity is 50 per day, matching the legacy queue. No threshold is tuned on the test window.</p>
+<p>Test windows: 650,213 attempts, 740 frauds, €52.7M.</p>
+<table><thead><tr><th>Policy</th><th>Uplift vs legacy</th><th>Share of perfect uplift</th><th>Uplift per fold</th></tr></thead><tbody><tr><td>Censored model on top of legacy</td><td>+€33,986</td><td>30%</td><td>+€4.3k to +€13.4k</td></tr><tr><td>Censored model replaces legacy</td><td>+€66,136</td><td>59%</td><td>+€12.9k to +€21.1k</td></tr><tr><td>Oracle-label model replaces legacy</td><td>+€74,014</td><td>66%</td><td>+€13.7k to +€21.0k</td></tr><tr><td>Perfect clairvoyant</td><td>+€112,110</td><td>100%</td><td>—</td></tr></tbody></table>
+<p>Paired per fold, oracle minus censored: **+€6,489, +€849, −€23, +€562**. Replacing the rules minus layering them: **+€6.5k to +€9.4k in every fold**.</p>
+<img alt="Share of perfect uplift, both books" src="scale_uplift.svg" />
+<p>Ranking on the full test truth, mean (std) over 4 folds:</p>
+<table><thead><tr><th>Training labels</th><th>AP</th><th>ROC AUC</th><th>Predicted / actual frauds</th></tr></thead><tbody><tr><td>Censored history</td><td>0.577 (0.148)</td><td>0.880 (0.038)</td><td>1.97</td></tr><tr><td>Private oracle</td><td>0.655 (0.112)</td><td>0.949 (0.026)</td><td>0.71</td></tr></tbody></table>
+<p>A practitioner who scores only observable labels would put the censored model&#x27;s uplift at €45,396 instead of €66,136, **31% too low**. On the small book that bias was 26%.</p>
+<p>Raw tables: <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/005-mature-book/policy_summary.csv"><code>policy_summary.csv</code></a>, <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/005-mature-book/policy_folds.csv"><code>policy_folds.csv</code></a>, <a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/fraud-platform-simulator-06f6/experiments/fraud_platform/journal/005-mature-book/ranking.csv"><code>ranking.csv</code></a>, and <a href="run_info.json"><code>run_info.json</code></a>. Runtime: simulate 11 s, window features 32 s, both backtests 45 s, **90 s total**.</p>
+<h2 id="what-changes-and-what-does-not">What changes, and what does not</h2>
+<p>1. **Rarer fraud and thinner histories make ranking harder.** AP falls from 0.72 / 0.77 on the small book to 0.58 / 0.66 here, and the fold spread is wide (standard deviation 0.11–0.15). Average precision on a 0.1% class with a few hundred positives is a noisy summary; the euro figures move less. 2. **Private labels are worth a few points of uplift, not a different decision.** 59% versus 66% of the clairvoyant gain. The €7.9k gap is real in total and is mostly one fold. Deploying the censored model is still the right call on these data. Iteration 004&#x27;s &quot;nothing measurable&quot; does not survive unchanged, and it does not reverse either. 3. **How the model is deployed matters more than the missing labels.** Letting it replace the legacy rules, instead of only adding declines on top, is worth about €32k in every interpretation of the folds. The legacy queue reviews 9,000 attempts over the half-year and the model, given the same daily capacity, spends those reviews differently. 4. **Selection bias in the labels got worse.** The censored model predicts twice as many frauds as occur (1.17× on the small book). Reviews are a smaller slice of a larger book, so the labelled training set is more enriched. Iteration 004&#x27;s threshold curve was flat for odds multipliers up to about 3; that curve was not recomputed here. 5. **Observable-label evaluation is still biased low, by about 30%.**</p>
+<p>Label-aggregate features and the back-dated leakage check were not rerun at this volume. They remain the result of <a href="../003-skrub-dataops/index.html">iteration 003</a>. Window features are still computed with <code>closed=&quot;left&quot;</code> windows, and training labels are still those known at the cutoff.</p>
+<p>Previous: <a href="../004-business-evaluation/index.html">004</a>.</p>
+</main>
+</body>
+</html>
