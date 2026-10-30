@@ -1,0 +1,9 @@
+{
+  "simulate_and_feature_store_s": 4.64,
+  "row|censored_s": 3.6,
+  "row+window|censored_s": 4.19,
+  "row+window+labels|censored_s": 4.27,
+  "row+window+leaky_labels|censored_s": 3.95,
+  "row+window+labels|oracle_s": 5.99,
+  "total_s": 26.65
+}
