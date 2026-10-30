@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>01-metric-plots</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="walk-forward-cv-metric-plots">Walk-forward CV metric plots</h1>
+<p>These figures restate the pooled metrics from the <a href="https://probabl-ai.github.io/skore-example-electricity-load/model-comparison/cv_comparison/report.html">walk-forward CV comparison</a>. Each number pools every row across the 8 CV folds. MAE and MAPE use the median prediction where the model has quantiles. Coverage, interval width, and pinball D² use the published quantiles. <code>hgb_mean</code> and <code>kumo</code> have no quantiles in that table, so they appear only in the point-error plots.</p>
+<p>The plots show the 1h, 12h, and 24h horizons. The source table also reports an average slice; those values are in the tables below.</p>
+<p>MAE and interval width are in the load units of the source table. The MAPE figure shows percent; the table keeps the source fractions.</p>
+<h2 id="point-error">Point error</h2>
+<p><code>kumo_tabular</code> has the lowest MAE and MAPE at 1h, 12h, and 24h. At 1h its MAE is 296.3, ahead of <code>tabicl_n8_full</code> (384) and <code>chronos2_ctx4000</code> (412.7). The three histogram gradient boosting models sit together at 1h (531.4 to 540.9). <code>kumo</code> is about twice that, at 1161.</p>
+<p>At 24h the field behind <code>kumo_tabular</code> tightens. Its MAE is 885, then <code>hgb_quantile_q7</code> at 960.4, <code>hgb_mean</code> at 971.4, and <code>hgb_quantile_recal_q7</code> at 1011. <code>chronos2_ctx4000</code> (1035) and <code>tabicl_n8_full</code> (1036) are next to each other. <code>kumo</code> is 2280.</p>
+<p>Recalibrating the quantile model raises MAE at every horizon: <code>hgb_quantile_recal_q7</code> versus <code>hgb_quantile_q7</code> is 540.9 versus 534 at 1h, 1011 versus 952.7 at 12h, and 1011 versus 960.4 at 24h.</p>
+<p>MAPE ranks the models in the same order as MAE at each of these horizons.</p>
+<img alt="MAE by model and horizon" src="mae_by_model.svg" />
+<img alt="MAPE by model and horizon" src="mape_by_model.svg" />
+<h3 id="mae">MAE</h3>
+<table><thead><tr><th>model</th><th>1h</th><th>12h</th><th>24h</th><th>average</th></tr></thead><tbody><tr><td>chronos2_ctx4000</td><td>412.7</td><td>911.9</td><td>1035</td><td>786.6</td></tr><tr><td>hgb_mean</td><td>531.4</td><td>938</td><td>971.4</td><td>813.6</td></tr><tr><td>hgb_quantile_q7</td><td>534</td><td>952.7</td><td>960.4</td><td>815.7</td></tr><tr><td>hgb_quantile_recal_q7</td><td>540.9</td><td>1011</td><td>1011</td><td>854.2</td></tr><tr><td>kumo</td><td>1161</td><td>1973</td><td>2280</td><td>1805</td></tr><tr><td>kumo_tabular</td><td>296.3</td><td>810.5</td><td>885</td><td>664</td></tr><tr><td>tabicl_n8_full</td><td>384</td><td>1029</td><td>1036</td><td>816.2</td></tr></tbody></table>
+<h3 id="mape">MAPE</h3>
+<table><thead><tr><th>model</th><th>1h</th><th>12h</th><th>24h</th><th>average</th></tr></thead><tbody><tr><td>chronos2_ctx4000</td><td>0.008655</td><td>0.01892</td><td>0.02148</td><td>0.01635</td></tr><tr><td>hgb_mean</td><td>0.01107</td><td>0.01917</td><td>0.01993</td><td>0.01672</td></tr><tr><td>hgb_quantile_q7</td><td>0.01108</td><td>0.01948</td><td>0.01971</td><td>0.01676</td></tr><tr><td>hgb_quantile_recal_q7</td><td>0.01119</td><td>0.02046</td><td>0.0206</td><td>0.01742</td></tr><tr><td>kumo</td><td>0.02506</td><td>0.04098</td><td>0.04723</td><td>0.03776</td></tr><tr><td>kumo_tabular</td><td>0.006284</td><td>0.01667</td><td>0.0183</td><td>0.01375</td></tr><tr><td>tabicl_n8_full</td><td>0.007879</td><td>0.02057</td><td>0.02117</td><td>0.01654</td></tr></tbody></table>
+<h2 id="interval-width-and-coverage">Interval width and coverage</h2>
+<p>On these plots a calibrated sharp 90% interval sits on the dashed line and low on the width axis. Each panel has its own width scale, because interval width grows with the horizon.</p>
+<p>At 1h, <code>kumo_tabular</code> is on the nominal coverage (0.9015) with the narrowest interval (1680). <code>tabicl_n8_full</code> is somewhat conservative (0.9283) and still narrower than Chronos-2 and both HGB quantile models. <code>hgb_quantile_q7</code> undercovers (0.8146) at a width close to Chronos-2 (2167 versus 2194). Recalibration moves that model to 0.9047 and widens the interval to 2732. Chronos-2 overcovers (0.9549) at width 2194.</p>
+<p>At 12h, <code>hgb_quantile_q7</code> and <code>chronos2_ctx4000</code> have the narrowest intervals (3325 and 3297) and both undercover (0.7631 and 0.8519). <code>tabicl_n8_full</code> undercovers as well (0.8456) at width 4059. Recalibration reaches 0.9102 at width 4780, next to <code>kumo_tabular</code>, which overcovers (0.9671) at width 4747.</p>
+<p>At 24h, <code>hgb_quantile_q7</code> is again the narrowest (3288) and the furthest under the nominal coverage (0.7599). Chronos-2 is closer to the line (0.8804) at width 4204. Recalibration lands on 0.9048 at width 4789. <code>tabicl_n8_full</code> is on the nominal coverage (0.904) and wider (5519). <code>kumo_tabular</code> overcovers (0.9816) with the widest interval (6256).</p>
+<img alt="90% interval width versus coverage at 1h" src="width_vs_coverage_1h.svg" />
+<img alt="90% interval width versus coverage at 12h" src="width_vs_coverage_12h.svg" />
+<img alt="90% interval width versus coverage at 24h" src="width_vs_coverage_24h.svg" />
+<h3 id="coverage-of-the-90-interval">Coverage of the 90% interval</h3>
+<table><thead><tr><th>model</th><th>1h</th><th>12h</th><th>24h</th><th>average</th></tr></thead><tbody><tr><td>chronos2_ctx4000</td><td>0.9549</td><td>0.8519</td><td>0.8804</td><td>0.8957</td></tr><tr><td>hgb_quantile_q7</td><td>0.8146</td><td>0.7631</td><td>0.7599</td><td>0.7792</td></tr><tr><td>hgb_quantile_recal_q7</td><td>0.9047</td><td>0.9102</td><td>0.9048</td><td>0.9066</td></tr><tr><td>kumo_tabular</td><td>0.9015</td><td>0.9671</td><td>0.9816</td><td>0.9501</td></tr><tr><td>tabicl_n8_full</td><td>0.9283</td><td>0.8456</td><td>0.904</td><td>0.8927</td></tr></tbody></table>
+<h3 id="width-of-the-90-interval">Width of the 90% interval</h3>
+<table><thead><tr><th>model</th><th>1h</th><th>12h</th><th>24h</th><th>average</th></tr></thead><tbody><tr><td>chronos2_ctx4000</td><td>2194</td><td>3297</td><td>4204</td><td>3232</td></tr><tr><td>hgb_quantile_q7</td><td>2167</td><td>3325</td><td>3288</td><td>2926</td></tr><tr><td>hgb_quantile_recal_q7</td><td>2732</td><td>4780</td><td>4789</td><td>4100</td></tr><tr><td>kumo_tabular</td><td>1680</td><td>4747</td><td>6256</td><td>4228</td></tr><tr><td>tabicl_n8_full</td><td>1944</td><td>4059</td><td>5519</td><td>3841</td></tr></tbody></table>
+<h2 id="pinball-d-of-the-90-interval">Pinball D² of the 90% interval</h2>
+<p>Pinball D² at q = 0.05 and q = 0.95 scores the two tails that bound the 90% interval. Higher is better. Bars are grouped by model, then by horizon, then by that quantile pair. The median quantile (q = 0.5) is a point-forecast score; its values are in the table and are left off the figure.</p>
+<p>At 1h, <code>kumo_tabular</code> leads both tails (0.8932 and 0.8933). At 12h, <code>chronos2_ctx4000</code> (0.7833 and 0.7807) and <code>hgb_quantile_q7</code> (0.784 and 0.7615) lead, and <code>kumo_tabular</code> falls to about 0.70. At 24h, <code>hgb_quantile_q7</code> leads both tails (0.7789 and 0.7696), ahead of Chronos-2 (0.7211 and 0.7318). <code>kumo_tabular</code> is last at 24h (0.6036 and 0.6158).</p>
+<p><code>tabicl_n8_full</code> is uneven at 12h: q = 0.95 is 0.7847, in line with the leaders, while q = 0.05 is 0.6884.</p>
+<p>Recalibration lowers pinball D² relative to <code>hgb_quantile_q7</code> at every horizon and both tails. The coverage plots show the corresponding change: empirical coverage moves from about 0.76–0.81 onto 0.90, and the interval gets wider.</p>
+<img alt="Pinball D² of the 90% interval tails" src="d2_pinball_90.svg" />
+<h3 id="tail-pinball-d-q-0-05-and-q-0-95">Tail pinball D² (q = 0.05 and q = 0.95)</h3>
+<table><thead><tr><th>model</th><th>1h 0.05</th><th>1h 0.95</th><th>12h 0.05</th><th>12h 0.95</th><th>24h 0.05</th><th>24h 0.95</th><th>avg 0.05</th><th>avg 0.95</th></tr></thead><tbody><tr><td>chronos2_ctx4000</td><td>0.8582</td><td>0.8652</td><td>0.7833</td><td>0.7807</td><td>0.7211</td><td>0.7318</td><td>0.8523</td><td>0.903</td></tr><tr><td>hgb_quantile_q7</td><td>0.8594</td><td>0.8519</td><td>0.784</td><td>0.7615</td><td>0.7789</td><td>0.7696</td><td>0.8295</td><td>0.8759</td></tr><tr><td>hgb_quantile_recal_q7</td><td>0.8252</td><td>0.8246</td><td>0.6825</td><td>0.7064</td><td>0.6747</td><td>0.7125</td><td>0.8405</td><td>0.8852</td></tr><tr><td>kumo_tabular</td><td>0.8932</td><td>0.8933</td><td>0.6993</td><td>0.7063</td><td>0.6036</td><td>0.6158</td><td>0.8578</td><td>0.9057</td></tr><tr><td>tabicl_n8_full</td><td>0.8719</td><td>0.882</td><td>0.6884</td><td>0.7847</td><td>0.6285</td><td>0.6718</td><td>0.8416</td><td>0.9006</td></tr></tbody></table>
+<h3 id="median-pinball-d-q-0-5">Median pinball D² (q = 0.5)</h3>
+<table><thead><tr><th>model</th><th>1h</th><th>12h</th><th>24h</th><th>average</th></tr></thead><tbody><tr><td>chronos2_ctx4000</td><td>0.9487</td><td>0.8866</td><td>0.8712</td><td>0.9021</td></tr><tr><td>hgb_quantile_q7</td><td>0.9336</td><td>0.8815</td><td>0.8805</td><td>0.8985</td></tr><tr><td>hgb_quantile_recal_q7</td><td>0.9327</td><td>0.8743</td><td>0.8742</td><td>0.8937</td></tr><tr><td>kumo_tabular</td><td>0.9631</td><td>0.8992</td><td>0.8899</td><td>0.9174</td></tr><tr><td>tabicl_n8_full</td><td>0.9522</td><td>0.8721</td><td>0.8711</td><td>0.8985</td></tr></tbody></table>
+<h2 id="reading-the-three-views-together">Reading the three views together</h2>
+<p><code>kumo_tabular</code> is the best point forecast at 1h, 12h, and 24h. Its 1h interval is on the nominal 90% coverage, the narrowest of the five quantile models, and the best 1h tail D². At 24h the same model has the widest interval, coverage 0.982, and the lowest tail D².</p>
+<p><code>hgb_quantile_q7</code> is a middling point forecast at 1h and the strongest 24h interval on tail D², with the narrowest 24h band and coverage near 0.76. <code>hgb_quantile_recal_q7</code> is the model whose coverage stays near 0.90 at all three horizons. That calibration comes with higher MAE and lower tail D² than <code>hgb_quantile_q7</code>.</p>
+<h2 id="reproduce">Reproduce</h2>
+<p>From <code>electricity_load_cv_plots</code>, with <a href="https://pixi.sh">pixi</a>:</p>
+<pre><code>pixi run plot</code></pre>
+<p>The script reads <code>data/cv_metrics.json</code>, which was copied from the published table, and writes the SVG figures next to this report.</p>
+</main>
+</body>
+</html>
