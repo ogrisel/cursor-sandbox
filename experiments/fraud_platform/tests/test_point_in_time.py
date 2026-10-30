@@ -5,7 +5,7 @@ import pandas as pd
 
 from fraud_sim.backtest import label_as_known_at
 from fraud_sim.features import arrived_label_count, rolling_by_key
-from fraud_sim.simulator import PRIVATE_COLUMNS, PUBLIC_COLUMNS, SimulationConfig, simulate
+from fraud_sim.simulator import PRIVATE_COLUMNS, PUBLIC_COLUMNS, SimulationConfig, mature_config, simulate
 
 T0 = pd.Timestamp("2025-01-01T12:00:00Z")
 
@@ -74,6 +74,18 @@ class SimulatorTest(unittest.TestCase):
         self.assertTrue(a.loc[a.decision.eq("declined"), "observed_label"].isna().all())
         arrived = a["label_observed_at"].notna()
         self.assertTrue((a.loc[arrived, "label_observed_at"] > a.loc[arrived, "timestamp"]).all())
+
+    def test_mature_book_keeps_most_customers_quiet(self):
+        cfg = mature_config()
+        self.assertGreaterEqual(cfg.n_customers, 100_000)
+        self.assertGreater(cfg.dormant_fraction, 0.5)
+        common = dict(n_days=15, n_customers=400, n_merchants=120, legit_per_day=120,
+                      campaigns_per_day=0.3, favourite_sampling="gumbel")
+        quiet = simulate(SimulationConfig(dormant_fraction=0.85, **common))
+        busy = simulate(SimulationConfig(**common))
+        self.assertLess(quiet["customer_id"].nunique(), 150)
+        self.assertGreater(busy["customer_id"].nunique(), 250)
+        self.assertTrue(quiet["merchant_id"].str.fullmatch(r"m\d{4}").all())
 
 
 if __name__ == "__main__":

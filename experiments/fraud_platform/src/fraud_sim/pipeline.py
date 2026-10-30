@@ -76,16 +76,20 @@ def _targets(store: pd.DataFrame, cutoff: pd.Timestamp, labels: str, maturity_da
         y_train = store["is_fraud"].astype(float).where(store["timestamp"] < cutoff)
     else:
         raise ValueError(labels)
-    return store[TARGET_COLUMNS[1:]].assign(y_train=y_train)[TARGET_COLUMNS]
+    # Label-aggregate columns are optional: the scale run does not need them,
+    # and scorers address every column by name.
+    columns = [column for column in TARGET_COLUMNS[1:] if column in store.columns]
+    return store[columns].assign(y_train=y_train)[["y_train", *columns]]
 
 
-def learner_dataop(feature_set: str, labels: str, maturity_days: int = 45) -> skrub.DataOp:
+def learner_dataop(feature_set: str, labels: str, maturity_days: int = 45,
+                   cardinality_threshold: int = 64, max_iter: int = 200) -> skrub.DataOp:
     store = skrub.var("feature_store")
     cutoff = skrub.var("cutoff")
     X = store[FEATURE_SETS[feature_set]].skb.mark_as_X()
     y = store.skb.apply_func(_targets, cutoff, labels, maturity_days).skb.mark_as_y()
     vectorizer = skrub.TableVectorizer(
-        cardinality_threshold=64,
+        cardinality_threshold=cardinality_threshold,
         low_cardinality=skrub.ToCategorical(),
         datetime=skrub.DatetimeEncoder(resolution="hour", add_weekday=True, add_total_seconds=False,
                                        periodic_encoding="circular"),
@@ -95,7 +99,7 @@ def learner_dataop(feature_set: str, labels: str, maturity_days: int = 45) -> sk
     calendar_drift = s.glob("timestamp_year") | s.glob("timestamp_month_*") | s.glob("timestamp_day_*")
     features = X.skb.apply(vectorizer).skb.apply(skrub.DropCols(calendar_drift))
     model = HistGradientBoostingClassifier(
-        learning_rate=0.1, max_iter=200, max_leaf_nodes=31, l2_regularization=1.0,
+        learning_rate=0.1, max_iter=max_iter, max_leaf_nodes=31, l2_regularization=1.0,
         categorical_features="from_dtype", early_stopping=True, random_state=0,
     )
     return features.skb.apply(model, y=y["y_train"])
@@ -107,7 +111,8 @@ def fold_splits(store: pd.DataFrame, cutoff: pd.Timestamp, test_days: int, y_tra
 
 
 def backtest(store: pd.DataFrame, feature_set: str, labels: str, scoring: dict,
-             cfg: BacktestConfig = BacktestConfig(), return_predictions: bool = False):
+             cfg: BacktestConfig = BacktestConfig(), return_predictions: bool = False,
+             cardinality_threshold: int = 64, max_iter: int = 200):
     """One ``skrub.cross_validate`` call per retraining cutoff.
 
     The label known at a cutoff depends on the cutoff itself (chargebacks keep
@@ -117,7 +122,9 @@ def backtest(store: pd.DataFrame, feature_set: str, labels: str, scoring: dict,
     With ``return_predictions``, also return the test rows of every fold with
     the fitted learner's fraud probability in a ``p_fraud`` column.
     """
-    learner = learner_dataop(feature_set, labels, cfg.maturity_days).skb.make_learner()
+    learner = learner_dataop(
+        feature_set, labels, cfg.maturity_days, cardinality_threshold, max_iter
+    ).skb.make_learner()
     results, predictions = [], []
     for fold, cutoff in enumerate(fold_cutoffs(store, cfg)):
         y_train = _targets(store, cutoff, labels, cfg.maturity_days)["y_train"]

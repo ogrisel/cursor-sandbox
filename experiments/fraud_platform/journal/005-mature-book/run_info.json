@@ -1,0 +1,17 @@
+{
+  "registered_customers": 1000000,
+  "active_customers": 123469,
+  "active_fraction": 0.123469,
+  "merchants": 200,
+  "attempts": 1333491,
+  "attempts_per_day": 7408.283333333334,
+  "attempt_fraud_rate": 0.001119617605218183,
+  "daily_volume_eur": 600735.2281666667,
+  "review_capacity_per_day": 50,
+  "median_account_age_days": 1760.78,
+  "simulate_s": 11.3,
+  "features_s": 31.5,
+  "total_s": 89.7,
+  "test_attempts": 650213,
+  "test_frauds": 740
+}

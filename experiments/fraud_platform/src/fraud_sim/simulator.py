@@ -86,33 +86,81 @@ class SimulationConfig:
     chargeback_report_rate: float = 0.80
     chargeback_median_delay_days: float = 16.0
     friendly_fraud_rate: float = 0.001
+    # Share of registered customers who never pay. Left at 0 so the small
+    # teaching book (iterations 002–004) keeps its random stream.
+    dormant_fraction: float = 0.0
+    preexisting_age_min: float = 10.0
+    preexisting_age_max: float = 2_000.0
+    # "sequential" matches the original per-customer draw. "gumbel" is the
+    # same weighted sample without replacement, vectorised for large books.
+    favourite_sampling: str = "sequential"
 
 
 def _rng_hours(rng, weights, n):
     return rng.choice(24, size=n, p=weights / weights.sum())
 
 
+def mature_config() -> SimulationConfig:
+    """A specialist European card-not-present book, not a 6,000-customer toy.
+
+    One million registered customers, most of them quiet during the half-year
+    window, about 8,000 attempts a day across 200 shops. The analyst queue
+    grows from 20 to 50 reviews a day: operations do not scale with the book.
+    Fraud campaigns are only modestly more frequent, so the attempt rate falls
+    toward published card-not-present rates instead of staying at the teaching
+    book's 0.43%.
+    """
+    return SimulationConfig(
+        n_customers=1_000_000,
+        n_merchants=200,
+        legit_per_day=8_000,
+        campaigns_per_day=1.2,
+        review_capacity_per_day=50,
+        dormant_fraction=0.85,
+        preexisting_age_max=3_650,
+        favourite_sampling="gumbel",
+    )
+
+
+def _gumbel_favourites(rng, n_customers: int, popularity, k: int = 4, chunk: int = 20_000) -> np.ndarray:
+    """Weighted sample of ``k`` shops without replacement, in chunks."""
+    log_p = np.log(np.asarray(popularity, dtype=float))
+    out = np.empty((n_customers, k), dtype=np.int32)
+    for start in range(0, n_customers, chunk):
+        end = min(start + chunk, n_customers)
+        scores = log_p + rng.gumbel(size=(end - start, log_p.size))
+        out[start:end] = np.argpartition(-scores, kth=k - 1, axis=1)[:, :k]
+    return out
+
+
 def _make_entities(cfg: SimulationConfig, rng: np.random.Generator):
     start = pd.Timestamp(cfg.start, tz="UTC")
+    id_width = max(5, len(str(cfg.n_customers - 1)))
+    # Call order matches iterations 002–004 when dormant_fraction is 0.
+    country = rng.choice(COUNTRIES, cfg.n_customers, p=COUNTRY_WEIGHTS)
+    activity = rng.gamma(0.7, 1.0, cfg.n_customers)
+    if cfg.dormant_fraction > 0:
+        activity = np.where(rng.random(cfg.n_customers) < cfg.dormant_fraction, 0.0, activity)
     customers = pd.DataFrame(
         {
-            "customer_id": [f"c{i:05d}" for i in range(cfg.n_customers)],
-            "country": rng.choice(COUNTRIES, cfg.n_customers, p=COUNTRY_WEIGHTS),
-            "activity": rng.gamma(0.7, 1.0, cfg.n_customers),
+            "customer_id": [f"c{i:0{id_width}d}" for i in range(cfg.n_customers)],
+            "country": country,
+            "activity": activity,
             "amount_scale": rng.lognormal(np.log(35), 0.5, cfg.n_customers),
             # Most accounts pre-date the simulation, some are opened during it.
             "created_day": np.where(
                 rng.random(cfg.n_customers) < 0.85,
-                -rng.uniform(10, 2_000, cfg.n_customers),
+                -rng.uniform(cfg.preexisting_age_min, cfg.preexisting_age_max, cfg.n_customers),
                 rng.uniform(0, cfg.n_days, cfg.n_customers),
             ),
             "primary_device_age0": rng.gamma(2.0, 180.0, cfg.n_customers),
         }
     )
     cat_idx = rng.integers(0, len(CATEGORIES), cfg.n_merchants)
+    merch_width = 2 if cfg.n_merchants < 100 else 4
     merchants = pd.DataFrame(
         {
-            "merchant_id": [f"m{i:02d}" for i in range(cfg.n_merchants)],
+            "merchant_id": [f"m{i:0{merch_width}d}" for i in range(cfg.n_merchants)],
             "category": CATEGORIES[cat_idx],
             "amount_mult": CATEGORY_AMOUNT[cat_idx],
             "popularity": rng.dirichlet(np.full(cfg.n_merchants, 1.5)),
@@ -120,9 +168,14 @@ def _make_entities(cfg: SimulationConfig, rng: np.random.Generator):
             "fraud_appeal": CATEGORY_FRAUD_APPEAL[cat_idx] * rng.lognormal(0, 0.8, cfg.n_merchants),
         }
     )
-    favourites = np.stack(
-        [rng.choice(cfg.n_merchants, 4, replace=False, p=merchants["popularity"]) for _ in range(cfg.n_customers)]
-    )
+    if cfg.favourite_sampling == "sequential":
+        favourites = np.stack(
+            [rng.choice(cfg.n_merchants, 4, replace=False, p=merchants["popularity"]) for _ in range(cfg.n_customers)]
+        )
+    elif cfg.favourite_sampling == "gumbel":
+        favourites = _gumbel_favourites(rng, cfg.n_customers, merchants["popularity"])
+    else:
+        raise ValueError(cfg.favourite_sampling)
     return start, customers, merchants, favourites
 
 
@@ -195,7 +248,13 @@ def _fraud_attempts(cfg, rng, start, customers, merchants) -> pd.DataFrame:
         fraud_devices = [f"fd{c}_{k}" for k in range(rng.integers(1, 3))]
         foreign_ip = rng.random() < p_foreign
         ip = rng.choice(FOREIGN_NON_EU) if rng.random() < 0.6 else rng.choice(FOREIGN_EU)
-        for victim in rng.choice(cfg.n_customers, rng.integers(1, 4), replace=False):
+        n_victims = int(rng.integers(1, 4))
+        if cfg.dormant_fraction > 0:
+            weights = customers["activity"].to_numpy()
+            victims = rng.choice(cfg.n_customers, n_victims, replace=False, p=weights / weights.sum())
+        else:
+            victims = rng.choice(cfg.n_customers, n_victims, replace=False)
+        for victim in victims:
             t0 = start + pd.Timedelta(days=day0) + pd.Timedelta(hours=int(_rng_hours(rng, FRAUD_HOUR_WEIGHTS, 1)[0]))
             home = customers["country"].iat[victim]
             scale = customers["amount_scale"].iat[victim]
