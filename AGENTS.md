@@ -40,7 +40,7 @@ Keep a chronological journal inside the experiment:
 - `journal/<iteration>/report.md` is one iteration. Put plots and data (`svg`, `png`, `json`) next to that report.
 - Link earlier iterations from the index. The renderer rewrites links that end in `report.md` or `index.md` to `index.html`.
 
-Render it locally with the shared tool:
+Render it locally with the shared tool. Pandoc must be on `PATH` (`apt install pandoc` or the equivalent). The renderer reads GitHub-flavored Markdown, including tables, fenced code, and `$...$` math, and writes MathML.
 
 ```bash
 python tools/render_journal.py --journal path/to/journal --site path/to/site --title "Experiment name"
