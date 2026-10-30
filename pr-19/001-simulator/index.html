@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>001-simulator</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="001-delayed-feedback-payment-fraud-backtest">001 — Delayed-feedback payment fraud backtest</h1>
+<h2 id="purpose">Purpose</h2>
+<p>Build a fast, inspectable data-generating process for online card-not-present fraud over a shared payment platform, rather than presenting an unrealistic i.i.d. classification dataset. The simulator is deliberately an educational test bed, not a calibrated representation of any provider.</p>
+<h2 id="literature-review-and-design-choices">Literature review and design choices</h2>
+<table><thead><tr><th>Evidence</th><th>Implication in this experiment</th></tr></thead><tbody><tr><td>The <a href="https://www.ecb.europa.eu/press/intro/publications/pdf/ecb.ebaecb202512.en.pdf">EBA/ECB 2025 payment-fraud report</a> reports 17.06m fraudulent card transactions out of 111.05bn EU/EEA attempts in 2024 (0.015% by count) and a 0.033% value rate.</td><td>Fraud attempts are rare and amounts are euro-denominated, positive and skewed. The 0.36% simulated attempt rate is intentionally higher than the reported realized rate, to yield enough positives in a short run and to represent pre-decision attempts. It should not be interpreted as an EEA population estimate.</td></tr><tr><td><a href="https://doi.org/10.1109/IJCNN.2015.7280527">Dal Pozzolo et al. (2015)</a> describe delayed labels, constrained investigation, and drift in real card-fraud operations.</td><td>Review labels arrive after two days; chargeback feedback has a 7–22 day lag. A model only trains on labels available by each fold&#x27;s deployment instant.</td></tr><tr><td><a href="https://doi.org/10.1609/aaai.v32i1.11411">Soemers et al. (2018)</a> frame fraud handling as an exploration/exploitation problem: deterministic alert selection obscures the unreviewed population.</td><td>The legacy policy blocks high-risk attempts, permanently censoring their counterfactual outcomes. Approved payments mature after 25 days; unreported fraud is therefore incorrectly retained as legitimate.</td></tr><tr><td><a href="https://doi.org/10.1016/j.ejor.2021.05.028">Bahnsen et al. (2021)</a> treat fraud as instance-dependent cost-sensitive learning. The <a href="https://probabl-ai.github.io/calibration-cost-sensitive-learning/content/notebooks/cost_sensitive_learning.html">Probabl tutorial</a> gives a transparent payment-gain formulation.</td><td>Evaluation uses monetary gain, not accuracy or ROC AUC alone. It earns 2% on approved legitimate volume, loses amount + €20 for accepted fraud, and loses €10 when declining legitimate customers.</td></tr></tbody></table>
+<p>The second source also explains why this setup does **not** claim causal counterfactual evaluation: rejected attempts lack a realizable public outcome. The private simulator label is usable for a controlled upper-bound comparison, but it is unavailable in a real production history.</p>
+<h2 id="mechanisms-in-the-generated-history">Mechanisms in the generated history</h2>
+<ul><li>3,000 customers buy from 30 shops through one platform over 120 UTC days.</li><li>Legitimate purchases follow shop popularity, day-hour seasonality, category</li></ul>
+<p>  price distributions, customer countries and persistent devices.</p>
+<ul><li>Fraud rings reuse compromised customer identities, a small device pool, and</li></ul>
+<p>  bursts across one to three shops within 70 minutes. Their amounts overlap   with legitimate retail purchases; foreign/new-device signals are useful but   noisy.</p>
+<ul><li>The legacy policy produces <code>approved</code>, <code>reviewed</code>, or <code>declined</code> actions.</li></ul>
+<p>  Only reviewed cases and delayed reports reveal labels. Declined cases are   visible as attempts but never acquire an outcome.</p>
+<ul><li>Features are strictly pre-decision rolling counts/sums for customer,</li></ul>
+<p>  merchant, and device histories. The implementation trims each in-memory   history before appending the current payment, so it does not include the   current row or future rows.</p>
+<p>The generated timestamped history is in <a href="data/transactions.csv.gz"><code>data/transactions.csv.gz</code></a>. It retains <code>is_fraud</code> solely as a private simulator truth column; a production-style modelling input must remove it.</p>
+<h2 id="modelling-and-backtesting">Modelling and backtesting</h2>
+<p>Each expanding fold uses <code>TimeSeriesSplit</code> plus a 2,000-transaction gap. This is the appropriate time-aware splitter documented in the <a href="https://skrub-data.org/stable/auto_examples/0110_session_encoder.html">skrub session example</a>; <code>skrub</code> itself does not provide a <code>TimeGapSplit</code> API. Within each fold, <code>skrub.TableVectorizer</code> and <code>skrub.DatetimeEncoder</code> build hour, weekday, and circular calendar features, then <code>HistGradientBoostingClassifier</code> fits the candidate. This matters: fitting the vectorizer inside the fold prevents future category/date transformations leaking into the past.</p>
+<p><code>censored_history</code> sees only operationally observable outcomes. <code>private_oracle</code> has the simulator&#x27;s latent truth for every historical attempt, including declines. Both are scored on the same complete, later held-out population.</p>
+<table><thead><tr><th>Model</th><th>Mean AP</th><th>Mean ROC AUC</th><th>Total test gain (€)</th><th>Difference from oracle (€)</th></tr></thead><tbody><tr><td>Censored history</td><td>0.979</td><td>1.000</td><td>359,076</td><td>-277</td></tr><tr><td>Private oracle</td><td>0.995</td><td>1.000</td><td>359,353</td><td>0</td></tr></tbody></table>
+<p>The exact fold-level values are recorded in <a href="data/backtest_results.csv"><code>data/backtest_results.csv</code></a>, with provenance and rates in <a href="data/summary.json"><code>data/summary.json</code></a>.</p>
+<h2 id="interpretation-and-limitations">Interpretation and limitations</h2>
+<p>The oracle has better mean ranking and higher total business gain, but the short synthetic run has an intentionally structured fraud process, so both models obtain very high ROC AUC. The €277 gap is a lower-bound illustration, not a claim about deployment value; it varies by random seed, fraud strategy, review rate, latency, and the cost assumptions.</p>
+<p>The cost policy is fixed before test scoring rather than tuned on test labels. For a payment with amount <code>a</code> and calibrated fraud probability <code>p</code>, it blocks when:</p>
+<p><code>p &gt;= (10 + 0.02a) / (30 + 1.02a)</code>.</p>
+<p>This follows directly from the stated gains/costs. It still assumes calibrated probabilities and a static cost matrix. It does not represent customer heterogeneity, partial recoveries, strong customer authentication, adaptive fraudsters, manual-review capacity, legal constraints, or off-policy correction. A serious next experiment should add randomized low-risk review exploration and inverse-propensity/off-policy evaluation rather than treat the observed label set as representative.</p>
+</main>
+</body>
+</html>
