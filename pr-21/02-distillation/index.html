@@ -18,20 +18,20 @@
 <p>Goal: fit one <code>HistGradientBoostingRegressor(loss="squared_error")</code> per quantile level (0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95) on the quantile predictions of the Kumo-Tabular teacher of <a href="../01-reproduction/index.html">iteration 01</a>, following <a href="https://arxiv.org/html/2610.01435">arXiv:2610.01435</a>, and see how much of the gap between <code>hgb_quantile_q7</code> and <code>kumo_tabular</code> the students close.</p>
 <h2 id="setup">Setup</h2>
 <ul>
-<li>Teacher (<code>scripts/gen_teacher.py</code>, L4 GPU): for each of 12 walk-forward folds (the 8 evaluation folds plus 4 earlier folds used only for calibration) and each horizon, Kumo-Tabular (8 estimators, fp16, the full training set as context) predicts the 7 quantiles on the test rows, on the training rows, and on 4 x n_train CutMix queries. The students below use the first 2 x n_train of those queries.</li>
-<li>CutMix queries (<code>folds.cutmix</code>, paper appendix A): each feature of a synthetic row is copied, with probability 0.5, from one of two training rows drawn uniformly at random.</li>
-<li>Student (<code>scripts/distill.py</code>): one HGB per level, <code>squared_error</code> loss, learning rate 0.1, 31 leaves, <code>min_samples_leaf=20</code>, up to 3,000 iterations with early stopping (patience 100). Targets are the teacher quantiles only (no ground-truth labels). The synthetic-to-real ratio is 2:1, and the real and synthetic groups get the same total weight. The 7 predictions are sorted to remove quantile crossings.</li>
-<li><code>hgb_q7 (this pipeline)</code> is the same student code trained on the labels with pinball loss and no synthetic rows. It checks that this pipeline matches the upstream <code>hgb_quantile_q7</code>.</li>
-<li><code>hgb_q7 + lag diffs + residual</code> is the same label-trained model with two changes that came out of the probes. It appends differences between consecutive hourly load lags and <code>lag_h - lag_{24,48,168}</code>, which axis-aligned trees cannot form, and it regresses the target minus the load at prediction time (<code>lag_h</code>).</li>
-<li><code>KD real rows only</code> drops the synthetic rows.</li>
-<li><code>KD out-of-fold targets</code> replaces the teacher's predictions on its own training rows with blocked out-of-fold predictions (<code>scripts/gen_teacher_oof.py</code>: 4 contiguous blocks, each predicted with that block and 7 days on either side removed from the context). The synthetic rows still use the full-context teacher.</li>
+<li>Teacher (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/gen_teacher.py#L49-L88"><code>scripts/gen_teacher.py</code></a>, L4 GPU): for each of 12 walk-forward folds (the 8 evaluation folds plus 4 earlier folds used only for calibration, from <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L45-L58"><code>extended_splits</code></a>) and each horizon, Kumo-Tabular (8 estimators, fp16, the full training set as context, <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/teacher.py#L75-L88"><code>KumoTeacher.fit</code></a>) predicts the 7 quantiles on the test rows, on the training rows, and on 4 x n_train CutMix queries. The students below use the first 2 x n_train of those queries.</li>
+<li>CutMix queries (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L156-L168"><code>folds.cutmix</code></a>, paper appendix A): each feature of a synthetic row is copied, with probability 0.5, from one of two training rows drawn uniformly at random.</li>
+<li>Student (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L81-L91"><code>scripts/distill.py</code></a>): one HGB per level, <code>squared_error</code> loss (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L144-L169"><code>fit_predict</code></a>), learning rate 0.1, 31 leaves, <code>min_samples_leaf=20</code>, up to 3,000 iterations with early stopping (patience 100). Targets are the teacher quantiles only (no ground-truth labels). The synthetic-to-real ratio is 2:1, and the real and synthetic groups get the same total weight (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L103-L141"><code>training_set</code></a>). The 7 predictions are sorted to remove quantile crossings.</li>
+<li><code>hgb_q7 (this pipeline)</code> is the same student code trained on the labels with pinball loss and no synthetic rows (<code>--supervision labels</code> in <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L152-L155"><code>fit_predict</code></a>). It checks that this pipeline matches the upstream <a href="https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/quantile_regressor.py#L16-L35"><code>HGBQuantileRegressor</code></a>.</li>
+<li><code>hgb_q7 + lag diffs + residual</code> is the same label-trained model with two changes that came out of the probes. It appends differences between consecutive hourly load lags and <code>lag_h - lag_{24,48,168}</code> (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L128-L149"><code>lag_difference_features</code></a>), which axis-aligned trees cannot form, and it regresses the target minus the load at prediction time (<code>lag_h</code>, <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L115-L125"><code>last_observed_load</code></a>).</li>
+<li><code>KD real rows only</code> drops the synthetic rows (<code>--ratio 0</code> in <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L123-L126"><code>training_set</code></a>).</li>
+<li><code>KD out-of-fold targets</code> replaces the teacher's predictions on its own training rows with blocked out-of-fold predictions (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/gen_teacher_oof.py#L39-L61"><code>scripts/gen_teacher_oof.py</code></a>: 4 contiguous blocks, each predicted with that block and 7 days on either side removed from the context). The synthetic rows still use the full-context teacher (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L113-L137"><code>training_set</code></a> reads real-row targets from <code>--oof_dir</code> and synthetic targets from <code>q_syn</code>).</li>
 </ul>
 <p>The fit+predict times of the distilled students add the L4 teacher time (fit, plus predictions on the training rows and on the synthetic queries actually used) to the student fit on 4 vCPUs.</p>
 <p>One further student, out-of-fold targets combined with the lag-difference features and the residual target, was stopped after 6 of the 12 folds. It is not reported.</p>
 <h2 id="results-8-evaluation-folds">Results (8 evaluation folds)</h2>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>model</th>
 <th style="text-align: right;">MAE avg</th>
 <th style="text-align: right;">MAE 1h</th>
@@ -48,7 +48,7 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>hgb_quantile_q7 (upstream)</td>
 <td style="text-align: right;">859</td>
 <td style="text-align: right;">534</td>
@@ -63,7 +63,7 @@
 <td style="text-align: right;">0.305</td>
 <td style="text-align: right;">1851</td>
 </tr>
-<tr class="even">
+<tr>
 <td>kumo_tabular_q7 (teacher run)</td>
 <td style="text-align: right;">686</td>
 <td style="text-align: right;">275</td>
@@ -78,7 +78,7 @@
 <td style="text-align: right;">0.594</td>
 <td style="text-align: right;">1255</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>hgb_q7 (this pipeline)</td>
 <td style="text-align: right;">862</td>
 <td style="text-align: right;">535</td>
@@ -93,7 +93,7 @@
 <td style="text-align: right;">0.309</td>
 <td style="text-align: right;">3994</td>
 </tr>
-<tr class="even">
+<tr>
 <td>hgb_q7 + lag diffs + residual</td>
 <td style="text-align: right;">747</td>
 <td style="text-align: right;">320</td>
@@ -108,7 +108,7 @@
 <td style="text-align: right;">0.297</td>
 <td style="text-align: right;">4336</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD real rows only</td>
 <td style="text-align: right;">846</td>
 <td style="text-align: right;">510</td>
@@ -123,7 +123,7 @@
 <td style="text-align: right;">0.114</td>
 <td style="text-align: right;">5466</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD CutMix 2:1 (paper recipe)</td>
 <td style="text-align: right;">847</td>
 <td style="text-align: right;">524</td>
@@ -138,7 +138,7 @@
 <td style="text-align: right;">0.286</td>
 <td style="text-align: right;">10608</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD out-of-fold targets, CutMix 2:1</td>
 <td style="text-align: right;">905</td>
 <td style="text-align: right;">544</td>
@@ -153,7 +153,7 @@
 <td style="text-align: right;">0.543</td>
 <td style="text-align: right;">13450</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD lag diffs + residual, CutMix 2:1</td>
 <td style="text-align: right;">763</td>
 <td style="text-align: right;">371</td>
@@ -186,10 +186,10 @@
 <p><img src="pareto.png" alt="Accuracy vs fit + predict time" /></p>
 <p><img src="timeseries.png" alt="True vs predicted load, two weeks of January 2025" /></p>
 <h2 id="why-the-paper-recipe-does-not-transfer-here">Why the paper recipe does not transfer here</h2>
-<p><code>scripts/teacher_diagnostics.py</code> compares the teacher on the test rows, on its own (in-context) training rows, on the blocked out-of-fold training rows, and on the CutMix queries. Averages over the 8 evaluation folds (<a href="teacher_diagnostics.json">teacher_diagnostics.json</a>):</p>
+<p><a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/teacher_diagnostics.py#L29-L55"><code>scripts/teacher_diagnostics.py</code></a> compares the teacher on the test rows, on its own (in-context) training rows, on the blocked out-of-fold training rows, and on the CutMix queries. Averages over the 8 evaluation folds (<a href="teacher_diagnostics.json">teacher_diagnostics.json</a>):</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>horizon</th>
 <th style="text-align: right;">test MAE</th>
 <th style="text-align: right;">test width 90</th>
@@ -204,7 +204,7 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>1h</td>
 <td style="text-align: right;">275</td>
 <td style="text-align: right;">1577</td>
@@ -217,7 +217,7 @@
 <td style="text-align: right;">0.917</td>
 <td style="text-align: right;">15765</td>
 </tr>
-<tr class="even">
+<tr>
 <td>12h</td>
 <td style="text-align: right;">827</td>
 <td style="text-align: right;">5029</td>
@@ -230,7 +230,7 @@
 <td style="text-align: right;">0.947</td>
 <td style="text-align: right;">18933</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>24h</td>
 <td style="text-align: right;">955</td>
 <td style="text-align: right;">6289</td>
@@ -251,12 +251,12 @@
 <li><strong>CutMix queries are far off the data manifold.</strong> Mixing features of two random hours produces load lags, rolling statistics, weather forecasts and calendar columns that do not belong to one time point. The teacher answers with intervals 16-19k MW wide, 3 to 10 times the test width. Given half of the training weight, those targets widen the student, which is why the paper recipe has a better pinball loss than real rows only (273 vs 341) with the same median error.</li>
 <li><strong>Out-of-fold teacher predictions do look like test predictions.</strong> Their error, width and coverage match the test rows. They are honest targets. On the full CV they produce honest coverage (0.94) and a worse median (905 MW): the student does not turn the teacher's test-time quantile function into a better point forecast than pinball loss on the labels.</li>
 </ol>
-<p>Two more structured query generators were run as teachers on fold 0: CutMix over feature groups (lags, weather, calendar) and CutMix of two rows at most 72 h apart. They reduce the teacher width on synthetic rows to 5.5-8.5k MW, still 1.5 to 3.5 times the test width. They were not used for a full student.</p>
+<p>Two more structured query generators were run as teachers on fold 0 (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L171-L199"><code>synthetic_queries</code></a>): CutMix over feature groups (lags, weather, calendar) and CutMix of two rows at most 72 h apart. They reduce the teacher width on synthetic rows to 5.5-8.5k MW, still 1.5 to 3.5 times the test width. They were not used for a full student.</p>
 <h2 id="fold-0-horizon-1h-probes">Fold 0, horizon 1h probes</h2>
 <p>Students fitted on fold 0 at 1h only (2,184 test rows; teacher MAE 368 MW), with the default student hyperparameters. Predictions are in <code>results/raw/probe</code>. These probes chose the full-CV variants above. They do not, on their own, rank them: the out-of-fold variant was the best probe and the worst full-CV median.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>student</th>
 <th>real-row targets</th>
 <th style="text-align: right;">synthetic ratio</th>
@@ -268,7 +268,7 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>labels, pinball loss</td>
 <td>labels</td>
 <td style="text-align: right;">0</td>
@@ -278,7 +278,7 @@
 <td style="text-align: right;">0.68</td>
 <td style="text-align: right;">1533</td>
 </tr>
-<tr class="even">
+<tr>
 <td>labels, pinball loss</td>
 <td>labels</td>
 <td style="text-align: right;">0</td>
@@ -288,7 +288,7 @@
 <td style="text-align: right;">0.60</td>
 <td style="text-align: right;">1230</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD</td>
 <td>in-context teacher</td>
 <td style="text-align: right;">0</td>
@@ -298,7 +298,7 @@
 <td style="text-align: right;">0.41</td>
 <td style="text-align: right;">633</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD</td>
 <td>in-context teacher</td>
 <td style="text-align: right;">1</td>
@@ -308,7 +308,7 @@
 <td style="text-align: right;">0.79</td>
 <td style="text-align: right;">1882</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD</td>
 <td>in-context teacher</td>
 <td style="text-align: right;">2</td>
@@ -318,7 +318,7 @@
 <td style="text-align: right;">0.76</td>
 <td style="text-align: right;">1772</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD</td>
 <td>in-context teacher</td>
 <td style="text-align: right;">4</td>
@@ -328,7 +328,7 @@
 <td style="text-align: right;">0.76</td>
 <td style="text-align: right;">1808</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD</td>
 <td>in-context teacher</td>
 <td style="text-align: right;">0</td>
@@ -338,7 +338,7 @@
 <td style="text-align: right;">0.39</td>
 <td style="text-align: right;">526</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD</td>
 <td>in-context teacher</td>
 <td style="text-align: right;">2</td>
@@ -348,7 +348,7 @@
 <td style="text-align: right;">0.75</td>
 <td style="text-align: right;">1654</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD</td>
 <td>out-of-fold teacher</td>
 <td style="text-align: right;">0</td>
@@ -358,7 +358,7 @@
 <td style="text-align: right;">0.71</td>
 <td style="text-align: right;">1593</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD</td>
 <td>out-of-fold teacher</td>
 <td style="text-align: right;">2</td>

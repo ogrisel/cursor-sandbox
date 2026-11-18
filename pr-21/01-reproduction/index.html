@@ -18,22 +18,22 @@
 <p>Goal: re-run the two models of the latest <a href="https://probabl-ai.github.io/skore-example-electricity-load/model-comparison-forecast/cv_comparison_forecast/report.html">skore-example-electricity-load report</a> (walk-forward CV with forecast weather, 8 folds of 13 weeks, horizons 1h / 12h / 24h) on the AWS L4 machine and check that the numbers match.</p>
 <h2 id="setup">Setup</h2>
 <ul>
-<li><p>Upstream code: <code>probabl-ai/skore-example-electricity-load</code> at <code>2ef9e1cab09505e979e30eef90977c6ec7d736d1</code> ("add tabicl forecast", latest commit, 2026-11-05), installed editable in the pixi environment of this experiment (<code>kumo_distillation/pixi.toml</code>, Python 3.12, scikit-learn 1.9.1, skrub 0.11.0, polars 1.44.2, torch 2.15.0+cu132, <code>structured-data-models</code> at the upstream-pinned commit <code>78130b67</code>, Kumo-Tabular <code>large</code> weights <code>nvidia/Kumo-Tabular</code> revision <code>v1.0.1</code>).</p></li>
-<li><p><code>hgb_quantile_q7</code>: upstream script, run on a 4-vCPU Intel Xeon VM:</p>
+<li><p>Upstream code: <a href="https://github.com/probabl-ai/skore-example-electricity-load"><code>probabl-ai/skore-example-electricity-load</code></a> at <a href="https://github.com/probabl-ai/skore-example-electricity-load/commit/2ef9e1cab09505e979e30eef90977c6ec7d736d1"><code>2ef9e1ca</code></a> ("add tabicl forecast", latest commit, 2026-11-05), installed editable in the pixi environment of this experiment (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/pixi.toml"><code>kumo_distillation/pixi.toml</code></a>, Python 3.12, scikit-learn 1.9.1, skrub 0.11.0, polars 1.44.2, torch 2.15.0+cu132, <code>structured-data-models</code> at the upstream-pinned commit <code>78130b67</code>, Kumo-Tabular <code>large</code> weights <code>nvidia/Kumo-Tabular</code> revision <code>v1.0.1</code>).</p></li>
+<li><p><code>hgb_quantile_q7</code>: the <a href="https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/scripts/model_comparison/cross_validate_models.py#L165-L171"><code>hgb_quantile</code> branch</a> of the upstream script, which fits one <a href="https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/quantile_regressor.py#L16-L35"><code>HGBQuantileRegressor</code></a> per horizon. Run on a 4-vCPU Intel Xeon VM:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> upstream/scripts/model_comparison/cross_validate_models.py <span class="dt">\</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">--model</span> hgb_quantile <span class="at">--quantiles</span> 0.05 0.1 0.25 0.5 0.75 0.9 0.95 <span class="at">--tag</span> q7 <span class="dt">\</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">--output_dir</span> results/raw/reproduction</span></code></pre></div></li>
-<li><p><code>kumo_tabular</code>: upstream script, run on the AWS g6 machine (NVIDIA L4 24 GB, 4-vCPU AMD EPYC 7R13, 15 GB RAM), with the 3 default quantiles and the full training history as context, as in the published run:</p>
+<li><p><code>kumo_tabular</code>: the <a href="https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/scripts/model_comparison/cross_validate_models.py#L195-L201"><code>kumo_tabular</code> branch</a> of the same script, which fits <a href="https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/kumotabular.py#L35-L86"><code>KumoTabularRegressor</code></a>. Run on the AWS g6 machine (NVIDIA L4 24 GB, 4-vCPU AMD EPYC 7R13, 15 GB RAM), with the 3 default quantiles and the full training history as context, as in the published run:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> upstream/scripts/model_comparison/cross_validate_models.py <span class="dt">\</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">--model</span> kumo_tabular <span class="at">--max_train_rows</span> 0 <span class="at">--output_dir</span> results/raw/reproduction</span></code></pre></div></li>
-<li><p><code>kumo_tabular_q7</code>: the same model (8 estimators, float16 autocast, full training set as context) called through Kumo-Tabular's cached <code>fit</code> / <code>predict</code> API by <code>scripts/gen_teacher.py</code>, for the 7 quantile levels of <code>hgb_quantile_q7</code>. These are the test predictions of the teacher used in the next iterations. Kumo-Tabular's ensemble members use unseeded random preprocessing upstream, so two runs differ slightly (mean absolute difference of the 1h medians between the two call paths: 27 MW on the last fold).</p></li>
+<li><p><code>kumo_tabular_q7</code>: the same model (8 estimators, float16 autocast, full training set as context) called through Kumo-Tabular's cached <code>fit</code> / <code>predict</code> API by <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/gen_teacher.py#L49-L88"><code>scripts/gen_teacher.py</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/teacher.py#L58-L88"><code>KumoTeacher</code></a>, for the 7 quantile levels of <code>hgb_quantile_q7</code>. These are the test predictions of the teacher used in the next iterations. Kumo-Tabular's ensemble members use unseeded random preprocessing upstream, so two runs differ slightly (mean absolute difference of the 1h medians between the two call paths: 27 MW on the last fold).</p></li>
 </ul>
-<p><code>scripts/check_folds.py</code> checks that the per-fold feature matrices built by <code>scripts/folds.py</code> (used by all the later iterations) give exactly the same HGB predictions as the upstream skrub DataOp on folds 0 and 7 (max abs difference 0).</p>
+<p><a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/check_folds.py#L23-L44"><code>scripts/check_folds.py</code></a> checks that the per-fold feature matrices built by <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L85-L112"><code>fold_data</code></a> (used by all the later iterations) give exactly the same HGB predictions as the upstream skrub DataOp (<a href="https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/pipeline.py#L397-L477"><code>make_data_op</code></a>) on folds 0 and 7 (max abs difference 0).</p>
 <h2 id="results">Results</h2>
-<p>Pooled over the 8 CV folds (17,466 test rows per horizon). Upstream metric code (<code>compare_predictions.compute_scores</code>); "pinball 5/50/95" is the mean pinball loss over these 3 levels and horizons, "pinball q7" over the 7 levels.</p>
+<p>Pooled over the 8 CV folds (17,466 test rows per horizon). Upstream metric code (<a href="https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/scripts/model_comparison/compare_predictions.py#L96-L136"><code>compare_predictions.compute_scores</code></a>); "pinball 5/50/95" is the mean pinball loss over these 3 levels and horizons, "pinball q7" over the 7 levels. The paired-difference figure uses <a href="https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/scripts/model_comparison/uncertainty.py#L82-L102"><code>uncertainty.paired_difference</code></a>, called from <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/report.py#L200-L236"><code>report.py</code></a>.</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>model</th>
 <th style="text-align: right;">MAE avg</th>
 <th style="text-align: right;">MAE 1h</th>
@@ -50,7 +50,7 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>hgb_quantile_q7 (upstream)</td>
 <td style="text-align: right;">859</td>
 <td style="text-align: right;">534</td>
@@ -65,7 +65,7 @@
 <td style="text-align: right;">0.305</td>
 <td style="text-align: right;">1851</td>
 </tr>
-<tr class="even">
+<tr>
 <td>kumo_tabular (upstream script)</td>
 <td style="text-align: right;">683</td>
 <td style="text-align: right;">279</td>
@@ -80,7 +80,7 @@
 <td style="text-align: right;">-</td>
 <td style="text-align: right;">1206</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>kumo_tabular_q7 (teacher run)</td>
 <td style="text-align: right;">686</td>
 <td style="text-align: right;">275</td>
@@ -100,7 +100,7 @@
 <p>Published values (same metrics, from the upstream report):</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>model</th>
 <th style="text-align: right;">MAE avg</th>
 <th style="text-align: right;">MAE 1h</th>
@@ -113,7 +113,7 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>hgb_quantile_q7 (published)</td>
 <td style="text-align: right;">859.0</td>
 <td style="text-align: right;">533.8</td>
@@ -124,7 +124,7 @@
 <td style="text-align: right;">0.7665</td>
 <td style="text-align: right;">2987</td>
 </tr>
-<tr class="even">
+<tr>
 <td>kumo_tabular (published)</td>
 <td style="text-align: right;">688.4</td>
 <td style="text-align: right;">276.4</td>
@@ -135,7 +135,7 @@
 <td style="text-align: right;">0.9605</td>
 <td style="text-align: right;">4313</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>hgb_quantile_q7 (this run)</td>
 <td style="text-align: right;">859.0</td>
 <td style="text-align: right;">533.8</td>
@@ -146,7 +146,7 @@
 <td style="text-align: right;">0.7665</td>
 <td style="text-align: right;">2987</td>
 </tr>
-<tr class="even">
+<tr>
 <td>kumo_tabular (this run)</td>
 <td style="text-align: right;">683.0</td>
 <td style="text-align: right;">278.8</td>

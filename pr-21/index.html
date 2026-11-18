@@ -17,8 +17,8 @@
 <h1 id="distilling-kumo-tabular-into-histgradientboosting-quantile-models">Distilling Kumo-Tabular into HistGradientBoosting quantile models</h1>
 <p>Electricity load forecasting benchmark of <a href="https://github.com/probabl-ai/skore-example-electricity-load">probabl-ai/skore-example-electricity-load</a> (walk-forward CV with forecast weather, 8 folds of 13 weeks, horizons 1h / 12h / 24h). The question: can a family of scikit-learn <code>HistGradientBoostingRegressor</code> models, distilled from Kumo-Tabular with the CutMix recipe of <a href="https://arxiv.org/html/2610.01435">arXiv:2610.01435</a>, close the gap between <code>hgb_quantile_q7</code> and <code>kumo_tabular</code>? And does post-hoc calibration help on top?</p>
 <h2 id="conclusion">Conclusion</h2>
-<p>Distillation does not close the gap. The paper recipe (squared-error students on the teacher's 7 quantiles, CutMix at a 2:1 synthetic-to-real ratio, no ground-truth labels) moves average MAE from 859 MW to 847 MW, against 686 MW for the teacher. Two properties of this forecasting setup break the recipe: the teacher memorizes the training rows it sees as context, and CutMix of two random hours falls off the data manifold. Replacing the memorized targets with blocked out-of-fold teacher predictions fixes the collapsed intervals and makes the median worse.</p>
-<p>The gain that does show up comes from the features, with no teacher involved. Differences of the load lags, and a residual target relative to the last observed load, bring a label-trained HGB to 747 MW. Leaving the median alone and shifting the other quantiles from the previous 4 folds then puts its 90% coverage at 0.91 and its 7-level pinball loss at 232 MW, against 213 MW for the teacher. Distilling on top of those same features is worse than training them on the labels.</p>
+<p>Distillation does not close the gap. The paper recipe (squared-error students on the teacher's 7 quantiles, <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L156-L168">CutMix</a> at a 2:1 synthetic-to-real ratio, no ground-truth labels, in <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L103-L141"><code>training_set</code></a> and <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L144-L169"><code>fit_predict</code></a>) moves average MAE from 859 MW to 847 MW, against 686 MW for the teacher. Two properties of this forecasting setup break the recipe: the teacher memorizes the training rows it sees as context (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/gen_teacher.py#L49-L88"><code>gen_teacher.py</code></a> predicts each training row with that row in the context), and CutMix of two random hours falls off the data manifold. Replacing the memorized targets with blocked out-of-fold teacher predictions (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/gen_teacher_oof.py#L39-L61"><code>gen_teacher_oof.py</code></a>) fixes the collapsed intervals and makes the median worse.</p>
+<p>The gain that does show up comes from the features, with no teacher involved. <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L128-L149">Differences of the load lags</a>, and a residual target relative to the <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L115-L125">last observed load</a>, bring a label-trained HGB to 747 MW. Leaving the median alone and shifting the other quantiles from the previous 4 folds (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/calibrate.py#L53-L80"><code>recalibrate</code></a>) then puts its 90% coverage at 0.91 and its 7-level pinball loss at 232 MW, against 213 MW for the teacher. Distilling on top of those same features is worse than training them on the labels.</p>
 <p>One combination was stopped before it finished: out-of-fold teacher targets together with the lag-difference features (6 of 12 folds done). It is not in the tables.</p>
 <h2 id="iterations">Iterations</h2>
 <ol type="1">
@@ -30,7 +30,7 @@
 <p>Pooled over the 8 evaluation folds. MAE and width in MW. "pinball q7" is the mean pinball loss over the 7 levels and 3 horizons. Lower is better except for d2 (higher is better) and coverage (target 0.90).</p>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>model</th>
 <th style="text-align: right;">MAE avg</th>
 <th style="text-align: right;">MAE 1h</th>
@@ -43,7 +43,7 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>hgb_quantile_q7 (upstream)</td>
 <td style="text-align: right;">859</td>
 <td style="text-align: right;">534</td>
@@ -54,7 +54,7 @@
 <td style="text-align: right;">0.766</td>
 <td style="text-align: right;">2987</td>
 </tr>
-<tr class="even">
+<tr>
 <td>kumo_tabular_q7 (teacher)</td>
 <td style="text-align: right;">686</td>
 <td style="text-align: right;">275</td>
@@ -65,7 +65,7 @@
 <td style="text-align: right;">0.959</td>
 <td style="text-align: right;">4298</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD CutMix 2:1 (paper recipe)</td>
 <td style="text-align: right;">847</td>
 <td style="text-align: right;">524</td>
@@ -76,7 +76,7 @@
 <td style="text-align: right;">0.719</td>
 <td style="text-align: right;">2584</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD real rows only</td>
 <td style="text-align: right;">846</td>
 <td style="text-align: right;">510</td>
@@ -87,7 +87,7 @@
 <td style="text-align: right;">0.387</td>
 <td style="text-align: right;">956</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD real rows only + constant shift, median kept</td>
 <td style="text-align: right;">848</td>
 <td style="text-align: right;">510</td>
@@ -98,7 +98,7 @@
 <td style="text-align: right;">0.902</td>
 <td style="text-align: right;">3810</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD out-of-fold targets, CutMix 2:1</td>
 <td style="text-align: right;">905</td>
 <td style="text-align: right;">544</td>
@@ -109,7 +109,7 @@
 <td style="text-align: right;">0.942</td>
 <td style="text-align: right;">5256</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD lag diffs + residual, CutMix 2:1</td>
 <td style="text-align: right;">763</td>
 <td style="text-align: right;">371</td>
@@ -120,7 +120,7 @@
 <td style="text-align: right;">0.662</td>
 <td style="text-align: right;">2085</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD lag diffs + residual, CutMix 2:1 + constant shift, median kept</td>
 <td style="text-align: right;">765</td>
 <td style="text-align: right;">371</td>
@@ -131,7 +131,7 @@
 <td style="text-align: right;">0.886</td>
 <td style="text-align: right;">3438</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>hgb_q7 + lag diffs + residual (labels)</td>
 <td style="text-align: right;">747</td>
 <td style="text-align: right;">320</td>
@@ -142,7 +142,7 @@
 <td style="text-align: right;">0.763</td>
 <td style="text-align: right;">2583</td>
 </tr>
-<tr class="even">
+<tr>
 <td>hgb_q7 + lag diffs + residual + spline recal, median kept</td>
 <td style="text-align: right;">747</td>
 <td style="text-align: right;">320</td>

@@ -17,17 +17,17 @@
 <h1 id="03-post-hoc-calibration">03: Post-hoc calibration</h1>
 <p>Goal: check whether shifting the quantiles after the fact helps the distilled students, the label-trained HGB models, and the Kumo-Tabular teacher of <a href="../02-distillation/index.html">iteration 02</a>.</p>
 <h2 id="method">Method</h2>
-<p><code>scripts/calibrate.py</code> recalibrates outer fold k from the predictions of folds k-4 to k-1 (<code>folds.extended_splits</code>, <code>min_train_days=365</code>). It only uses rows before the 7-day gap of fold k. Each of those models was trained on data that precedes its own test block, so fold k does not leak into the shift. This replaces the inner CV of the upstream <code>Recalibrator</code>, which would re-run the teacher 4 more times per fold. Four variants:</p>
+<p><a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/calibrate.py#L53-L80"><code>scripts/calibrate.py</code></a> recalibrates outer fold k from the predictions of folds k-4 to k-1 (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L45-L58"><code>folds.extended_splits</code></a>, <code>min_train_days=365</code>). It only uses rows before the 7-day gap of fold k. Each of those models was trained on data that precedes its own test block, so fold k does not leak into the shift. This replaces the inner CV of the upstream <a href="https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/calibration.py#L19"><code>Recalibrator</code></a>, which would re-run the teacher 4 more times per fold. Four variants:</p>
 <ul>
-<li>spline recal: the upstream <code>Recalibrator._fit_shift_model</code> (10 bins of the predicted value, residual quantile per bin, spline plus <code>RidgeCV</code>), per quantile level and horizon;</li>
-<li>constant shift: one shift per level, the empirical level-q quantile of the past residuals (conformalized quantile regression);</li>
-<li>median kept: the same two methods with the 0.5 level left unchanged.</li>
+<li>spline recal: the upstream <a href="https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/calibration.py#L143-L201"><code>Recalibrator._fit_shift_model</code></a> (10 bins of the predicted value, residual quantile per bin, spline plus <code>RidgeCV</code>), per quantile level and horizon;</li>
+<li>constant shift: one shift per level, <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/calibrate.py#L73-L75">the empirical level-q quantile of the past residuals</a> (conformalized quantile regression);</li>
+<li>median kept: the same two methods with the 0.5 level left unchanged (<a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/calibrate.py#L69-L71"><code>keep_median</code></a>).</li>
 </ul>
-<p>The 7 corrected levels are then sorted. A large shift of the 0.25 or 0.75 level can move it past the median, so some "median kept" rows still change the MAE by a few MW. The calibration fit itself is under 1 s per fold.</p>
+<p>The 7 corrected levels are then <a href="https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/calibrate.py#L79">sorted</a>. A large shift of the 0.25 or 0.75 level can move it past the median, so some "median kept" rows still change the MAE by a few MW. The calibration fit itself is under 1 s per fold.</p>
 <h2 id="results-8-evaluation-folds">Results (8 evaluation folds)</h2>
 <table>
 <thead>
-<tr class="header">
+<tr>
 <th>model</th>
 <th style="text-align: right;">MAE avg</th>
 <th style="text-align: right;">MAE 1h</th>
@@ -42,7 +42,7 @@
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>hgb_quantile_q7 (upstream)</td>
 <td style="text-align: right;">859</td>
 <td style="text-align: right;">534</td>
@@ -55,7 +55,7 @@
 <td style="text-align: right;">2987</td>
 <td style="text-align: right;">0.305</td>
 </tr>
-<tr class="even">
+<tr>
 <td>kumo_tabular_q7 (teacher run)</td>
 <td style="text-align: right;">686</td>
 <td style="text-align: right;">275</td>
@@ -68,7 +68,7 @@
 <td style="text-align: right;">4298</td>
 <td style="text-align: right;">0.594</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>kumo_tabular_q7 + spline recal</td>
 <td style="text-align: right;">820</td>
 <td style="text-align: right;">291</td>
@@ -81,7 +81,7 @@
 <td style="text-align: right;">3209</td>
 <td style="text-align: right;">0.445</td>
 </tr>
-<tr class="even">
+<tr>
 <td>kumo_tabular_q7 + spline recal, median kept</td>
 <td style="text-align: right;">715</td>
 <td style="text-align: right;">276</td>
@@ -94,7 +94,7 @@
 <td style="text-align: right;">3210</td>
 <td style="text-align: right;">0.460</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>kumo_tabular_q7 + constant shift</td>
 <td style="text-align: right;">789</td>
 <td style="text-align: right;">284</td>
@@ -107,7 +107,7 @@
 <td style="text-align: right;">3492</td>
 <td style="text-align: right;">0.469</td>
 </tr>
-<tr class="even">
+<tr>
 <td>kumo_tabular_q7 + constant shift, median kept</td>
 <td style="text-align: right;">698</td>
 <td style="text-align: right;">275</td>
@@ -120,7 +120,7 @@
 <td style="text-align: right;">3493</td>
 <td style="text-align: right;">0.488</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>hgb_q7 (this pipeline)</td>
 <td style="text-align: right;">862</td>
 <td style="text-align: right;">535</td>
@@ -133,7 +133,7 @@
 <td style="text-align: right;">3012</td>
 <td style="text-align: right;">0.309</td>
 </tr>
-<tr class="even">
+<tr>
 <td>hgb_q7 (this pipeline) + spline recal</td>
 <td style="text-align: right;">928</td>
 <td style="text-align: right;">545</td>
@@ -146,7 +146,7 @@
 <td style="text-align: right;">4284</td>
 <td style="text-align: right;">0.511</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>hgb_q7 (this pipeline) + spline recal, median kept</td>
 <td style="text-align: right;">866</td>
 <td style="text-align: right;">535</td>
@@ -159,7 +159,7 @@
 <td style="text-align: right;">4284</td>
 <td style="text-align: right;">0.516</td>
 </tr>
-<tr class="even">
+<tr>
 <td>hgb_q7 (this pipeline) + constant shift</td>
 <td style="text-align: right;">910</td>
 <td style="text-align: right;">541</td>
@@ -172,7 +172,7 @@
 <td style="text-align: right;">4293</td>
 <td style="text-align: right;">0.509</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>hgb_q7 (this pipeline) + constant shift, median kept</td>
 <td style="text-align: right;">862</td>
 <td style="text-align: right;">535</td>
@@ -185,7 +185,7 @@
 <td style="text-align: right;">4293</td>
 <td style="text-align: right;">0.515</td>
 </tr>
-<tr class="even">
+<tr>
 <td>hgb_q7 + lag diffs + residual</td>
 <td style="text-align: right;">747</td>
 <td style="text-align: right;">320</td>
@@ -198,7 +198,7 @@
 <td style="text-align: right;">2583</td>
 <td style="text-align: right;">0.297</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>hgb_q7 + lag diffs + residual + spline recal</td>
 <td style="text-align: right;">768</td>
 <td style="text-align: right;">320</td>
@@ -211,7 +211,7 @@
 <td style="text-align: right;">3761</td>
 <td style="text-align: right;">0.520</td>
 </tr>
-<tr class="even">
+<tr>
 <td>hgb_q7 + lag diffs + residual + spline recal, median kept</td>
 <td style="text-align: right;">747</td>
 <td style="text-align: right;">320</td>
@@ -224,7 +224,7 @@
 <td style="text-align: right;">3761</td>
 <td style="text-align: right;">0.520</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>hgb_q7 + lag diffs + residual + constant shift</td>
 <td style="text-align: right;">764</td>
 <td style="text-align: right;">320</td>
@@ -237,7 +237,7 @@
 <td style="text-align: right;">3759</td>
 <td style="text-align: right;">0.518</td>
 </tr>
-<tr class="even">
+<tr>
 <td>hgb_q7 + lag diffs + residual + constant shift, median kept</td>
 <td style="text-align: right;">747</td>
 <td style="text-align: right;">320</td>
@@ -250,7 +250,7 @@
 <td style="text-align: right;">3759</td>
 <td style="text-align: right;">0.518</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD real rows only</td>
 <td style="text-align: right;">846</td>
 <td style="text-align: right;">510</td>
@@ -263,7 +263,7 @@
 <td style="text-align: right;">956</td>
 <td style="text-align: right;">0.114</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD real rows only + spline recal</td>
 <td style="text-align: right;">908</td>
 <td style="text-align: right;">518</td>
@@ -276,7 +276,7 @@
 <td style="text-align: right;">3764</td>
 <td style="text-align: right;">0.502</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD real rows only + spline recal, median kept</td>
 <td style="text-align: right;">851</td>
 <td style="text-align: right;">510</td>
@@ -289,7 +289,7 @@
 <td style="text-align: right;">3764</td>
 <td style="text-align: right;">0.505</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD real rows only + constant shift</td>
 <td style="text-align: right;">895</td>
 <td style="text-align: right;">516</td>
@@ -302,7 +302,7 @@
 <td style="text-align: right;">3810</td>
 <td style="text-align: right;">0.504</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD real rows only + constant shift, median kept</td>
 <td style="text-align: right;">848</td>
 <td style="text-align: right;">510</td>
@@ -315,7 +315,7 @@
 <td style="text-align: right;">3810</td>
 <td style="text-align: right;">0.506</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD CutMix 2:1 (paper recipe)</td>
 <td style="text-align: right;">847</td>
 <td style="text-align: right;">524</td>
@@ -328,7 +328,7 @@
 <td style="text-align: right;">2584</td>
 <td style="text-align: right;">0.286</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD CutMix 2:1 + spline recal</td>
 <td style="text-align: right;">956</td>
 <td style="text-align: right;">557</td>
@@ -341,7 +341,7 @@
 <td style="text-align: right;">3839</td>
 <td style="text-align: right;">0.465</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD CutMix 2:1 + spline recal, median kept</td>
 <td style="text-align: right;">861</td>
 <td style="text-align: right;">525</td>
@@ -354,7 +354,7 @@
 <td style="text-align: right;">3839</td>
 <td style="text-align: right;">0.479</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD CutMix 2:1 + constant shift</td>
 <td style="text-align: right;">937</td>
 <td style="text-align: right;">541</td>
@@ -367,7 +367,7 @@
 <td style="text-align: right;">3963</td>
 <td style="text-align: right;">0.477</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD CutMix 2:1 + constant shift, median kept</td>
 <td style="text-align: right;">852</td>
 <td style="text-align: right;">524</td>
@@ -380,7 +380,7 @@
 <td style="text-align: right;">3963</td>
 <td style="text-align: right;">0.488</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD out-of-fold targets, CutMix 2:1</td>
 <td style="text-align: right;">905</td>
 <td style="text-align: right;">544</td>
@@ -393,7 +393,7 @@
 <td style="text-align: right;">5256</td>
 <td style="text-align: right;">0.543</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD out-of-fold targets, CutMix 2:1 + spline recal</td>
 <td style="text-align: right;">973</td>
 <td style="text-align: right;">565</td>
@@ -406,7 +406,7 @@
 <td style="text-align: right;">4236</td>
 <td style="text-align: right;">0.480</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD out-of-fold targets, CutMix 2:1 + spline recal, median kept</td>
 <td style="text-align: right;">901</td>
 <td style="text-align: right;">544</td>
@@ -419,7 +419,7 @@
 <td style="text-align: right;">4237</td>
 <td style="text-align: right;">0.497</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD out-of-fold targets, CutMix 2:1 + constant shift</td>
 <td style="text-align: right;">950</td>
 <td style="text-align: right;">556</td>
@@ -432,7 +432,7 @@
 <td style="text-align: right;">4447</td>
 <td style="text-align: right;">0.498</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD out-of-fold targets, CutMix 2:1 + constant shift, median kept</td>
 <td style="text-align: right;">902</td>
 <td style="text-align: right;">543</td>
@@ -445,7 +445,7 @@
 <td style="text-align: right;">4447</td>
 <td style="text-align: right;">0.511</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD lag diffs + residual, CutMix 2:1</td>
 <td style="text-align: right;">763</td>
 <td style="text-align: right;">371</td>
@@ -458,7 +458,7 @@
 <td style="text-align: right;">2085</td>
 <td style="text-align: right;">0.252</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD lag diffs + residual, CutMix 2:1 + spline recal</td>
 <td style="text-align: right;">856</td>
 <td style="text-align: right;">389</td>
@@ -471,7 +471,7 @@
 <td style="text-align: right;">3345</td>
 <td style="text-align: right;">0.463</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD lag diffs + residual, CutMix 2:1 + spline recal, median kept</td>
 <td style="text-align: right;">772</td>
 <td style="text-align: right;">371</td>
@@ -484,7 +484,7 @@
 <td style="text-align: right;">3346</td>
 <td style="text-align: right;">0.471</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>KD lag diffs + residual, CutMix 2:1 + constant shift</td>
 <td style="text-align: right;">840</td>
 <td style="text-align: right;">379</td>
@@ -497,7 +497,7 @@
 <td style="text-align: right;">3438</td>
 <td style="text-align: right;">0.476</td>
 </tr>
-<tr class="even">
+<tr>
 <td>KD lag diffs + residual, CutMix 2:1 + constant shift, median kept</td>
 <td style="text-align: right;">765</td>
 <td style="text-align: right;">371</td>
