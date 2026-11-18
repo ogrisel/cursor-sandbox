@@ -6,21 +6,22 @@ students, the label-trained HGB models, and the Kumo-Tabular teacher of
 
 ## Method
 
-`scripts/calibrate.py` recalibrates outer fold k from the predictions of
-folds k-4 to k-1 (`folds.extended_splits`, `min_train_days=365`). It only
+[`scripts/calibrate.py`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/calibrate.py#L53-L80) recalibrates outer fold k from the predictions of
+folds k-4 to k-1 ([`folds.extended_splits`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L45-L58), `min_train_days=365`). It only
 uses rows before the 7-day gap of fold k. Each of those models was trained
 on data that precedes its own test block, so fold k does not leak into the
-shift. This replaces the inner CV of the upstream `Recalibrator`, which
+shift. This replaces the inner CV of the upstream [`Recalibrator`](https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/calibration.py#L19), which
 would re-run the teacher 4 more times per fold. Four variants:
 
-- spline recal: the upstream `Recalibrator._fit_shift_model` (10 bins of the
+- spline recal: the upstream [`Recalibrator._fit_shift_model`](https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/calibration.py#L143-L201) (10 bins of the
   predicted value, residual quantile per bin, spline plus `RidgeCV`), per
   quantile level and horizon;
-- constant shift: one shift per level, the empirical level-q quantile of the
-  past residuals (conformalized quantile regression);
-- median kept: the same two methods with the 0.5 level left unchanged.
+- constant shift: one shift per level, [the empirical level-q quantile of the
+  past residuals](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/calibrate.py#L73-L75) (conformalized quantile regression);
+- median kept: the same two methods with the 0.5 level left unchanged
+  ([`keep_median`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/calibrate.py#L69-L71)).
 
-The 7 corrected levels are then sorted. A large shift of the 0.25 or 0.75
+The 7 corrected levels are then [sorted](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/calibrate.py#L79). A large shift of the 0.25 or 0.75
 level can move it past the median, so some "median kept" rows still change
 the MAE by a few MW. The calibration fit itself is under 1 s per fold.
 

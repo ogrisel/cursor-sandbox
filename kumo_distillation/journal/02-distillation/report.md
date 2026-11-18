@@ -9,35 +9,39 @@ close.
 
 ## Setup
 
-- Teacher (`scripts/gen_teacher.py`, L4 GPU): for each of 12 walk-forward
+- Teacher ([`scripts/gen_teacher.py`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/gen_teacher.py#L49-L88), L4 GPU): for each of 12 walk-forward
   folds (the 8 evaluation folds plus 4 earlier folds used only for
-  calibration) and each horizon, Kumo-Tabular (8 estimators, fp16, the full
-  training set as context) predicts the 7 quantiles on the test rows, on the
+  calibration, from [`extended_splits`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L45-L58)) and each horizon, Kumo-Tabular (8 estimators, fp16, the full
+  training set as context, [`KumoTeacher.fit`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/teacher.py#L75-L88)) predicts the 7 quantiles on the test rows, on the
   training rows, and on 4 x n_train CutMix queries. The students below use
   the first 2 x n_train of those queries.
-- CutMix queries (`folds.cutmix`, paper appendix A): each feature of a
+- CutMix queries ([`folds.cutmix`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L156-L168), paper appendix A): each feature of a
   synthetic row is copied, with probability 0.5, from one of two training
   rows drawn uniformly at random.
-- Student (`scripts/distill.py`): one HGB per level, `squared_error` loss,
+- Student ([`scripts/distill.py`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L81-L91)): one HGB per level, `squared_error` loss
+  ([`fit_predict`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L144-L169)),
   learning rate 0.1, 31 leaves, `min_samples_leaf=20`, up to 3,000 iterations
   with early stopping (patience 100). Targets are the teacher quantiles only
   (no ground-truth labels). The synthetic-to-real ratio is 2:1, and the real
-  and synthetic groups get the same total weight. The 7 predictions are
+  and synthetic groups get the same total weight ([`training_set`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L103-L141)). The 7 predictions are
   sorted to remove quantile crossings.
 - `hgb_q7 (this pipeline)` is the same student code trained on the labels
-  with pinball loss and no synthetic rows. It checks that this pipeline
-  matches the upstream `hgb_quantile_q7`.
+  with pinball loss and no synthetic rows (`--supervision labels` in
+  [`fit_predict`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L152-L155)). It checks that this pipeline
+  matches the upstream [`HGBQuantileRegressor`](https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/quantile_regressor.py#L16-L35).
 - `hgb_q7 + lag diffs + residual` is the same label-trained model with two
   changes that came out of the probes. It appends differences between
-  consecutive hourly load lags and `lag_h - lag_{24,48,168}`, which
+  consecutive hourly load lags and `lag_h - lag_{24,48,168}`
+  ([`lag_difference_features`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L128-L149)), which
   axis-aligned trees cannot form, and it regresses the target minus the load
-  at prediction time (`lag_h`).
-- `KD real rows only` drops the synthetic rows.
+  at prediction time (`lag_h`, [`last_observed_load`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L115-L125)).
+- `KD real rows only` drops the synthetic rows (`--ratio 0` in [`training_set`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L123-L126)).
 - `KD out-of-fold targets` replaces the teacher's predictions on its own
   training rows with blocked out-of-fold predictions
-  (`scripts/gen_teacher_oof.py`: 4 contiguous blocks, each predicted with
+  ([`scripts/gen_teacher_oof.py`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/gen_teacher_oof.py#L39-L61): 4 contiguous blocks, each predicted with
   that block and 7 days on either side removed from the context). The
-  synthetic rows still use the full-context teacher.
+  synthetic rows still use the full-context teacher ([`training_set`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L113-L137) reads
+  real-row targets from `--oof_dir` and synthetic targets from `q_syn`).
 
 The fit+predict times of the distilled students add the L4 teacher time
 (fit, plus predictions on the training rows and on the synthetic queries
@@ -101,7 +105,7 @@ bootstrap does not separate from noise.
 
 ## Why the paper recipe does not transfer here
 
-`scripts/teacher_diagnostics.py` compares the teacher on the test rows, on
+[`scripts/teacher_diagnostics.py`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/teacher_diagnostics.py#L29-L55) compares the teacher on the test rows, on
 its own (in-context) training rows, on the blocked out-of-fold training
 rows, and on the CutMix queries. Averages over the 8 evaluation folds
 ([teacher_diagnostics.json](teacher_diagnostics.json)):
@@ -135,7 +139,8 @@ rows, and on the CutMix queries. Averages over the 8 evaluation folds
    (905 MW): the student does not turn the teacher's test-time quantile
    function into a better point forecast than pinball loss on the labels.
 
-Two more structured query generators were run as teachers on fold 0:
+Two more structured query generators were run as teachers on fold 0
+([`synthetic_queries`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L171-L199)):
 CutMix over feature groups (lags, weather, calendar) and CutMix of two rows
 at most 72 h apart. They reduce the teacher width on synthetic rows to
 5.5-8.5k MW, still 1.5 to 3.5 times the test width. They were not used for a

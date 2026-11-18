@@ -7,14 +7,14 @@ Goal: re-run the two models of the latest
 
 ## Setup
 
-- Upstream code: `probabl-ai/skore-example-electricity-load` at
-  `2ef9e1cab09505e979e30eef90977c6ec7d736d1` ("add tabicl forecast", latest
+- Upstream code: [`probabl-ai/skore-example-electricity-load`](https://github.com/probabl-ai/skore-example-electricity-load) at
+  [`2ef9e1ca`](https://github.com/probabl-ai/skore-example-electricity-load/commit/2ef9e1cab09505e979e30eef90977c6ec7d736d1) ("add tabicl forecast", latest
   commit, 2026-11-05), installed editable in the pixi environment of this
-  experiment (`kumo_distillation/pixi.toml`, Python 3.12, scikit-learn 1.9.1,
+  experiment ([`kumo_distillation/pixi.toml`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/pixi.toml), Python 3.12, scikit-learn 1.9.1,
   skrub 0.11.0, polars 1.44.2, torch 2.15.0+cu132,
   `structured-data-models` at the upstream-pinned commit `78130b67`,
   Kumo-Tabular `large` weights `nvidia/Kumo-Tabular` revision `v1.0.1`).
-- `hgb_quantile_q7`: upstream script, run on a 4-vCPU Intel Xeon VM:
+- `hgb_quantile_q7`: the [`hgb_quantile` branch](https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/scripts/model_comparison/cross_validate_models.py#L165-L171) of the upstream script, which fits one [`HGBQuantileRegressor`](https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/quantile_regressor.py#L16-L35) per horizon. Run on a 4-vCPU Intel Xeon VM:
 
   ```bash
   python upstream/scripts/model_comparison/cross_validate_models.py \
@@ -22,7 +22,7 @@ Goal: re-run the two models of the latest
       --output_dir results/raw/reproduction
   ```
 
-- `kumo_tabular`: upstream script, run on the AWS g6 machine (NVIDIA L4 24 GB,
+- `kumo_tabular`: the [`kumo_tabular` branch](https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/scripts/model_comparison/cross_validate_models.py#L195-L201) of the same script, which fits [`KumoTabularRegressor`](https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/kumotabular.py#L35-L86). Run on the AWS g6 machine (NVIDIA L4 24 GB,
   4-vCPU AMD EPYC 7R13, 15 GB RAM), with the 3 default quantiles and the full
   training history as context, as in the published run:
 
@@ -33,22 +33,23 @@ Goal: re-run the two models of the latest
 
 - `kumo_tabular_q7`: the same model (8 estimators, float16 autocast, full
   training set as context) called through Kumo-Tabular's cached
-  `fit` / `predict` API by `scripts/gen_teacher.py`, for the 7 quantile levels
+  `fit` / `predict` API by [`scripts/gen_teacher.py`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/gen_teacher.py#L49-L88) and [`KumoTeacher`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/teacher.py#L58-L88), for the 7 quantile levels
   of `hgb_quantile_q7`. These are the test predictions of the teacher used in
   the next iterations. Kumo-Tabular's ensemble members use unseeded random
   preprocessing upstream, so two runs differ slightly (mean absolute difference
   of the 1h medians between the two call paths: 27 MW on the last fold).
 
-`scripts/check_folds.py` checks that the per-fold feature matrices built by
-`scripts/folds.py` (used by all the later iterations) give exactly the same
-HGB predictions as the upstream skrub DataOp on folds 0 and 7 (max abs
+[`scripts/check_folds.py`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/check_folds.py#L23-L44) checks that the per-fold feature matrices built by
+[`fold_data`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L85-L112) (used by all the later iterations) give exactly the same
+HGB predictions as the upstream skrub DataOp ([`make_data_op`](https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/src/electricity_load_forecasting/pipeline.py#L397-L477)) on folds 0 and 7 (max abs
 difference 0).
 
 ## Results
 
 Pooled over the 8 CV folds (17,466 test rows per horizon). Upstream metric code
-(`compare_predictions.compute_scores`); "pinball 5/50/95" is the mean pinball
-loss over these 3 levels and horizons, "pinball q7" over the 7 levels.
+([`compare_predictions.compute_scores`](https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/scripts/model_comparison/compare_predictions.py#L96-L136)); "pinball 5/50/95" is the mean pinball
+loss over these 3 levels and horizons, "pinball q7" over the 7 levels. The
+paired-difference figure uses [`uncertainty.paired_difference`](https://github.com/probabl-ai/skore-example-electricity-load/blob/2ef9e1cab09505e979e30eef90977c6ec7d736d1/scripts/model_comparison/uncertainty.py#L82-L102), called from [`report.py`](https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/report.py#L200-L236).
 
 | model | MAE avg | MAE 1h | MAE 12h | MAE 24h | MAPE avg (%) | pinball 5/50/95 avg | pinball q7 avg | d2 pinball avg | cov 90 avg | width 90 avg | cov 50 avg | fit+predict (s) |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|

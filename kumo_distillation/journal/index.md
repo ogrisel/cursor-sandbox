@@ -12,21 +12,25 @@ post-hoc calibration help on top?
 ## Conclusion
 
 Distillation does not close the gap. The paper recipe (squared-error students
-on the teacher's 7 quantiles, CutMix at a 2:1 synthetic-to-real ratio, no
-ground-truth labels) moves average MAE from 859 MW to 847 MW, against 686 MW
-for the teacher. Two properties of this forecasting setup break the recipe:
-the teacher memorizes the training rows it sees as context, and CutMix of two
-random hours falls off the data manifold. Replacing the memorized targets
-with blocked out-of-fold teacher predictions fixes the collapsed intervals
-and makes the median worse.
+on the teacher's 7 quantiles, [CutMix][cutmix] at a 2:1 synthetic-to-real
+ratio, no ground-truth labels, in [`training_set`][training-set] and
+[`fit_predict`][fit-predict]) moves average MAE from 859 MW to 847 MW,
+against 686 MW for the teacher. Two properties of this forecasting setup
+break the recipe: the teacher memorizes the training rows it sees as context
+([`gen_teacher.py`][gen-teacher] predicts each training row with that row in
+the context), and CutMix of two random hours falls off the data manifold.
+Replacing the memorized targets with blocked out-of-fold teacher predictions
+([`gen_teacher_oof.py`][gen-teacher-oof]) fixes the collapsed intervals and
+makes the median worse.
 
 The gain that does show up comes from the features, with no teacher involved.
-Differences of the load lags, and a residual target relative to the last
-observed load, bring a label-trained HGB to 747 MW. Leaving the median alone
-and shifting the other quantiles from the previous 4 folds then puts its 90%
-coverage at 0.91 and its 7-level pinball loss at 232 MW, against 213 MW for
-the teacher. Distilling on top of those same features is worse than training
-them on the labels.
+[Differences of the load lags][lag-diffs], and a residual target relative to
+the [last observed load][last-load], bring a label-trained HGB to 747 MW.
+Leaving the median alone and shifting the other quantiles from the previous
+4 folds ([`recalibrate`][recalibrate]) then puts its 90% coverage at 0.91
+and its 7-level pinball loss at 232 MW, against 213 MW for the teacher.
+Distilling on top of those same features is worse than training them on the
+labels.
 
 One combination was stopped before it finished: out-of-fold teacher targets
 together with the lag-difference features (6 of 12 folds done). It is not in
@@ -60,3 +64,12 @@ for d2 (higher is better) and coverage (target 0.90).
 | KD lag diffs + residual, CutMix 2:1 + constant shift, median kept | 765 | 371 | 901 | 1022 | 240 | 0.8857 | 0.886 | 3438 |
 | hgb_q7 + lag diffs + residual (labels) | 747 | 320 | 913 | 1008 | 245 | 0.8742 | 0.763 | 2583 |
 | hgb_q7 + lag diffs + residual + spline recal, median kept | 747 | 320 | 913 | 1008 | 232 | 0.8854 | 0.911 | 3761 |
+
+[cutmix]: https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L156-L168
+[training-set]: https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L103-L141
+[fit-predict]: https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/distill.py#L144-L169
+[gen-teacher]: https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/gen_teacher.py#L49-L88
+[gen-teacher-oof]: https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/gen_teacher_oof.py#L39-L61
+[lag-diffs]: https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L128-L149
+[last-load]: https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/folds.py#L115-L125
+[recalibrate]: https://github.com/ogrisel/cursor-sandbox/blob/a487de66824903384aeb82cd66bfaa4f2ef2f53a/kumo_distillation/scripts/calibrate.py#L53-L80
