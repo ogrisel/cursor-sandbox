@@ -1,0 +1,170 @@
+[
+  {
+    "backend": "tabmat",
+    "variant": "dense.so_total",
+    "source": "/workspace/sandwich_fused_kernels/artifacts/tabmat_dense.so.asm",
+    "total_instructions": 61672,
+    "simd_instruction_count": 921,
+    "avx256_count": 0,
+    "avx512_count": 0,
+    "sse128_count": 921,
+    "fma_count": 0,
+    "sample_mnemonics": [
+      "addpd",
+      "movapd",
+      "movups",
+      "mulpd",
+      "paddq"
+    ],
+    "notes": "uses SSE128 xmm mulpd/addpd in micro-kernel"
+  },
+  {
+    "backend": "tabmat",
+    "variant": "dense_base_microkernel",
+    "source": "/workspace/sandwich_fused_kernels/artifacts/tabmat_dense.so.asm",
+    "total_instructions": 347,
+    "simd_instruction_count": 84,
+    "avx256_count": 0,
+    "avx512_count": 0,
+    "sse128_count": 84,
+    "fma_count": 0,
+    "sample_mnemonics": [
+      "addpd",
+      "movapd",
+      "mulpd"
+    ],
+    "notes": "uses SSE128 xmm mulpd/addpd in micro-kernel"
+  },
+  {
+    "backend": "tabmat",
+    "variant": "denseC_sandwich_omp",
+    "source": "/workspace/sandwich_fused_kernels/artifacts/tabmat_dense.so.asm",
+    "total_instructions": 364,
+    "simd_instruction_count": 0,
+    "avx256_count": 0,
+    "avx512_count": 0,
+    "sse128_count": 0,
+    "fma_count": 0,
+    "sample_mnemonics": [],
+    "notes": "OpenMP row setup; scalar movsd in places"
+  },
+  {
+    "backend": "numba",
+    "variant": "k_inner",
+    "source": "/workspace/sandwich_fused_kernels/artifacts/numba_k_inner.asm",
+    "total_instructions": 647,
+    "simd_instruction_count": 82,
+    "avx256_count": 35,
+    "avx512_count": 0,
+    "sse128_count": 47,
+    "fma_count": 0,
+    "sample_mnemonics": [
+      "vaddsd",
+      "vmovaps",
+      "vmovdqa",
+      "vmovsd",
+      "vmovups",
+      "vmulsd",
+      "vpaddq",
+      "vpbroadcastq",
+      "vpmullq",
+      "vpor",
+      "vscatterqpd",
+      "vxorpd",
+      "vxorps"
+    ],
+    "notes": "LLVM vector types in IR: 6; AVX2 ymm detected"
+  },
+  {
+    "backend": "numba",
+    "variant": "fused_blocked",
+    "source": "/workspace/sandwich_fused_kernels/artifacts/numba_fused_blocked.asm",
+    "total_instructions": 853,
+    "simd_instruction_count": 104,
+    "avx256_count": 42,
+    "avx512_count": 0,
+    "sse128_count": 62,
+    "fma_count": 0,
+    "sample_mnemonics": [
+      "vaddpd",
+      "vaddsd",
+      "vbroadcastsd",
+      "vmovaps",
+      "vmovsd",
+      "vmovupd",
+      "vmovups",
+      "vmulpd",
+      "vmulsd",
+      "vxorps"
+    ],
+    "notes": "LLVM vector types in IR: 51; AVX2 ymm detected"
+  },
+  {
+    "backend": "numba",
+    "variant": "blas_fused",
+    "source": "/workspace/sandwich_fused_kernels/artifacts/numba_blas_fused.asm",
+    "total_instructions": 3050,
+    "simd_instruction_count": 672,
+    "avx256_count": 205,
+    "avx512_count": 0,
+    "sse128_count": 467,
+    "fma_count": 0,
+    "sample_mnemonics": [
+      "vbroadcastsd",
+      "vcvtsi2sd",
+      "vcvtusi2sd",
+      "vmovaps",
+      "vmovsd",
+      "vmovupd",
+      "vmovups",
+      "vmulpd",
+      "vmulsd",
+      "vucomisd",
+      "vxorpd",
+      "vxorps"
+    ],
+    "notes": "LLVM vector types in IR: 304; AVX2 ymm detected"
+  },
+  {
+    "backend": "jax",
+    "variant": "einsum",
+    "source": "/workspace/sandwich_fused_kernels/artifacts/jax_einsum.asm.txt",
+    "total_instructions": 0,
+    "simd_instruction_count": 0,
+    "avx256_count": 0,
+    "avx512_count": 0,
+    "sse128_count": 0,
+    "fma_count": 0,
+    "sample_mnemonics": [],
+    "notes": "fusion/thunk object is scalar or delegated to runtime"
+  },
+  {
+    "backend": "jax",
+    "variant": "scan_chunked",
+    "source": "/workspace/sandwich_fused_kernels/artifacts/jax_scan_chunked.asm.txt",
+    "total_instructions": 0,
+    "simd_instruction_count": 0,
+    "avx256_count": 0,
+    "avx512_count": 0,
+    "sse128_count": 0,
+    "fma_count": 0,
+    "sample_mnemonics": [],
+    "notes": "fusion/thunk object is scalar or delegated to runtime"
+  },
+  {
+    "backend": "numpy",
+    "variant": "openblas_dgemm",
+    "source": "/workspace/sandwich_fused_kernels/artifacts/openblas_dgemm.asm",
+    "total_instructions": 1185,
+    "simd_instruction_count": 845,
+    "avx256_count": 670,
+    "avx512_count": 0,
+    "sse128_count": 175,
+    "fma_count": 455,
+    "sample_mnemonics": [
+      "c4",
+      "c5"
+    ],
+    "notes": "weighted Gram routes here; dgemm_kernel_HASWELL uses AVX2 vfmadd231pd"
+  }
+]

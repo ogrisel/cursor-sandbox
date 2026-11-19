@@ -379,11 +379,34 @@ On `glm_tall_skinny` f64 (320k×32, 4 threads) after autotune:
 
 On `glm_small` f64 MT, the untuned `torch_compile_triton_cpu` (einsum path, **1.03× tabmat**) still beats the tiled autotuned variant; use `triton_cpu_tuned` / `torch_compile_triton_tuned` where the cache shows a win for your problem shape.
 
+## HTML experiment journal
+
+Chronological reports (tables, plots, source links) live under `journal/`.
+Render locally (requires pandoc):
+
+```bash
+python tools/render_journal.py \
+  --journal sandwich_fused_kernels/journal \
+  --site /tmp/sandwich-site \
+  --title "Sandwich fused kernels"
+```
+
+On PRs that touch `sandwich_fused_kernels/journal/**`, `.github/workflows/publish-sandwich-report.yml`
+publishes the site via the reusable Pages workflow on `main`.
+
+Regenerate plots from the latest `artifacts/benchmark_results.json`:
+
+```bash
+python sandwich_fused_kernels/scripts/build_journal_assets.py
+```
+
 ## Layout
 
 ```
 sandwich_fused_kernels/
 ├── README.md
+├── journal/                  # HTML report source (index + iterations)
+├── scripts/build_journal_assets.py
 ├── autotune_config.py
 ├── autotune_sandwich.py
 ├── analyze_tabmat.py
@@ -403,6 +426,7 @@ sandwich_fused_kernels/
 │   ├── tuned_kernels.py      # autotuned dispatch (reads autotune_cache.json)
 │   ├── helion_kernel.py      # Helion @helion.kernel sandwich (see kernels/README.md)
 │   ├── helion_baseline.py    # NumPy wrapper for Helion benchmarks
+│   ├── triton_cpu_kernel.py
 │   ├── xsimd_kernel.py
 │   └── jax_kernels.py
 └── artifacts/
