@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>04-helion-triton</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="iteration-04--helion-torchcompile-and-triton-cpu">Iteration 04 — Helion, torch.compile, and Triton-CPU</h1>
+<h2 id="goal">Goal</h2>
+<p>Bring PyTorch/Helion into the main harness, then add the experimental <a href="https://github.com/triton-lang/triton-cpu">triton-cpu</a> backend and MT tile/chunk tuning for Triton-based paths.</p>
+<h2 id="sources">Sources</h2>
+<table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>Link</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Helion kernel DSL</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/helion_kernel.py"><code>kernels/helion_kernel.py</code></a></td>
+</tr>
+<tr>
+<td>NumPy entry points</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/helion_baseline.py"><code>kernels/helion_baseline.py</code></a></td>
+</tr>
+<tr>
+<td>Triton-CPU module</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/triton_cpu_kernel.py"><code>kernels/triton_cpu_kernel.py</code></a></td>
+</tr>
+<tr>
+<td><code>torch_compile_triton_cpu</code></td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/triton_cpu_kernel.py#L326-L346"><code>L326–L346</code></a></td>
+</tr>
+<tr>
+<td><code>torch_compile_triton_tiled</code></td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/triton_cpu_kernel.py#L349-L372"><code>L349–L372</code></a></td>
+</tr>
+<tr>
+<td>Tuned wrappers</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/tuned_kernels.py#L250-L273"><code>sandwich_torch_compile_triton_tuned</code></a></td>
+</tr>
+<tr>
+<td>Build script</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/build_triton_cpu.sh"><code>build_triton_cpu.sh</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="helion--torch-cpu">Helion / Torch (CPU)</h2>
+<p>Helion’s Triton path targets GPU; on CPU we mostly use eager / tiled PyTorch and <code>torch.compile</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Complexity</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>helion_eager</code></td>
+<td>Low</td>
+<td>Correctness / reference tile interpreter</td>
+</tr>
+<tr>
+<td><code>torch_einsum</code> / <code>torch_compile_einsum</code></td>
+<td>Low</td>
+<td>Often competitive ST vs tabmat</td>
+</tr>
+<tr>
+<td><code>helion_tiled_tuned</code> / <code>torch_tiled_tuned</code></td>
+<td>Medium</td>
+<td>Big ST wins on tall/skinny after tile search</td>
+</tr>
+</tbody>
+</table>
+<h2 id="triton-cpu-paths">Triton-CPU paths</h2>
+<table>
+<thead>
+<tr>
+<th>Kernel</th>
+<th>Strategy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>triton_cpu_native</code></td>
+<td>Hand-written <code>@triton.jit</code> row-chunked Gram; optional ThreadPool row bands</td>
+</tr>
+<tr>
+<td><code>helion_triton_cpu</code></td>
+<td>Helion→Triton; falls back to native on codegen failure</td>
+</tr>
+<tr>
+<td><code>torch_compile_triton_cpu</code></td>
+<td><code>torch.compile(einsum)</code> + Inductor <code>cpu_backend=triton</code></td>
+</tr>
+<tr>
+<td><code>torch_compile_triton_tuned</code></td>
+<td>Autotuned tiled compile on the same backend</td>
+</tr>
+</tbody>
+</table>
+<h3 id="single-thread-highlight-glm_small-f64-earlier-st-run">Single-thread highlight (glm_small f64, earlier ST run)</h3>
+<table>
+<thead>
+<tr>
+<th>Kernel</th>
+<th style="text-align: right;">median (ms)</th>
+<th style="text-align: right;">vs tabmat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tabmat</td>
+<td style="text-align: right;">6.88</td>
+<td style="text-align: right;">1.00×</td>
+</tr>
+<tr>
+<td><strong>torch_compile_triton_cpu</strong></td>
+<td style="text-align: right;"><strong>4.15</strong></td>
+<td style="text-align: right;"><strong>1.66×</strong></td>
+</tr>
+<tr>
+<td>triton_cpu_native</td>
+<td style="text-align: right;">16.28</td>
+<td style="text-align: right;">0.42×</td>
+</tr>
+</tbody>
+</table>
+<h3 id="multi-thread-highlight-glm_tall_skinny-f64-latest">Multi-thread highlight (glm_tall_skinny f64, latest)</h3>
+<table>
+<thead>
+<tr>
+<th>Kernel</th>
+<th style="text-align: right;">median (ms)</th>
+<th style="text-align: right;">vs tabmat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>torch_compile_triton_tuned</strong></td>
+<td style="text-align: right;"><strong>7.63</strong></td>
+<td style="text-align: right;"><strong>2.63×</strong></td>
+</tr>
+<tr>
+<td>triton_cpu_tuned</td>
+<td style="text-align: right;">15.54</td>
+<td style="text-align: right;">1.29×</td>
+</tr>
+<tr>
+<td>torch_compile_triton_cpu</td>
+<td style="text-align: right;">18.34</td>
+<td style="text-align: right;">1.09×</td>
+</tr>
+<tr>
+<td>tabmat</td>
+<td style="text-align: right;">20.07</td>
+<td style="text-align: right;">1.00×</td>
+</tr>
+</tbody>
+</table>
+<p>On <strong>glm_small</strong> MT, the <em>untuned</em> einsum path (<code>torch_compile_triton_cpu</code>, ~1.03× tabmat) still beat the tiled autotuned variant — more tuning infrastructure does not always win every shape.</p>
+<h2 id="ops-cost">Ops cost</h2>
+<ul>
+<li>Build experimental triton-cpu into a dedicated venv.</li>
+<li>Set <code>TRITON_CPU_BACKEND=1</code>.</li>
+<li>Manage Inductor / Dynamo recompile limits across shapes and tiles.</li>
+<li>Persist per-problem tile params in <code>autotune_cache.json</code>.</li>
+</ul>
+<h2 id="takeaway">Takeaway</h2>
+<p>Triton-CPU is the <strong>highest complexity</strong> stack in this experiment, but it uniquely <strong>wins tall/skinny MT</strong> via tiled <code>torch.compile</code>. For most GLM shapes, <code>numba_blas_tuned</code> remains the better ROI.</p>
+
+</main>
+</body>
+</html>

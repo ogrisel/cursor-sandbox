@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>00-overview</title>
+<link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="../index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="complexity-vs-performance-overview">Complexity vs performance (overview)</h1>
+<p>Qualitative map of the backends explored in this experiment. Axes are intentionally not quantitative — see <a href="../05-latest-benchmarks/index.html">latest benchmarks</a> for measured speedups.</p>
+<p><img src="complexity_vs_performance.svg" alt="Complexity vs performance" /></p>
+<table>
+<thead>
+<tr>
+<th>Region</th>
+<th>Examples</th>
+<th>Lesson</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Low complexity, low reward</td>
+<td>NumPy / JAX einsum</td>
+<td>Correct and clear; ~0.2× tabmat MT</td>
+</tr>
+<tr>
+<td>Medium complexity, high reward</td>
+<td><code>numba_blas_tuned</code>, tabmat</td>
+<td>Best ROI; beat or match tabmat</td>
+</tr>
+<tr>
+<td>High complexity, mixed reward</td>
+<td>Triton-CPU tiled compile</td>
+<td>Wins tall/skinny MT; ops-heavy</td>
+</tr>
+</tbody>
+</table>
+<p>← <a href="../index.html">Journal index</a></p>
+
+</main>
+</body>
+</html>

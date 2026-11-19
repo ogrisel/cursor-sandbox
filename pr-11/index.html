@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sandwich fused kernels</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+<nav>
+<a href="index.html">Journal</a>
+
+</nav>
+</header>
+<main>
+<h1 id="sandwich-fused-kernels--experiment-journal">Sandwich fused kernels — experiment journal</h1>
+<p>Pure-Python (and a few native) explorations of fused <code>X^\top \operatorname{diag}(d) X</code> on CPU, compared against <a href="https://github.com/Quantco/tabmat">tabmat</a>.</p>
+<p><strong>Question:</strong> can Numba, JAX, Helion/PyTorch, Triton-CPU, or a small xsimd extension reach tabmat latency without shipping tabmat itself?</p>
+<h2 id="latest-verdict-4-thread-mt-linux-amd64">Latest verdict (4-thread MT, linux-amd64)</h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Winner</th>
+<th style="text-align: right;">vs tabmat</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>glm_small f64</td>
+<td><code>numba_blas_tuned</code></td>
+<td style="text-align: right;"><strong>1.43×</strong></td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/tuned_kernels.py#L87-L104">tuned dispatch</a></td>
+</tr>
+<tr>
+<td>glm_medium f64</td>
+<td><code>numba_blas_tuned</code></td>
+<td style="text-align: right;"><strong>1.94×</strong></td>
+<td>same</td>
+</tr>
+<tr>
+<td>glm_tall_skinny f64</td>
+<td><code>torch_compile_triton_tuned</code></td>
+<td style="text-align: right;"><strong>2.63×</strong></td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/triton_cpu_kernel.py#L349-L372">tiled triton compile</a></td>
+</tr>
+<tr>
+<td>glm_square_cols f64</td>
+<td><code>numba_blas_tuned</code></td>
+<td style="text-align: right;"><strong>1.87×</strong></td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/tuned_kernels.py#L87-L104">tuned dispatch</a></td>
+</tr>
+<tr>
+<td>glm_small f32</td>
+<td>tabmat / near-ties</td>
+<td style="text-align: right;">~1.0×</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/tabmat_baseline.py">tabmat wrapper</a></td>
+</tr>
+</tbody>
+</table>
+<p>Full latest tables and plots: <a href="05-latest-benchmarks/index.html">05 — latest benchmarks</a>.</p>
+<p>Overview plot: <a href="00-overview/index.html">complexity vs performance</a>.</p>
+<h2 id="chronological-iterations">Chronological iterations</h2>
+<ol start="0" type="1">
+<li><a href="00-overview/index.html">Complexity vs performance</a> — qualitative map of backends.</li>
+<li><a href="01-tabmat-baseline/index.html">Tabmat baseline &amp; root causes</a> — why tabmat wins; NumPy/JAX/Numba baselines.</li>
+<li><a href="02-simd-and-rivals/index.html">SIMD inspection &amp; fused rivals</a> — disassembly; rejected scatter-vectorized Numba; rival MT kernels.</li>
+<li><a href="03-autotuning/index.html">Chunk/tile autotuning</a> — Numba BLAS / xsimd / Helion tile search; first kernels that beat tabmat MT.</li>
+<li><a href="04-helion-triton/index.html">Helion, torch.compile &amp; Triton-CPU</a> — PyTorch/Helion paths and experimental triton-cpu backend (ST + MT).</li>
+<li><a href="05-latest-benchmarks/index.html">Latest consolidated benchmarks</a> — current ST/MT tables, plots, source map.</li>
+</ol>
+<h2 id="key-source-map">Key source map</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Benchmark harness</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/benchmark_sandwich.py"><code>benchmark_sandwich.py</code></a></td>
+</tr>
+<tr>
+<td>Autotuner</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/autotune_sandwich.py"><code>autotune_sandwich.py</code></a></td>
+</tr>
+<tr>
+<td>Numba kernels</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/numba_kernels.py"><code>kernels/numba_kernels.py</code></a></td>
+</tr>
+<tr>
+<td>Tuned dispatch</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/tuned_kernels.py"><code>kernels/tuned_kernels.py</code></a></td>
+</tr>
+<tr>
+<td>xsimd C++</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/xsimd_ext/sandwich_xsimd.cpp"><code>xsimd_ext/sandwich_xsimd.cpp</code></a></td>
+</tr>
+<tr>
+<td>Helion / Torch</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/helion_kernel.py"><code>kernels/helion_kernel.py</code></a></td>
+</tr>
+<tr>
+<td>Triton-CPU</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/kernels/triton_cpu_kernel.py"><code>kernels/triton_cpu_kernel.py</code></a></td>
+</tr>
+<tr>
+<td>Narrative README</td>
+<td><a href="https://github.com/ogrisel/cursor-sandbox/blob/cursor/sandwich-fused-kernels-000a/sandwich_fused_kernels/README.md"><code>README.md</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="reproduce">Reproduce</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Core ST/MT benchmark (NumPy / tabmat / Numba / JAX)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run <span class="at">--python</span> 3.11 <span class="at">--exclude-newer</span> P7D <span class="dt">\</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--with</span> tabmat <span class="at">--with</span> numba <span class="at">--with</span> jax <span class="at">--with</span> jaxlib <span class="at">--with</span> scipy <span class="dt">\</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--with</span> threadpoolctl <span class="at">--with</span> psutil <span class="dt">\</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  python sandwich_fused_kernels/benchmark_sandwich.py</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Helion + Triton-CPU (after build_triton_cpu.sh)</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="va">TRITON_CPU_BACKEND</span><span class="op">=</span>1 <span class="ex">sandwich_fused_kernels/.venv-helion/bin/python</span> <span class="dt">\</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  sandwich_fused_kernels/benchmark_sandwich.py</span></code></pre></div>
+
+</main>
+</body>
+</html>
