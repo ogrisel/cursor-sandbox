@@ -1,0 +1,24 @@
+         31 function calls in 0.192 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.192    0.192 /workspace/sandwich_fused_kernels/benchmark_sandwich.py:157(<lambda>)
+        1    0.041    0.041    0.192    0.192 /workspace/sandwich_fused_kernels/kernels/numba_kernels.py:403(sandwich_numba)
+        1    0.151    0.151    0.151    0.151 /workspace/sandwich_fused_kernels/kernels/numba_kernels.py:176(sandwich_numba_tabmat_style_mt)
+        2    0.000    0.000    0.000    0.000 {built-in method numpy.arange}
+        1    0.000    0.000    0.000    0.000 /workspace/sandwich_fused_kernels/.venv-helion/lib/python3.11/site-packages/numpy/lib/_index_tricks_impl.py:31(ix_)
+        2    0.000    0.000    0.000    0.000 /workspace/sandwich_fused_kernels/.venv-helion/lib/python3.11/site-packages/numpy/_core/numerictypes.py:475(issubdtype)
+        1    0.000    0.000    0.000    0.000 /workspace/sandwich_fused_kernels/.venv-helion/lib/python3.11/site-packages/numba/core/serialize.py:30(_numba_unpickle)
+        4    0.000    0.000    0.000    0.000 /workspace/sandwich_fused_kernels/.venv-helion/lib/python3.11/site-packages/numpy/_core/numerictypes.py:293(issubclass_)
+        2    0.000    0.000    0.000    0.000 {method 'reshape' of 'numpy.ndarray' objects}
+        6    0.000    0.000    0.000    0.000 {built-in method builtins.issubclass}
+        1    0.000    0.000    0.000    0.000 {built-in method numpy.asarray}
+        2    0.000    0.000    0.000    0.000 {built-in method numpy.ascontiguousarray}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.len}
+        2    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}
+        2    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+        1    0.000    0.000    0.000    0.000 /workspace/sandwich_fused_kernels/.venv-helion/lib/python3.11/site-packages/numpy/lib/_index_tricks_impl.py:27(_ix__dispatcher)
+
+

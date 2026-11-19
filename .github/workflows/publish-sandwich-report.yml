@@ -1,0 +1,24 @@
+name: Publish sandwich experiment report
+
+on:
+  pull_request:
+    paths:
+      - "sandwich_fused_kernels/journal/**"
+      - "sandwich_fused_kernels/artifacts/**"
+      - "tools/**"
+      - ".github/workflows/publish-sandwich-report.yml"
+      - ".github/workflows/publish-report.yml"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  report:
+    uses: ogrisel/cursor-sandbox/.github/workflows/publish-report.yml@main
+    with:
+      journal-path: sandwich_fused_kernels/journal
+      site-title: Sandwich fused kernels
+      comment-marker: "<!-- sandwich-fused-kernels-report -->"
